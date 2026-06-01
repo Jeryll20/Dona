@@ -1,40 +1,57 @@
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Logo } from '@/components/ui/Logo';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
-import { Strings } from '@/constants/strings';
+
+const FEATURES: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string }[] = [
+  { icon: 'moon-outline',       label: 'Ton rythme de sommeil' },
+  { icon: 'restaurant-outline', label: 'Tes repas de la journée' },
+  { icon: 'walk-outline',       label: 'Tes activités favorites' },
+];
 
 export default function WelcomeScreen() {
-  function handleStart() {
-    router.push('/(auth)/onboarding/step1-personal');
-  }
-
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        {/* Logo mark */}
-        <View style={styles.logoWrap}>
-          <View style={styles.logoMark}>
-            <Text style={styles.logoLetter}>D</Text>
+        <View style={styles.top}>
+          <View style={styles.logoRow}>
+            <Logo size={44} />
+            <Text style={styles.logoName}>Dona</Text>
           </View>
-          <Text style={styles.logoName}>{Strings.app.name}</Text>
-        </View>
 
-        <View style={styles.textBlock}>
-          <Text style={styles.headline}>{Strings.onboarding.welcome.headline}</Text>
-          <Text style={styles.body}>{Strings.onboarding.welcome.body}</Text>
+          <Text style={styles.headline}>
+            Bienvenue dans{'\n'}ton nouvel espace.
+          </Text>
+          <Text style={styles.body}>
+            Dona t'aide à mieux gérer ton temps, sans te surcharger.
+            Réponds à quelques questions et on te propose un planning
+            qui te ressemble.
+          </Text>
+
+          <View style={styles.featureList}>
+            {FEATURES.map((f) => (
+              <View key={f.label} style={styles.featureRow}>
+                <View style={styles.featureIcon}>
+                  <Ionicons name={f.icon} size={21} color={Colors.light.primaryStrong} />
+                </View>
+                <Text style={styles.featureLabel}>{f.label}</Text>
+              </View>
+            ))}
+          </View>
         </View>
 
         <TouchableOpacity
           style={styles.cta}
-          onPress={handleStart}
-          accessibilityLabel={Strings.onboarding.welcome.cta}
+          onPress={() => router.push('/(auth)/onboarding/q1-bedtime')}
+          accessibilityLabel="On y va ?"
           accessibilityRole="button"
         >
-          <Text style={styles.ctaText}>{Strings.onboarding.welcome.cta}</Text>
-          <Text style={styles.ctaArrow}>→</Text>
+          <Text style={styles.ctaText}>On y va ?</Text>
+          <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -48,50 +65,60 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    paddingHorizontal: Spacing['2xl'],
-    justifyContent: 'center',
-    gap: Spacing['2xl'],
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing['4xl'],
+    paddingBottom: Spacing['2xl'],
+    justifyContent: 'space-between',
   },
-  logoWrap: {
+  top: {
+    gap: Spacing.lg,
+  },
+  logoRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.base,
-  },
-  logoMark: {
-    width: 80,
-    height: 80,
-    borderRadius: 26,
-    backgroundColor: Colors.light.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.md,
-  },
-  logoLetter: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: Colors.light.onPrimary,
-    lineHeight: 50,
+    gap: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   logoName: {
-    fontSize: FontSize['3xl'],
+    fontSize: FontSize['2xl'],
+    fontWeight: '800',
+    color: Colors.light.ink,
+    letterSpacing: -0.5,
+  },
+  headline: {
+    fontSize: 38,
     fontWeight: '800',
     color: Colors.light.ink,
     letterSpacing: -1,
-  },
-  textBlock: {
-    gap: Spacing.md,
-  },
-  headline: {
-    fontSize: FontSize.xl,
-    fontWeight: '700',
-    color: Colors.light.ink,
-    letterSpacing: -0.5,
-    textAlign: 'center',
+    lineHeight: 42,
   },
   body: {
     fontSize: FontSize.md,
-    color: Colors.light.ink2,
     lineHeight: 24,
-    textAlign: 'center',
+    color: Colors.light.ink2,
+  },
+  featureList: {
+    gap: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  featureIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: Colors.light.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadow.sm,
+  },
+  featureLabel: {
+    fontSize: FontSize.base,
+    fontWeight: '500',
+    color: Colors.light.ink,
   },
   cta: {
     flexDirection: 'row',
@@ -100,18 +127,13 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     backgroundColor: Colors.light.primary,
     borderRadius: Radius.pill,
-    paddingVertical: Spacing.base,
-    paddingHorizontal: Spacing['2xl'],
+    paddingVertical: Spacing.base + 2,
     ...Shadow.md,
   },
   ctaText: {
     fontSize: FontSize.base,
     fontWeight: '600',
-    color: Colors.light.onPrimary,
+    color: '#fff',
     letterSpacing: 0.1,
-  },
-  ctaArrow: {
-    fontSize: FontSize.lg,
-    color: Colors.light.onPrimary,
   },
 });

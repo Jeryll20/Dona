@@ -2,15 +2,15 @@ import { Stack } from 'expo-router';
 
 export default function AuthLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="welcome" />
-      <Stack.Screen name="onboarding/step1-personal" />
-      <Stack.Screen name="onboarding/step2-sleep" />
-      <Stack.Screen name="onboarding/step3-meals" />
-      <Stack.Screen name="onboarding/step4-sport" />
-      <Stack.Screen name="onboarding/step5-work" />
-      <Stack.Screen name="onboarding/step6-activities" />
-      <Stack.Screen name="onboarding/step7-cycle" />
+      <Stack.Screen name="onboarding/q1-bedtime" />
+      <Stack.Screen name="onboarding/q2-sleep-hours" />
+      <Stack.Screen name="onboarding/q3-morning-prep" />
+      <Stack.Screen name="onboarding/q4-meals" />
+      <Stack.Screen name="onboarding/q5-activities" />
+      <Stack.Screen name="onboarding/q6-goal" />
+      <Stack.Screen name="onboarding/creation" />
     </Stack>
   );
 }

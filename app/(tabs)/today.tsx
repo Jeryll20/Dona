@@ -28,16 +28,16 @@ const CATEGORY_STYLE: Record<EventCategory, { bg: string; ink: string }> = {
 };
 
 const DEMO_DAY: DayEvent[] = [
-  { category: 'sleep',    title: 'Sleep',           startHour: 0,     endHour: 7 },
-  { category: 'prep',     title: 'Preparation',     startHour: 7,     endHour: 7.67 },
-  { category: 'transit',  title: 'Commute',          startHour: 7.67,  endHour: 8,    thin: true, duration: '20 min' },
-  { category: 'work',     title: 'Work',             startHour: 8,     endHour: 12.5 },
-  { category: 'meal',     title: 'Lunch',            startHour: 12.5,  endHour: 13.5 },
-  { category: 'work',     title: 'Work',             startHour: 13.5,  endHour: 17 },
-  { category: 'transit',  title: 'Commute home',     startHour: 17,    endHour: 17.33, thin: true, duration: '20 min' },
-  { category: 'activity', title: 'English class',    startHour: 18.17, endHour: 19.17 },
-  { category: 'meal',     title: 'Dinner',           startHour: 20,    endHour: 20.75 },
-  { category: 'sleep',    title: 'Sleep',            startHour: 23,    endHour: 24 },
+  { category: 'sleep',    title: 'Sommeil',         startHour: 0,     endHour: 7 },
+  { category: 'prep',     title: 'Préparation',     startHour: 7,     endHour: 7.67 },
+  { category: 'transit',  title: 'Trajet',           startHour: 7.67,  endHour: 8,    thin: true, duration: '20 min' },
+  { category: 'work',     title: 'Travail',          startHour: 8,     endHour: 12.5 },
+  { category: 'meal',     title: 'Déjeuner',         startHour: 12.5,  endHour: 13.5 },
+  { category: 'work',     title: 'Travail',          startHour: 13.5,  endHour: 17 },
+  { category: 'transit',  title: 'Retour',           startHour: 17,    endHour: 17.33, thin: true, duration: '20 min' },
+  { category: 'activity', title: "Cours d'anglais", startHour: 18.17, endHour: 19.17 },
+  { category: 'meal',     title: 'Dîner',            startHour: 20,    endHour: 20.75 },
+  { category: 'sleep',    title: 'Sommeil',          startHour: 23,    endHour: 24 },
 ];
 
 function fmtHour(h: number) {
@@ -57,14 +57,14 @@ export default function TodayScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.dateLabel} accessibilityLabel="Current date">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          <Text style={styles.dateLabel} accessibilityLabel="Date du jour">
+            {new Date().toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
-          <Text style={styles.title}>{Strings.tabs.today}</Text>
+          <Text style={styles.title}>Aujourd'hui</Text>
         </View>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>
-            {Strings.today.hoursPlanned(Math.round(planningHours(DEMO_DAY)))}
+            {Math.round(planningHours(DEMO_DAY))}h planifiées
           </Text>
         </View>
       </View>

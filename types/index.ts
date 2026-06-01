@@ -74,6 +74,7 @@ export interface SleepSchedule {
   bedtime: string;         // "HH:MM"
   wakeTime: string;        // "HH:MM"
   prepMinutes: number;
+  sleepHours: number;
 }
 
 export interface MealSchedule {
