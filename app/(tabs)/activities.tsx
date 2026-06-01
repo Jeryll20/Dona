@@ -17,19 +17,18 @@ import { useScheduleStore } from '@/store/useScheduleStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
-import type { EventCategory, UserActivity, WeekDay, Recurrence } from '@/types';
+import type { CatKey, UserActivity, WeekDay, Recurrence } from '@/types';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 type Step = 1 | 2 | 3;
 
 // ── Data ──────────────────────────────────────────────────────────
 
-const CATEGORIES: { key: EventCategory; label: string; icon: IoniconsName; bg: string; ink: string }[] = [
-  { key: 'work',     label: 'Travail',       icon: 'briefcase-outline',     bg: Colors.light.workBg,     ink: Colors.light.workInk },
-  { key: 'learning', label: 'Apprentissage', icon: 'book-outline',          bg: Colors.light.sleepBg,    ink: Colors.light.sleepInk },
-  { key: 'activity', label: 'Sport',         icon: 'walk-outline',          bg: Colors.light.activityBg, ink: Colors.light.activityInk },
-  { key: 'goal',     label: 'Culture',       icon: 'color-palette-outline', bg: Colors.light.mealBg,     ink: Colors.light.mealInk },
-  { key: 'social',   label: 'Autre',         icon: 'sparkles-outline',      bg: Colors.light.transitBg,  ink: Colors.light.transitInk },
+const CATEGORIES: { key: CatKey; label: string; icon: IoniconsName; bg: string; ink: string }[] = [
+  { key: 'travail',  label: 'Travail',        icon: 'briefcase-outline',     bg: Colors.light.workBg,     ink: Colors.light.workInk },
+  { key: 'activite', label: 'Sport / Activité', icon: 'walk-outline',         bg: Colors.light.activityBg, ink: Colors.light.activityInk },
+  { key: 'repas',    label: 'Repas',          icon: 'restaurant-outline',    bg: Colors.light.mealBg,     ink: Colors.light.mealInk },
+  { key: 'trajet',   label: 'Trajet',         icon: 'car-outline',           bg: Colors.light.transitBg,  ink: Colors.light.transitInk },
 ];
 
 const WEEK_DAYS: { key: WeekDay; label: string }[] = [
@@ -113,7 +112,7 @@ const tpS = StyleSheet.create({
 // ── ActivityCard ──────────────────────────────────────────────────
 
 function ActivityCard({ activity, onDelete }: { activity: UserActivity; onDelete: () => void }) {
-  const cat = CATEGORIES.find((c) => c.key === activity.category) ?? CATEGORIES[4];
+  const cat = CATEGORIES.find((c) => c.key === activity.cat) ?? CATEGORIES[1];
   return (
     <View style={cS.wrap} accessibilityLabel={activity.title}>
       <View style={[cS.icon, { backgroundColor: cat.bg }]}>
@@ -141,7 +140,7 @@ function ActivityCard({ activity, onDelete }: { activity: UserActivity; onDelete
 const cS = StyleSheet.create({
   wrap: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.light.surface, borderRadius: Radius.card,
+    backgroundColor: Colors.light.surface, borderRadius: Radius.block,
     padding: Spacing.base, ...Shadow.sm,
   },
   icon:     { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
@@ -161,7 +160,7 @@ export default function ActivitiesScreen() {
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [step, setStep] = useState<Step>(1);
-  const [catKey, setCatKey] = useState<EventCategory | null>(null);
+  const [catKey, setCatKey] = useState<CatKey | null>(null);
   const [name, setName] = useState('');
   const [startH, setStartH] = useState(9);
   const [startM, setStartM] = useState(0);
@@ -200,7 +199,7 @@ export default function ActivitiesScreen() {
     addActivity({
       id: Date.now().toString(),
       title: name.trim() || cat.label,
-      category: catKey ?? 'activity',
+      cat: catKey ?? 'activite',
       startTime: fmtTime(startH, startM),
       endTime: fmtTime(endH, endM),
       days: [...days] as WeekDay[],
@@ -509,7 +508,7 @@ const s = StyleSheet.create({
   timeRow: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.light.surfaceSunk,
-    borderRadius: Radius.card, padding: Spacing.md, gap: Spacing.md,
+    borderRadius: Radius.block, padding: Spacing.md, gap: Spacing.md,
   },
   timeSep: { width: 1, height: 52, backgroundColor: Colors.light.hairline },
 

@@ -20,7 +20,7 @@ export default function CreationScreen() {
   useEffect(() => {
     const timer = setTimeout(() => {
       completeOnboarding();
-      router.replace('/(tabs)/today');
+      router.push('/(auth)/onboarding/conversation');
     }, 2800);
     return () => clearTimeout(timer);
   }, []);

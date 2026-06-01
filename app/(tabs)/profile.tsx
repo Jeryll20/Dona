@@ -1,6 +1,7 @@
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useUserStore } from '@/store/useUserStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
@@ -47,7 +48,7 @@ function SettingsRow({ icon, iconBg, iconInk, label, value, onPress }: RowProps)
 const row = StyleSheet.create({
   wrap: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.light.surface, borderRadius: Radius.card,
+    backgroundColor: Colors.light.surface, borderRadius: Radius.block,
     padding: Spacing.base, ...Shadow.sm,
   },
   icon:    { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
@@ -62,8 +63,8 @@ export default function ProfileScreen() {
   const goalKey = work.role ?? null;
   const goalLabel = goalKey ? GOAL_LABELS[goalKey] : null;
 
-  const sleepValue = sleep.bedtime && sleep.wakeTime
-    ? `${sleep.bedtime} → ${sleep.wakeTime}`
+  const sleepValue = sleep.bedtime && sleep.waketime
+    ? `${sleep.bedtime} → ${sleep.waketime}`
     : undefined;
 
   const mealsValue = meals.times
@@ -112,6 +113,7 @@ export default function ProfileScreen() {
             iconInk={Colors.light.sleepInk}
             label="Sommeil"
             value={sleepValue}
+            onPress={() => router.push('/profile/sleep')}
           />
           <SettingsRow
             icon="restaurant-outline"
@@ -126,6 +128,7 @@ export default function ProfileScreen() {
             iconInk={Colors.light.activityInk}
             label="Cycle menstruel"
             value={cycleValue}
+            onPress={() => router.push('/profile/cycle')}
           />
         </View>
 

@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import type { ScheduleEvent, UserActivity } from '../types';
+import type { TimelineEvent, UserActivity } from '../types';
 
 interface ScheduleState {
-  todayEvents: ScheduleEvent[];
+  todayEvents: TimelineEvent[];
   activities: UserActivity[];
 
-  setTodayEvents: (events: ScheduleEvent[]) => void;
+  setTodayEvents: (events: TimelineEvent[]) => void;
   addActivity: (activity: UserActivity) => void;
   removeActivity: (id: string) => void;
   updateActivity: (id: string, patch: Partial<UserActivity>) => void;

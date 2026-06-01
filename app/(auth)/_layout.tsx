@@ -11,6 +11,8 @@ export default function AuthLayout() {
       <Stack.Screen name="onboarding/q5-activities" />
       <Stack.Screen name="onboarding/q6-goal" />
       <Stack.Screen name="onboarding/creation" />
+      <Stack.Screen name="onboarding/conversation" />
+      <Stack.Screen name="onboarding/recap" />
     </Stack>
   );
 }
