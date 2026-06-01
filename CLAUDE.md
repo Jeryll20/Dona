@@ -482,20 +482,210 @@ npx expo run:android
 
 ## 📌 Development Checklist
 
-- [ ] Project init (Expo + TypeScript)
-- [ ] `constants/` — colors, typography, spacing, categories
-- [ ] `components/ui/` — full design system (Icon, Button, Screen, etc.)
-- [ ] Onboarding flow — all 9 screens (intro → recap)
-- [ ] Home / Today timeline screen
-- [ ] Activities list + AddActivityFlow sheet
-- [ ] Profile screen + Sleep/Cycle detail screens
-- [ ] Time optimization engine (`lib/optimizer.ts`)
-- [ ] Suggestion cards UI
-- [ ] Supabase auth & data persistence
-- [ ] Expo Notifications
-- [ ] Menstrual cycle module (`lib/cycle.ts`)
-- [ ] Google Maps integration
+### Étape 1 — MVP (priorité absolue)
+- [x] Project init (Expo + TypeScript)
+- [x] `constants/` — colors, typography, spacing, categories
+- [x] `components/ui/` — full design system (Icon, Button, Screen, etc.)
+- [x] Onboarding flow — all 9 screens (intro → recap)
+- [x] Home / Today timeline screen
+- [x] Activities list + AddActivityFlow sheet
+- [x] Profile screen + Sleep/Cycle detail screens
+- [ ] Timeline components (TimelineBlock, ThinBlock, NowIndicator, HourGrid)
+- [ ] Time optimization engine (`lib/optimizer.ts`) — free slot detection
+- [ ] Suggestion cards UI (`SuggestionCard.tsx`, `useSuggestionsStore.ts`)
+- [ ] Local data persistence (AsyncStorage — **not** Supabase at MVP)
+- [ ] Basic chat screen (pre-written phrases only, no AI)
+- [ ] Basic notifications (Expo Notifications — 3 types: cycle, activity reminder, weekly recap)
+
+### Étape 2 — Cycle & Notifications avancées
+- [ ] Menstrual cycle module (`lib/cycle.ts`) — phase calculation
+- [ ] Dynamic suggestions per cycle phase
+- [ ] Smart notifications adapted to phases
+
+### Étape 3 — AI Chat & External integrations
+- [ ] Supabase auth & cloud sync
+- [ ] AI chat integration (Mistral — premium)
+- [ ] Apple Health / Google Fit / Calendar sync
+- [ ] Google Maps integration (react-native-maps + Places API)
+
+### Étape 4 — Expansion
+- [ ] Behavioral analysis & auto-adaptation
+- [ ] Community features
+- [ ] PWA web version
+- [ ] Multilingual support
 
 ---
 
 *Last updated: June 2026 — generated from Dona.html prototype*
+
+---
+
+## 📐 Spécifications Fonctionnelles Complètes
+
+### Contexte & Vision
+Dona réduit la charge mentale en automatisant la gestion du temps. L'app se distingue par :
+- Planning personnalisé généré automatiquement depuis l'onboarding
+- Prise en compte du cycle menstruel pour des conseils bienveillants
+- Chat conversationnel (phrases pré-établies en gratuit, Mistral en premium)
+- Équilibre organisation / bien-être / performance personnelle
+
+### Public cible
+- Personnes avec forte charge mentale liée au temps
+- Actifs cherchant à organiser travail + sommeil + repas + loisirs
+- Utilisatrices souhaitant un suivi intelligent de leur cycle menstruel
+
+---
+
+## 🗺️ Roadmap
+
+### Étape 1 — MVP (priorité absolue)
+- Écran d'accueil + vue planning
+- Onboarding + génération automatique du planning
+- Paramétrage manuel de tous les modules
+- **Sauvegarde locale des données (AsyncStorage, pas Supabase)**
+- Notifications basiques
+- Chat sans IA (phrases pré-établies)
+
+### Étape 2 — Cycle menstruel & notifications avancées
+- Module cycle : calcul automatique des phases
+- Conseils dynamiques selon la phase (alimentation, sport, humeur, repos)
+- Notifications intelligentes adaptées aux phases
+- Amélioration design et personnalisation du planning
+
+### Étape 3 — Chat IA & intégrations externes
+- Chat IA intégré (Mistral — analyse planning + suggestions + soutien motivationnel)
+- Apple Health / Google Fit / Google Agenda / Apple Calendar
+- Supabase auth + synchronisation cloud + multi-appareils
+- Lancement App Store & Play Store
+
+### Étape 4 — Expansion
+- Analyse comportementale et adaptation automatique aux habitudes
+- Routines intelligentes générées par IA
+- Interface communautaire (partage de progrès)
+- Version web (PWA)
+- Traduction multilingue
+- Partenariats bien-être (nutrition, sport, organisation)
+
+---
+
+## ⚙️ Paramétrage Manuel (tous les modules)
+
+L'utilisateur peut modifier à tout moment :
+- Heures de sommeil + temps de préparation
+- Horaires repas + temps de préparation
+- Horaires de travail + temps de trajet (multi-emploi possible)
+- Horaires de sport/activité + temps de trajet
+- Date des dernières règles + durée du cycle (notif mensuelle pour ajuster)
+- Horaires école des enfants + temps de trajet
+- Ajout d'événement ponctuel
+
+---
+
+## 🤖 Chatbot — Deux niveaux
+
+### Version gratuite
+Phrases pré-établies pour guider dans l'application :
+- Paramétrage des modules
+- Navigation guidée
+- Après l'onboarding : demande si le planning correspond à la réalité
+  - Si oui → propose d'ajouter quelque chose (→ page ajout activité)
+  - Si non → propose de modifier les paramètres
+
+### Version premium
+- IA intégrée (Mistral envisagé)
+- Conseils personnalisés selon la phase du cycle
+- Suggestions selon la charge d'activité dans la journée
+- Soutien motivationnel
+
+---
+
+## 🔔 Notifications (MVP)
+
+| Notification | Déclencheur |
+|---|---|
+| Saisie des règles | Mensuel (rappel de mise à jour du cycle) |
+| Rappel activités | Avant chaque activité planifiée |
+| Bilan hebdomadaire | Dimanche soir (rappel saisie rdv/tâches de la semaine) |
+
+---
+
+## 💰 Modèle Économique
+
+### Version gratuite (freemium)
+- Planning journalier basé sur le paramétrage
+- Modules : cycle, travail, activités, sommeil, repas
+- Paramétrage manuel complet
+- Chat avec phrases de base
+- Notifications simples
+- Aucune intégration externe
+
+### Version premium — 5,99 €/mois | 49,99 €/an
+- Chatbot IA personnalisé (cycle, sport, nutrition, motivation)
+- Intégration Apple Health / Google Fit
+- Cycle menstruel + conseils évolutifs par phase
+- Suggestions intelligentes automatiques
+- Synchronisation multi-appareils
+- Synchronisation avec un autre utilisateur
+- Forum de partage d'idées et retours utilisateurs
+- Design sans publicité
+- Accès prioritaire aux nouveautés
+
+### Offre early adopters
+- 79,99 € à vie pour les 1 000 premiers utilisateurs
+- Possibilité de monter à 99,99 € à vie ou de supprimer ce modèle ensuite
+
+---
+
+## 👤 Profils Utilisateurs Exemples
+
+### Camille, 31 ans — Salariée temps plein
+**Onboarding :** Coucher 23h | Réveil 6h30 | 7h de sommeil | 3 repas (7h, 12h30, 19h30) | Travail 8h30–17h30 | Objectif : équilibre et régularité
+
+**Planning généré :**
+```
+06h30  Réveil + préparation
+07h30  Départ travail
+08h30  Travail
+12h30  Déjeuner
+13h30  Reprise travail
+17h30  Fin travail
+18h00  Sport (mar + jeu, 45min–1h)
+20h00  Dîner / détente
+23h00  Coucher
+```
+
+### Léo, 22 ans — Étudiant ingénieur
+**Onboarding :** Coucher 23h30 | Réveil 6h15 | 7h de sommeil | 3 repas | Cours + révisions | Souhaite ajouter sport matinal 3x/semaine | Objectif : concentration + forme
+
+### Maé, 37 ans — Mère solo, temps plein, 2 enfants (5 et 8 ans)
+**Onboarding :** Coucher 22h30 | Réveil 6h30 | 2 enfants | Trajets école 20min matin/soir | Difficultés : manque de temps perso, oublis, fatigue | Objectif : sérénité + temps personnel
+
+---
+
+## 🔐 Sécurité & Confidentialité
+
+- Authentification : email, Google, Apple ID (Étape 3 — Supabase)
+- RGPD : consentement, anonymisation, droit à l'effacement
+- Données santé (sommeil, cycle, activité) : stockage local par défaut, cloud avec accord explicite
+- Base locale : paramètres accessibles hors connexion (MVP)
+- Base cloud : synchronisation automatique au retour de la connexion (Étape 3)
+
+---
+
+## 📊 Benchmark Concurrentiel
+
+| App | Prix | Points forts | Limites |
+|---|---|---|---|
+| **Tiimo** | 6,99€/mois | Design minimaliste, IA premium, widgets iOS | Android moins complet |
+| **24me** | 5,99€/mois | Vue unifiée calendrier+tâches+notes | Pas de suivi biologique |
+| **Structured** | 4,99€/mois | Frise chronologique très visuelle | Pas de version française |
+| **FamilyWall** | 4,99€/mois | Fonctions famille | Pas d'IA, pas de cycle |
+| **Todoist** | Freemium | Liste de tâches puissante | Pas de planning automatique |
+
+### Différenciation de Dona
+- ✅ Cycle menstruel intégré avec conseils adaptés par phase
+- ✅ Chat IA plus humain (suggestions contextuelles)
+- ✅ Interface douce et chaleureuse
+- ✅ Génération automatique du planning (vs saisie manuelle)
+- ✅ Freemium généreux pour toucher un large public
+- ✅ Bouton feedback "ce planning ne me correspond pas"
