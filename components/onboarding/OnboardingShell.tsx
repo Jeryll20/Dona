@@ -9,8 +9,8 @@ import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
-// Screens shorter than this threshold may need scrolling (e.g. iPhone SE, small Android)
-const SCROLL_THRESHOLD_H = 700;
+// Screens shorter than this threshold get reduced spacing
+const SMALL_SCREEN_H = 700;
 
 interface OnboardingShellProps {
   step: number;
@@ -24,6 +24,8 @@ interface OnboardingShellProps {
   onBack?: () => void;
   nextLabel?: string;
   nextDisabled?: boolean;
+  // Activer le scroll uniquement si le contenu peut déborder (ex. liste d'options longue)
+  scrollable?: boolean;
   children: React.ReactNode;
 }
 
@@ -39,12 +41,13 @@ export default function OnboardingShell({
   onBack,
   nextLabel = 'Continuer',
   nextDisabled,
+  scrollable = false,
   children,
 }: OnboardingShellProps) {
   const { height: screenH } = useWindowDimensions();
-  const isSmallScreen  = screenH < SCROLL_THRESHOLD_H;
-  const bodySpacing    = isSmallScreen ? Spacing.base : Spacing['2xl'];
-  const progress       = step / total;
+  const isSmallScreen = screenH < SMALL_SCREEN_H;
+  const bodySpacing   = isSmallScreen ? Spacing.base : Spacing['2xl'];
+  const progress      = step / total;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -75,7 +78,7 @@ export default function OnboardingShell({
           showsVerticalScrollIndicator={false}
           bounces={false}
           overScrollMode="never"
-          scrollEnabled={isSmallScreen}
+          scrollEnabled={scrollable && isSmallScreen}
         >
           {/* Eyebrow pill */}
           <View style={styles.eyebrow}>

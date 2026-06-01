@@ -41,6 +41,7 @@ export default function Q5Activities() {
       eyebrowIcon="walk-outline"
       question="Quels types d'activités pratiques-tu ?"
       sub="Plusieurs choix possibles."
+      scrollable
       onNext={handleNext}
     >
       <View style={styles.list}>
