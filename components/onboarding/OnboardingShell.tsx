@@ -1,10 +1,16 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  StyleSheet, View, Text, TouchableOpacity, ScrollView,
+  KeyboardAvoidingView, Platform, useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
+
+// Screens shorter than this threshold may need scrolling (e.g. iPhone SE, small Android)
+const SCROLL_THRESHOLD_H = 700;
 
 interface OnboardingShellProps {
   step: number;
@@ -35,12 +41,15 @@ export default function OnboardingShell({
   nextDisabled,
   children,
 }: OnboardingShellProps) {
-  const progress = step / total;
+  const { height: screenH } = useWindowDimensions();
+  const isSmallScreen  = screenH < SCROLL_THRESHOLD_H;
+  const bodySpacing    = isSmallScreen ? Spacing.base : Spacing['2xl'];
+  const progress       = step / total;
 
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={styles.kav}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {/* Top bar */}
@@ -64,6 +73,9 @@ export default function OnboardingShell({
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          bounces={false}
+          overScrollMode="never"
+          scrollEnabled={isSmallScreen}
         >
           {/* Eyebrow pill */}
           <View style={styles.eyebrow}>
@@ -74,12 +86,10 @@ export default function OnboardingShell({
           <Text style={styles.question}>{question}</Text>
           {sub && <Text style={styles.sub}>{sub}</Text>}
 
-          <View style={[styles.body, !sub && { marginTop: Spacing.xl }]}>{children}</View>
-
-          <View style={{ height: 140 }} />
+          <View style={[styles.body, { marginTop: bodySpacing }]}>{children}</View>
         </ScrollView>
 
-        {/* Footer */}
+        {/* Footer — hors du ScrollView pour rester fixe en bas */}
         <View style={styles.footer}>
           {footer && <Text style={styles.footerText}>{footer}</Text>}
           <TouchableOpacity
@@ -104,6 +114,8 @@ export default function OnboardingShell({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.light.background },
+  kav:  { flex: 1 },
+
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -141,11 +153,14 @@ const styles = StyleSheet.create({
     minWidth: 28,
     textAlign: 'right',
   },
-  scroll: { flex: 1 },
+
+  scroll:        { flex: 1 },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.base,
   },
+
   eyebrow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -176,10 +191,10 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     color: Colors.light.ink3,
     marginTop: Spacing.sm,
-    marginBottom: Spacing.xl,
     maxWidth: 300,
   },
-  body: { marginTop: Spacing.xl },
+  body: { flex: 1 },
+
   footer: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xl,

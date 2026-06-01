@@ -53,7 +53,7 @@ function useProtectedRoute() {
           prepMinutes: sleep.prepMinutes,
         }));
       }
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/' as any);
     } else if (!isOnboarded && !inAuth) {
       router.replace('/(auth)/welcome');
     }

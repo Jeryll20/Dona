@@ -9,7 +9,7 @@ export default function NotFoundScreen() {
       <Stack.Screen options={{ title: 'Page introuvable' }} />
       <View style={styles.container}>
         <Text style={styles.title}>Cette page n'existe pas.</Text>
-        <Link href="/(tabs)" style={styles.link}>
+        <Link href={'/(tabs)/' as any} style={styles.link}>
           <Text style={styles.linkText}>Retour à l'accueil</Text>
         </Link>
       </View>

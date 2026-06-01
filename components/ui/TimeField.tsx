@@ -47,7 +47,7 @@ function Wheel({ items, initial, onChange }: WheelProps) {
       contentOffset={{ x: 0, y: initial * ITEM_H }}
       showsVerticalScrollIndicator={false}
       snapToInterval={ITEM_H}
-      decelerationRate="fast"
+      decelerationRate={0.85}
       onMomentumScrollEnd={handleEnd}
       onScrollEndDrag={handleEnd}
     >

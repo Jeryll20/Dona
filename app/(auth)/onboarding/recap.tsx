@@ -49,7 +49,7 @@ export default function RecapScreen() {
   function handleStart() {
     setTodayEvents(events);
     completeOnboarding();
-    router.replace('/(tabs)');
+    router.replace('/(tabs)/' as any);
   }
 
   return (
