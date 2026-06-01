@@ -8,7 +8,7 @@ import { Radius } from '@/constants/spacing';
 
 const ITEM_H  = 52;
 const VISIBLE = 5;
-const PAD     = ((VISIBLE - 1) / 2) * ITEM_H; // 104 — centers first/last items
+const PAD     = ((VISIBLE - 1) / 2) * ITEM_H; // 104 — centres first/last items
 
 const HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
@@ -19,24 +19,66 @@ interface TimeFieldProps {
 }
 
 interface WheelProps {
-  items:   string[];
-  initial: number;
+  items:    string[];
+  initial:  number;
   onChange: (index: number) => void;
 }
 
 function Wheel({ items, initial, onChange }: WheelProps) {
-  const ref = useRef<ScrollView>(null);
+  const ref             = useRef<ScrollView>(null);
   const [selected, setSelected] = useState(initial);
+  const selectedRef     = useRef(initial);
+  const isProgrammatic  = useRef(false);  // true while we call scrollTo ourselves
+  const dragTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const i = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+  const snapTo = useCallback(
+    (offsetY: number) => {
+      const i       = Math.round(offsetY / ITEM_H);
       const clamped = Math.max(0, Math.min(items.length - 1, i));
-      setSelected(clamped);
-      onChange(clamped);
-      ref.current?.scrollTo({ y: clamped * ITEM_H, animated: true });
+
+      if (clamped !== selectedRef.current) {
+        selectedRef.current = clamped;
+        setSelected(clamped);
+        onChange(clamped);
+      }
+
+      // animated:false → no new scroll events → no loop
+      isProgrammatic.current = true;
+      ref.current?.scrollTo({ y: clamped * ITEM_H, animated: false });
+      isProgrammatic.current = false;
     },
     [items.length, onChange],
+  );
+
+  // When the user flicks, momentum begins → cancel the drag-end timer
+  const onMomentumScrollBegin = useCallback(() => {
+    if (dragTimer.current) {
+      clearTimeout(dragTimer.current);
+      dragTimer.current = null;
+    }
+  }, []);
+
+  // Momentum ended → snap to nearest item
+  const onMomentumScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (isProgrammatic.current) return;
+      snapTo(e.nativeEvent.contentOffset.y);
+    },
+    [snapTo],
+  );
+
+  // Drag released without flick → timer guards against double-firing with momentum
+  const onScrollEndDrag = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (isProgrammatic.current) return;
+      const offsetY = e.nativeEvent.contentOffset.y;
+      if (dragTimer.current) clearTimeout(dragTimer.current);
+      dragTimer.current = setTimeout(() => {
+        dragTimer.current = null;
+        snapTo(offsetY);
+      }, 60); // cancelled by onMomentumScrollBegin if user flicked
+    },
+    [snapTo],
   );
 
   return (
@@ -48,8 +90,9 @@ function Wheel({ items, initial, onChange }: WheelProps) {
       showsVerticalScrollIndicator={false}
       snapToInterval={ITEM_H}
       decelerationRate={0.85}
-      onMomentumScrollEnd={handleEnd}
-      onScrollEndDrag={handleEnd}
+      onMomentumScrollBegin={onMomentumScrollBegin}
+      onMomentumScrollEnd={onMomentumScrollEnd}
+      onScrollEndDrag={onScrollEndDrag}
     >
       {items.map((item, i) => (
         <View key={item} style={styles.item}>
@@ -106,9 +149,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.primaryTint,
     borderRadius: Radius.input,
   },
-  wheel: {
-    flex: 1,
-  },
+  wheel: { flex: 1 },
   item: {
     height: ITEM_H,
     alignItems: 'center',
