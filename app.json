@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "_init",
-    "slug": "_init",
+    "name": "Dona",
+    "slug": "dona",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "init",
+    "scheme": "dona",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
@@ -31,7 +31,7 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#F7F6FB"
         }
       ]
     ],

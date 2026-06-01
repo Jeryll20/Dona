@@ -1,70 +1,94 @@
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
+import { Tabs } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '@/constants/Colors';
+import { Spacing, Radius, Shadow } from '@/constants/spacing';
+import { FontSize } from '@/constants/typography';
+import { Strings } from '@/constants/strings';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+function TabIcon({ focused, icon }: { focused: boolean; icon: string }) {
+  const color = focused ? Colors.light.primaryStrong : Colors.light.ink3;
+  // Simple text-based fallback icons (replace with icon library later)
+  const icons: Record<string, string> = {
+    today: '◎',
+    week: '▦',
+    suggestions: '✦',
+    profile: '○',
+  };
+  return (
+    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+      <View>
+        {/* Placeholder — swap for a proper icon library in a future task */}
+      </View>
+    </View>
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        headerShown: false,
+        tabBarStyle: [
+          styles.tabBar,
+          { paddingBottom: insets.bottom + 6 },
+        ],
+        tabBarActiveTintColor: Colors.light.primaryStrong,
+        tabBarInactiveTintColor: Colors.light.ink3,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarItemStyle: styles.tabItem,
+      }}
+    >
       <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
-        }}
+        name="today"
+        options={{ title: Strings.tabs.today }}
       />
       <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-        }}
+        name="week"
+        options={{ title: Strings.tabs.week }}
+      />
+      <Tabs.Screen
+        name="suggestions"
+        options={{ title: Strings.tabs.suggestions }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{ title: Strings.tabs.profile }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: Colors.light.surface,
+    borderTopWidth: 0,
+    marginHorizontal: Spacing.base,
+    marginBottom: 8,
+    borderRadius: Radius.cardLg,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    ...Shadow.lift,
+  },
+  tabLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  tabItem: {
+    paddingVertical: 8,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrapActive: {
+    backgroundColor: Colors.light.primaryTint,
+  },
+});
