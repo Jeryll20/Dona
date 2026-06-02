@@ -12,6 +12,11 @@ import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import type { MealEntry } from '@/types';
 
+type EntryState = MealEntry & { id: string };
+
+let _idCounter = 0;
+function newId() { return String(++_idCounter); }
+
 const MEAL_LABELS = ['Petit-déjeuner', 'Déjeuner', 'Collation', 'Goûter', 'Dîner', 'Autre'];
 
 function defaultLabel(time: string): string {
@@ -23,7 +28,7 @@ function defaultLabel(time: string): string {
   return 'Dîner';
 }
 
-function nextDefaultTime(existing: MealEntry[]): string {
+function nextDefaultTime(existing: EntryState[]): string {
   const defaults = ['08:00', '12:30', '16:00', '19:30', '10:00'];
   for (const t of defaults) {
     if (!existing.find((e) => e.time === t)) return t;
@@ -32,12 +37,12 @@ function nextDefaultTime(existing: MealEntry[]): string {
 }
 
 interface MealRowProps {
-  entry: MealEntry;
+  entry: EntryState;
   index: number;
   canDelete: boolean;
-  onTimeChange: (i: number, v: string) => void;
-  onLabelChange: (i: number, v: string) => void;
-  onDelete: (i: number) => void;
+  onTimeChange: (id: string, v: string) => void;
+  onLabelChange: (id: string, v: string) => void;
+  onDelete: (id: string) => void;
 }
 
 function MealRow({ entry, index, canDelete, onTimeChange, onLabelChange, onDelete }: MealRowProps) {
@@ -48,16 +53,16 @@ function MealRow({ entry, index, canDelete, onTimeChange, onLabelChange, onDelet
   function selectLabel(label: string) {
     if (label === 'Autre') {
       setShowCustom(true);
-      onLabelChange(index, custom || 'Mon repas');
+      onLabelChange(entry.id, custom || 'Mon repas');
     } else {
       setShowCustom(false);
-      onLabelChange(index, label);
+      onLabelChange(entry.id, label);
     }
   }
 
   function handleCustomChange(v: string) {
     setCustom(v);
-    onLabelChange(index, v || 'Mon repas');
+    onLabelChange(entry.id, v || 'Mon repas');
   }
 
   const selectedChip = showCustom ? 'Autre' : (MEAL_LABELS.includes(entry.label) ? entry.label : 'Autre');
@@ -69,7 +74,7 @@ function MealRow({ entry, index, canDelete, onTimeChange, onLabelChange, onDelet
         {canDelete && (
           <TouchableOpacity
             style={row.deleteBtn}
-            onPress={() => onDelete(index)}
+            onPress={() => onDelete(entry.id)}
             accessibilityLabel="Supprimer ce repas"
             accessibilityRole="button"
           >
@@ -110,7 +115,7 @@ function MealRow({ entry, index, canDelete, onTimeChange, onLabelChange, onDelet
 
       {/* Time picker */}
       <View style={row.timeCard}>
-        <TimeField value={entry.time} onChange={(v) => onTimeChange(index, v)} />
+        <TimeField value={entry.time} onChange={(v) => onTimeChange(entry.id, v)} />
       </View>
     </View>
   );
@@ -162,39 +167,40 @@ const row = StyleSheet.create({
 export default function MealsScreen() {
   const { meals, setMeals } = useUserStore();
 
-  const [entries, setEntries] = useState<MealEntry[]>(() => {
-    if (meals.entries?.length) return meals.entries;
-    // Migrate from legacy times array
-    if (meals.times?.length) {
-      return meals.times.map((t) => ({ time: t, label: defaultLabel(t) }));
-    }
-    return [
-      { time: '08:00', label: 'Petit-déjeuner' },
-      { time: '12:30', label: 'Déjeuner' },
-      { time: '19:30', label: 'Dîner' },
-    ];
+  const [entries, setEntries] = useState<EntryState[]>(() => {
+    const source: MealEntry[] = meals.entries?.length
+      ? meals.entries
+      : meals.times?.length
+        ? meals.times.map((t) => ({ time: t, label: defaultLabel(t) }))
+        : [
+            { time: '08:00', label: 'Petit-déjeuner' },
+            { time: '12:30', label: 'Déjeuner' },
+            { time: '19:30', label: 'Dîner' },
+          ];
+    return source.map((e) => ({ ...e, id: newId() }));
   });
 
-  function updateTime(i: number, value: string) {
-    setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, time: value } : e));
+  function updateTime(id: string, value: string) {
+    setEntries((prev) => prev.map((e) => e.id === id ? { ...e, time: value } : e));
   }
 
-  function updateLabel(i: number, value: string) {
-    setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, label: value } : e));
+  function updateLabel(id: string, value: string) {
+    setEntries((prev) => prev.map((e) => e.id === id ? { ...e, label: value } : e));
   }
 
   function addMeal() {
     const time = nextDefaultTime(entries);
-    setEntries((prev) => [...prev, { time, label: defaultLabel(time) }]);
+    setEntries((prev) => [...prev, { time, label: defaultLabel(time), id: newId() }]);
   }
 
-  function removeMeal(i: number) {
-    setEntries((prev) => prev.filter((_, idx) => idx !== i));
+  function removeMeal(id: string) {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
   }
 
   function handleSave() {
     const sorted = [...entries].sort((a, b) => a.time.localeCompare(b.time));
-    setMeals({ entries: sorted, times: sorted.map((e) => e.time) });
+    const clean: MealEntry[] = sorted.map(({ id: _id, ...rest }) => rest);
+    setMeals({ entries: clean, times: clean.map((e) => e.time) });
     router.back();
   }
 
@@ -219,7 +225,7 @@ export default function MealsScreen() {
       >
         {entries.map((entry, i) => (
           <MealRow
-            key={i}
+            key={entry.id}
             entry={entry}
             index={i}
             canDelete={entries.length > 1}
