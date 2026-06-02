@@ -94,13 +94,17 @@ function Wheel({ items, initial, onChange }: WheelProps) {
       onMomentumScrollEnd={onMomentumScrollEnd}
       onScrollEndDrag={onScrollEndDrag}
     >
-      {items.map((item, i) => (
-        <View key={item} style={styles.item}>
-          <Text style={[styles.itemText, i === selected && styles.itemSelected]}>
-            {item}
-          </Text>
-        </View>
-      ))}
+      {items.map((item, i) => {
+        const dist = Math.abs(i - selected);
+        const opacity = dist === 0 ? 1 : dist === 1 ? 0.35 : 0.15;
+        return (
+          <View key={item} style={styles.item}>
+            <Text style={[styles.itemText, i === selected && styles.itemSelected, { opacity }]}>
+              {item}
+            </Text>
+          </View>
+        );
+      })}
     </ScrollView>
   );
 }
