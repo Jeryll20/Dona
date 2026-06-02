@@ -45,9 +45,9 @@ export interface Suggestion {
 // ── User profile ──────────────────────────────────────────────────────────────
 
 export interface UserProfile {
-  fullName: string;
-  dateOfBirth?: string;   // ISO date
-  email: string;
+  firstName:    string;
+  lastName?:    string;
+  dateOfBirth?: string;   // ISO date "YYYY-MM-DD"
 }
 
 export interface SleepSchedule {

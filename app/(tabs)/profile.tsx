@@ -59,8 +59,13 @@ const row = StyleSheet.create({
 });
 
 export default function ProfileScreen() {
-  const { sleep, meals, sport, work, cycle } = useUserStore();
+  const { profile, sleep, meals, sport, work, cycle } = useUserStore();
   const signOut = useAuthStore((s) => s.signOut);
+
+  const firstName = profile.firstName ?? '';
+  const lastName  = profile.lastName  ?? '';
+  const fullName  = [firstName, lastName].filter(Boolean).join(' ') || null;
+  const avatarLetter = (firstName || 'D')[0].toUpperCase();
 
   const goalKey = work.role ?? null;
   const goalLabel = goalKey ? GOAL_LABELS[goalKey] : null;
@@ -69,8 +74,9 @@ export default function ProfileScreen() {
     ? `${sleep.bedtime} → ${sleep.waketime}`
     : undefined;
 
-  const mealsValue = meals.times
-    ? `${meals.times.length} repas · ${meals.times.join(', ')}`
+  const mealEntries = meals.entries ?? meals.times?.map((t) => ({ time: t, label: t })) ?? [];
+  const mealsValue = mealEntries.length
+    ? `${mealEntries.length} repas · ${mealEntries.map((e) => e.time ?? e).join(', ')}`
     : undefined;
 
   const cycleValue = cycle.tracking
@@ -91,12 +97,23 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Avatar */}
-        <View style={styles.avatarSection}>
+        <TouchableOpacity
+          style={styles.avatarSection}
+          onPress={() => router.push('/profile/account')}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Modifier mon compte"
+        >
           <View style={styles.avatar}>
-            <Text style={styles.avatarLetter}>D</Text>
+            <Text style={styles.avatarLetter}>{avatarLetter}</Text>
           </View>
-          <View>
-            <Text style={styles.screenTitle}>Mon profil</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.screenTitle}>
+              {fullName ?? 'Mon profil'}
+            </Text>
+            {!fullName && (
+              <Text style={styles.editHint}>Appuie pour renseigner ton profil</Text>
+            )}
             {goalLabel && (
               <View style={styles.goalBadge}>
                 <Ionicons name="flag-outline" size={12} color={Colors.light.primaryStrong} />
@@ -104,7 +121,8 @@ export default function ProfileScreen() {
               </View>
             )}
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={16} color={Colors.light.ink3} />
+        </TouchableOpacity>
 
         {/* Settings */}
         <Text style={styles.sectionLabel}>Mes paramètres</Text>
@@ -201,6 +219,7 @@ const styles = StyleSheet.create({
   avatarLetter: { fontSize: 28, fontWeight: '800', color: Colors.light.onPrimary },
 
   screenTitle: { fontSize: 26, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.5 },
+  editHint:    { fontSize: FontSize.sm, color: Colors.light.ink3, marginTop: 2 },
   goalBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: Colors.light.primaryTint,
