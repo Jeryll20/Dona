@@ -41,8 +41,8 @@ function Wheel({ items, initial, onChange }: WheelProps) {
           Animated.subtract(scrollY, i * ITEM_H),
           ITEM_H,
         ).interpolate({
-          inputRange:  [-2, -1, 0, 1, 2],
-          outputRange: [0.15, 0.35, 1, 0.35, 0.15],
+          inputRange:  [-2, -0.5, 0, 0.5, 2],
+          outputRange: [0.12, 0.2, 1, 0.2, 0.12],
           extrapolate: 'clamp',
         }),
       ),
