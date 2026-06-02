@@ -3,7 +3,7 @@ import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
   Animated, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Icon } from '@/components/ui/Icon';
 import { Logo } from '@/components/ui/Logo';
@@ -155,7 +155,6 @@ const ERROR_TEXT    = "Oups, je n'arrive pas à te répondre pour l'instant. Ré
 export default function ChatScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const inputRef  = useRef<TextInput>(null);
-  const insets    = useSafeAreaInsets();
 
   const [messages, setMessages] = useState<Message[]>([
     { id: uid(), role: 'bot', text: WELCOME_TEXT },
@@ -211,30 +210,30 @@ export default function ChatScreen() {
   }, [messages, loading]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Logo size={40} />
-          <View>
-            <Text style={styles.headerName}>Dona</Text>
-            <Text style={styles.headerSub}>Assistante planning</Text>
+    <KeyboardAvoidingView
+      style={styles.kav}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Logo size={40} />
+            <View>
+              <Text style={styles.headerName}>Dona</Text>
+              <Text style={styles.headerSub}>Assistante planning</Text>
+            </View>
           </View>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={() => router.back()}
+            accessibilityLabel="Fermer le chat"
+            accessibilityRole="button"
+          >
+            <Icon name="x" size={20} stroke={Colors.light.ink2} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.closeBtn}
-          onPress={() => router.back()}
-          accessibilityLabel="Fermer le chat"
-          accessibilityRole="button"
-        >
-          <Icon name="x" size={20} stroke={Colors.light.ink2} />
-        </TouchableOpacity>
-      </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
         {/* Messages */}
         <ScrollView
           ref={scrollRef}
@@ -254,7 +253,7 @@ export default function ChatScreen() {
         )}
 
         {/* Input bar */}
-        <View style={[styles.inputBar, { paddingBottom: Spacing.md + insets.bottom }]}>
+        <View style={styles.inputBar}>
           <TextInput
             ref={inputRef}
             style={styles.textInput}
@@ -278,15 +277,16 @@ export default function ChatScreen() {
             <Icon name="arrow" size={18} stroke={Colors.light.onPrimary} />
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.light.background },
+  kav:  { flex: 1, backgroundColor: Colors.light.background },
+  safe: { flex: 1 },
 
   header: {
     flexDirection: 'row',
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: Spacing.sm,
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingVertical: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: Colors.light.hairline,
     backgroundColor: Colors.light.surface,
