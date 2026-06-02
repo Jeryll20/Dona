@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { scheduleAllNotifications } from '@/lib/notifications';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -46,9 +47,12 @@ export default function RecapScreen() {
 
   const events = buildDayFromProfile(sleep);
 
+  const cycle = useUserStore((s) => s.cycle);
+
   function handleStart() {
     setTodayEvents(events);
     completeOnboarding();
+    scheduleAllNotifications({ events, cycleTracking: cycle.tracking ?? false });
     router.replace('/(tabs)/' as any);
   }
 

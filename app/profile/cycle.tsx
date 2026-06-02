@@ -5,17 +5,25 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Stepper } from '@/components/ui/Stepper';
 import { useUserStore } from '@/store/useUserStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
+import { scheduleAllNotifications, cancelCycleReminder } from '@/lib/notifications';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
 export default function CycleScreen() {
-  const { cycle, setCycle } = useUserStore();
-  const [tracking,   setTracking]   = useState(cycle.tracking ?? false);
-  const [cycleDays,  setCycleDays]  = useState(cycle.cycleDays ?? 28);
+  const { cycle, setCycle, sleep } = useUserStore();
+  const todayEvents = useScheduleStore((s) => s.todayEvents);
+  const [tracking,  setTracking]  = useState(cycle.tracking ?? false);
+  const [cycleDays, setCycleDays] = useState(cycle.cycleDays ?? 28);
 
   function handleSave() {
     setCycle({ tracking, cycleDays });
+    if (tracking) {
+      scheduleAllNotifications({ events: todayEvents, cycleTracking: true });
+    } else {
+      cancelCycleReminder();
+    }
     router.back();
   }
 

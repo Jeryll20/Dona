@@ -15,6 +15,7 @@ import 'react-native-reanimated';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { buildDefaultDay } from '@/lib/optimizer';
+import { scheduleAllNotifications } from '@/lib/notifications';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -46,13 +47,15 @@ function useProtectedRoute() {
 
     if (isOnboarded && inAuth) {
       // Rebuild today's events from persisted profile
-      if (sleep.waketime && sleep.bedtime && sleep.prepMinutes != null) {
-        setTodayEvents(buildDefaultDay({
-          bedtime:     sleep.bedtime,
-          waketime:    sleep.waketime,
-          prepMinutes: sleep.prepMinutes,
-        }));
-      }
+      const events = (sleep.waketime && sleep.bedtime && sleep.prepMinutes != null)
+        ? buildDefaultDay({ bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes })
+        : [];
+      if (events.length) setTodayEvents(events);
+
+      // Schedule notifications based on current profile
+      const cycle = useUserStore.getState().cycle;
+      scheduleAllNotifications({ events, cycleTracking: cycle.tracking ?? false });
+
       router.replace('/(tabs)/' as any);
     } else if (!isOnboarded && !inAuth) {
       router.replace('/(auth)/welcome');
