@@ -25,20 +25,31 @@ interface WheelProps {
 }
 
 function Wheel({ items, initial, onChange }: WheelProps) {
-  const ref             = useRef<ScrollView>(null);
+  const ref            = useRef<ScrollView>(null);
   const [selected, setSelected] = useState(initial);
-  const selectedRef     = useRef(initial);
-  const isProgrammatic  = useRef(false);  // true while we call scrollTo ourselves
-  const dragTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const committedRef   = useRef(initial);  // last value passed to onChange
+  const isProgrammatic = useRef(false);    // true while we call scrollTo ourselves
+  const dragTimer      = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Update visual selection in real-time as the user scrolls
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (isProgrammatic.current) return;
+      const i = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+      setSelected(Math.max(0, Math.min(items.length - 1, i)));
+    },
+    [items.length],
+  );
 
   const snapTo = useCallback(
     (offsetY: number) => {
       const i       = Math.round(offsetY / ITEM_H);
       const clamped = Math.max(0, Math.min(items.length - 1, i));
 
-      if (clamped !== selectedRef.current) {
-        selectedRef.current = clamped;
-        setSelected(clamped);
+      setSelected(clamped);
+
+      if (clamped !== committedRef.current) {
+        committedRef.current = clamped;
         onChange(clamped);
       }
 
@@ -90,6 +101,8 @@ function Wheel({ items, initial, onChange }: WheelProps) {
       showsVerticalScrollIndicator={false}
       snapToInterval={ITEM_H}
       decelerationRate={0.85}
+      scrollEventThrottle={16}
+      onScroll={onScroll}
       onMomentumScrollBegin={onMomentumScrollBegin}
       onMomentumScrollEnd={onMomentumScrollEnd}
       onScrollEndDrag={onScrollEndDrag}
