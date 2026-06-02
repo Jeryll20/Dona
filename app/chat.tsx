@@ -3,7 +3,7 @@ import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
   Animated, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Icon } from '@/components/ui/Icon';
 import { Logo } from '@/components/ui/Logo';
@@ -155,6 +155,7 @@ const ERROR_TEXT    = "Oups, je n'arrive pas à te répondre pour l'instant. Ré
 export default function ChatScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const inputRef  = useRef<TextInput>(null);
+  const insets    = useSafeAreaInsets();
 
   const [messages, setMessages] = useState<Message[]>([
     { id: uid(), role: 'bot', text: WELCOME_TEXT },
@@ -232,8 +233,7 @@ export default function ChatScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         {/* Messages */}
         <ScrollView
@@ -242,6 +242,7 @@ export default function ChatScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           {messages.map((m) => <Bubble key={m.id} message={m} />)}
           {loading && <TypingIndicator />}
@@ -253,7 +254,7 @@ export default function ChatScreen() {
         )}
 
         {/* Input bar */}
-        <View style={styles.inputBar}>
+        <View style={[styles.inputBar, { paddingBottom: Spacing.md + insets.bottom }]}>
           <TextInput
             ref={inputRef}
             style={styles.textInput}
@@ -370,7 +371,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: Spacing.sm,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: Colors.light.hairline,
     backgroundColor: Colors.light.surface,
