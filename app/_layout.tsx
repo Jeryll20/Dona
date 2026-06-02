@@ -52,10 +52,13 @@ function useProtectedRoute() {
       const { queryParams } = Linking.parse(url);
       const tokenHash = queryParams?.token_hash as string | undefined;
       const type      = queryParams?.type      as string | undefined;
+      const code      = queryParams?.code      as string | undefined;
       if (tokenHash && type === 'email') {
         await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
-        // onAuthStateChange fires → setSession → routing redirects automatically
+      } else if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
       }
+      // onAuthStateChange fires → setSession → routing redirects automatically
     }
 
     Linking.getInitialURL().then((url) => { if (url) handleUrl(url); });
@@ -77,8 +80,9 @@ function useProtectedRoute() {
     const inTabs = segments[0] === '(tabs)';
 
     if (!session) {
-      // Not logged in → login screen
-      if (!inAuth || (segments[1] !== 'login' && segments[1] !== 'register')) {
+      // Not logged in → login screen (verify-email stays visible while waiting for confirmation)
+      const publicScreens = ['login', 'register', 'verify-email'];
+      if (!inAuth || !publicScreens.includes(segments[1] ?? '')) {
         router.replace('/(auth)/login' as any);
       }
       return;

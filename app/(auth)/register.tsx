@@ -31,7 +31,11 @@ export default function RegisterScreen() {
     }
 
     setLoading(true);
-    const { error: err } = await supabase.auth.signUp({ email: email.trim(), password });
+    const { error: err } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: 'dona://auth/callback' },
+    });
     setLoading(false);
 
     if (err) {
