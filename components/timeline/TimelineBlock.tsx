@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { Spacing } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { CAT } from '@/constants/categories';
@@ -8,6 +8,7 @@ interface TimelineBlockProps {
   event: TimelineEvent;
   hourHeight: number;
   leftOffset: number;
+  onPress?: () => void;
 }
 
 function fmtHour(h: number) {
@@ -16,22 +17,25 @@ function fmtHour(h: number) {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
-export function TimelineBlock({ event, hourHeight, leftOffset }: TimelineBlockProps) {
+export function TimelineBlock({ event, hourHeight, leftOffset, onPress }: TimelineBlockProps) {
   const c = CAT[event.cat];
   const top    = event.start * hourHeight;
   const height = Math.max((event.end - event.start) * hourHeight, 16);
 
-  const isSmall  = height < 32;  // ~33 min
-  const isMedium = height < 52;  // ~54 min
+  const isSmall  = height < 32;
+  const isMedium = height < 52;
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={onPress ? 0.75 : 1}
+      onPress={onPress}
       style={[
         styles.block,
         { top, height, left: leftOffset, backgroundColor: c.bg },
-        isSmall  && styles.blockSmall,
+        isSmall && styles.blockSmall,
       ]}
       accessibilityLabel={`${event.title}, ${fmtHour(event.start)} à ${fmtHour(event.end)}`}
+      accessibilityRole={onPress ? 'button' : 'none'}
     >
       <Text
         style={[styles.title, { color: c.ink }, isSmall && styles.titleSmall]}
@@ -45,7 +49,7 @@ export function TimelineBlock({ event, hourHeight, leftOffset }: TimelineBlockPr
           {fmtHour(event.start)} – {fmtHour(event.end)}
         </Text>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 

@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { FontSize } from '@/constants/typography';
 import { Colors } from '@/constants/Colors';
 import { CAT } from '@/constants/categories';
@@ -8,22 +8,26 @@ interface ThinBlockProps {
   event: TimelineEvent;
   hourHeight: number;
   leftOffset: number;
+  onPress?: () => void;
 }
 
-export function ThinBlock({ event, hourHeight, leftOffset }: ThinBlockProps) {
+export function ThinBlock({ event, hourHeight, leftOffset, onPress }: ThinBlockProps) {
   const c = CAT[event.cat];
   const top    = event.start * hourHeight;
   const height = Math.max((event.end - event.start) * hourHeight, 16);
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={onPress ? 0.75 : 1}
+      onPress={onPress}
       style={[styles.block, { top: top + 2, height: height - 4, left: leftOffset }]}
       accessibilityLabel={`${event.title}${event.dur ? ' · ' + event.dur : ''}`}
+      accessibilityRole={onPress ? 'button' : 'none'}
     >
       <View style={[styles.bar, { backgroundColor: c.ink }]} />
       <Text style={[styles.title, { color: c.ink }]}>{event.title}</Text>
       {event.dur && <Text style={styles.dur}>· {event.dur}</Text>}
-    </View>
+    </TouchableOpacity>
   );
 }
 

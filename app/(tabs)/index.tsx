@@ -20,6 +20,21 @@ import type { TimelineEvent, WeekDay } from '@/types';
 
 const DAY_MAP: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const EVENT_TARGET: Partial<Record<string, string>> = {
+  sommeil:  '/profile/sleep',
+  prep:     '/profile/sleep',
+  repas:    '/profile/meals',
+  activite: '/(tabs)/activities',
+  travail:  '/(tabs)/activities',
+  trajet:   '/(tabs)/activities',
+};
+
+function eventTarget(cat: string): (() => void) | undefined {
+  const path = EVENT_TARGET[cat];
+  if (!path) return undefined;
+  return () => router.push(path as any);
+}
+
 function parseTime(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number);
   return h + m / 60;
@@ -165,8 +180,8 @@ export default function TodayScreen() {
           <NowIndicator nowHour={nowHour} hourHeight={HH} />
           {events.map((ev, i) =>
             ev.thin
-              ? <ThinBlock    key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} />
-              : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} />
+              ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={eventTarget(ev.cat)} />
+              : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={eventTarget(ev.cat)} />
           )}
         </View>
       </ScrollView>
