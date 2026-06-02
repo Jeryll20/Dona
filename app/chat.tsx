@@ -1,9 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
-  Animated, TextInput, KeyboardAvoidingView, Platform,
+  Animated, TextInput, Keyboard, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Icon } from '@/components/ui/Icon';
 import { Logo } from '@/components/ui/Logo';
@@ -155,6 +155,8 @@ const ERROR_TEXT    = "Oups, je n'arrive pas à te répondre pour l'instant. Ré
 export default function ChatScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const inputRef  = useRef<TextInput>(null);
+  const insets    = useSafeAreaInsets();
+  const [kbHeight, setKbHeight] = useState(0);
 
   const [messages, setMessages] = useState<Message[]>([
     { id: uid(), role: 'bot', text: WELCOME_TEXT },
@@ -209,12 +211,21 @@ export default function ChatScreen() {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
   }, [messages, loading]);
 
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      setKbHeight(e.endCoordinates.height);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    });
+    const hideSub = Keyboard.addListener(hideEvt, () => setKbHeight(0));
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
+
+  const extraBottom = Math.max(0, kbHeight - insets.bottom);
+
   return (
-    <KeyboardAvoidingView
-      style={styles.kav}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -253,7 +264,7 @@ export default function ChatScreen() {
         )}
 
         {/* Input bar */}
-        <View style={styles.inputBar}>
+        <View style={[styles.inputBar, { paddingBottom: Spacing.md + extraBottom }]}>
           <TextInput
             ref={inputRef}
             style={styles.textInput}
@@ -277,16 +288,14 @@ export default function ChatScreen() {
             <Icon name="arrow" size={18} stroke={Colors.light.onPrimary} />
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  kav:  { flex: 1, backgroundColor: Colors.light.background },
-  safe: { flex: 1 },
+  safe: { flex: 1, backgroundColor: Colors.light.background },
 
   header: {
     flexDirection: 'row',
@@ -371,7 +380,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: Spacing.sm,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: Colors.light.hairline,
     backgroundColor: Colors.light.surface,
