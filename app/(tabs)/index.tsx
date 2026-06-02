@@ -1,8 +1,10 @@
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
+import { Icon } from '@/components/ui/Icon';
 import { HourGrid } from '@/components/timeline/HourGrid';
 import { NowIndicator } from '@/components/timeline/NowIndicator';
 import { TimelineBlock } from '@/components/timeline/TimelineBlock';
@@ -42,10 +44,20 @@ export default function TodayScreen() {
           </Text>
           <Text style={styles.title}>Aujourd'hui</Text>
         </View>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>
-            {Math.round(scheduledHours(DEFAULT_DAY))}h planifiées
-          </Text>
+        <View style={styles.headerRight}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
+              {Math.round(scheduledHours(DEFAULT_DAY))}h planifiées
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.chatBtn}
+            onPress={() => router.push('/chat' as any)}
+            accessibilityLabel="Ouvrir le chat Dona"
+            accessibilityRole="button"
+          >
+            <Icon name="spark" size={20} stroke={Colors.light.primary} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -90,6 +102,16 @@ const styles = StyleSheet.create({
     color: Colors.light.ink,
     letterSpacing: -0.6,
     marginTop: 2,
+  },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  chatBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.primaryTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadow.sm,
   },
   badge: {
     backgroundColor: Colors.light.surface,
