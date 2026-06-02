@@ -1,5 +1,6 @@
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useMemo } from 'react';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
@@ -9,9 +10,15 @@ import { HourGrid } from '@/components/timeline/HourGrid';
 import { NowIndicator } from '@/components/timeline/NowIndicator';
 import { TimelineBlock } from '@/components/timeline/TimelineBlock';
 import { ThinBlock } from '@/components/timeline/ThinBlock';
+import { SuggestionCard } from '@/components/suggestions/SuggestionCard';
+import { useUserStore } from '@/store/useUserStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
+import { useSuggestionsStore } from '@/store/useSuggestionsStore';
+import { buildSuggestions } from '@/lib/optimizer';
+import { getCyclePhase } from '@/lib/cycle';
 import type { TimelineEvent } from '@/types';
 
-export const HH = 58; // px per hour — matches CLAUDE.md § Timeline rendering
+export const HH = 58;
 const LEFT_OFFSET = 52;
 
 const DEFAULT_DAY: TimelineEvent[] = [
@@ -32,8 +39,47 @@ function scheduledHours(events: TimelineEvent[]) {
   return events.filter((e) => !e.thin).reduce((sum, e) => sum + (e.end - e.start), 0);
 }
 
+const PHASE_LABEL: Record<string, string> = {
+  menstrual:  'Phase Menstruelle',
+  follicular: 'Phase Folliculaire',
+  ovulation:  'Ovulation',
+  luteal:     'Phase Lutéale',
+};
+
+const PHASE_COLOR: Record<string, string> = {
+  menstrual:  '#C0533A',
+  follicular: '#5A52A0',
+  ovulation:  '#524FB5',
+  luteal:     '#3A8A50',
+};
+
 export default function TodayScreen() {
   const nowHour = new Date().getHours() + new Date().getMinutes() / 60;
+
+  const { work, cycle } = useUserStore();
+  const todayEvents     = useScheduleStore((s) => s.todayEvents);
+  const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion, lastGeneratedAt } =
+    useSuggestionsStore();
+
+  const events = todayEvents.length > 0 ? todayEvents : DEFAULT_DAY;
+
+  const cyclePhase = useMemo(() => {
+    if (!cycle.tracking || !cycle.lastPeriodDate) return undefined;
+    return getCyclePhase(cycle.lastPeriodDate, cycle.cycleDays ?? 28);
+  }, [cycle.tracking, cycle.lastPeriodDate, cycle.cycleDays]);
+
+  // Regenerate suggestions once per calendar day or when inputs change
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const alreadyToday = lastGeneratedAt
+      ? new Date(lastGeneratedAt).toDateString() === today
+      : false;
+    if (!alreadyToday) {
+      setSuggestions(buildSuggestions({ events, goal: work.role ?? undefined, cyclePhase }));
+    }
+  }, [events, work.role, cyclePhase]);
+
+  const visibleSuggestions = suggestions.filter((s) => !s.accepted && !s.dismissed);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -47,7 +93,7 @@ export default function TodayScreen() {
         <View style={styles.headerRight}>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
-              {Math.round(scheduledHours(DEFAULT_DAY))}h planifiées
+              {Math.round(scheduledHours(events))}h planifiées
             </Text>
           </View>
           <TouchableOpacity
@@ -61,16 +107,42 @@ export default function TodayScreen() {
         </View>
       </View>
 
+      {/* Cycle phase mini-badge */}
+      {cyclePhase && (
+        <View style={[styles.phaseBadge, { borderColor: PHASE_COLOR[cyclePhase] }]}>
+          <View style={[styles.phaseDot, { backgroundColor: PHASE_COLOR[cyclePhase] }]} />
+          <Text style={[styles.phaseText, { color: PHASE_COLOR[cyclePhase] }]}>
+            {PHASE_LABEL[cyclePhase]}
+          </Text>
+        </View>
+      )}
+
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         contentOffset={{ x: 0, y: 6 * HH }}
       >
+        {/* Suggestions */}
+        {visibleSuggestions.length > 0 && (
+          <View style={styles.suggestionsSection}>
+            <Text style={styles.sectionLabel}>Suggestions pour toi</Text>
+            {visibleSuggestions.map((s) => (
+              <SuggestionCard
+                key={s.id}
+                suggestion={s}
+                onAccept={() => acceptSuggestion(s.id)}
+                onDismiss={() => dismissSuggestion(s.id)}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Timeline */}
         <View style={[styles.grid, { minHeight: 24 * HH }]}>
           <HourGrid hourHeight={HH} />
           <NowIndicator nowHour={nowHour} hourHeight={HH} />
-          {DEFAULT_DAY.map((ev, i) =>
+          {events.map((ev, i) =>
             ev.thin
               ? <ThinBlock    key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} />
               : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} />
@@ -122,8 +194,34 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink2 },
 
+  phaseBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 5,
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    backgroundColor: Colors.light.surface,
+  },
+  phaseDot:  { width: 7, height: 7, borderRadius: 4 },
+  phaseText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+
   scroll:        { flex: 1 },
   scrollContent: { paddingBottom: 120, paddingHorizontal: Spacing.base, paddingTop: Spacing.sm },
+
+  suggestionsSection: { marginBottom: Spacing.lg, gap: Spacing.xs },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.light.ink3,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: Spacing.xs,
+  },
 
   grid: { position: 'relative', paddingLeft: 50 },
 });

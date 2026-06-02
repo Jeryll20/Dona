@@ -125,19 +125,86 @@ export async function cancelWeeklyRecap(): Promise<void> {
   await Notif.cancelScheduledNotificationAsync(ID_WEEKLY).catch(() => null);
 }
 
+// ── 4. Notification de changement de phase ───────────────────────────────────
+
+const ID_PHASE = 'dona-phase-change';
+
+const PHASE_MESSAGES: Record<string, { title: string; body: string }> = {
+  menstrual:  { title: 'Tes règles ont commencé 🌸', body: 'Prends soin de toi — repos et douceur sont au programme.' },
+  follicular: { title: 'Phase folliculaire 💪',       body: 'Ton énergie remonte ! C\'est le moment de te lancer.' },
+  ovulation:  { title: 'Tu es en ovulation ✨',        body: 'Pic d\'énergie et de sociabilité — profites-en !' },
+  luteal:     { title: 'Phase lutéale 🌿',             body: 'Ton corps se prépare. Douceur et routine sont tes alliées.' },
+};
+
+export async function schedulePhaseChangeNotification(
+  lastPeriodDate: string,
+  cycleDays: number,
+): Promise<void> {
+  await Notif.cancelScheduledNotificationAsync(ID_PHASE).catch(() => null);
+
+  const PHASE_ENDS: Record<string, number> = {
+    menstrual: 5, follicular: 13, ovulation: 16, luteal: cycleDays,
+  };
+
+  const past    = new Date(lastPeriodDate);
+  const today   = new Date();
+  past.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+  const elapsed = Math.floor((today.getTime() - past.getTime()) / 86_400_000) % cycleDays;
+
+  let currentPhase: string;
+  let nextPhase: string;
+  let daysLeft: number;
+
+  if (elapsed <= 5)  { currentPhase = 'menstrual';  nextPhase = 'follicular'; daysLeft = 5  - elapsed + 1; }
+  else if (elapsed <= 13) { currentPhase = 'follicular'; nextPhase = 'ovulation';  daysLeft = 13 - elapsed + 1; }
+  else if (elapsed <= 16) { currentPhase = 'ovulation';  nextPhase = 'luteal';     daysLeft = 16 - elapsed + 1; }
+  else                    { currentPhase = 'luteal';     nextPhase = 'menstrual';   daysLeft = cycleDays - elapsed + 1; }
+
+  void currentPhase; // used for future expansion
+
+  const notifDate = new Date();
+  notifDate.setDate(notifDate.getDate() + daysLeft);
+  notifDate.setHours(9, 0, 0, 0);
+
+  const msg = PHASE_MESSAGES[nextPhase];
+  await Notif.scheduleNotificationAsync({
+    identifier: ID_PHASE,
+    content: { title: msg.title, body: msg.body },
+    trigger: {
+      type: Notif.SchedulableTriggerInputTypes.DATE,
+      date: notifDate,
+    },
+  });
+}
+
+export async function cancelPhaseChangeNotification(): Promise<void> {
+  await Notif.cancelScheduledNotificationAsync(ID_PHASE).catch(() => null);
+}
+
 // ── API principale ────────────────────────────────────────────────────────────
 
 export interface NotifConfig {
-  events:        TimelineEvent[];
-  cycleTracking: boolean;
+  events:          TimelineEvent[];
+  cycleTracking:   boolean;
+  lastPeriodDate?: string;
+  cycleDays?:      number;
 }
 
-export async function scheduleAllNotifications({ events, cycleTracking }: NotifConfig): Promise<void> {
+export async function scheduleAllNotifications({
+  events,
+  cycleTracking,
+  lastPeriodDate,
+  cycleDays,
+}: NotifConfig): Promise<void> {
   const granted = await requestPermissions();
   if (!granted) return;
 
   await Promise.all([
     cycleTracking ? scheduleCycleReminder() : cancelCycleReminder(),
+    cycleTracking && lastPeriodDate
+      ? schedulePhaseChangeNotification(lastPeriodDate, cycleDays ?? 28)
+      : cancelPhaseChangeNotification(),
     scheduleActivityReminders(events),
     scheduleWeeklyRecap(),
   ]);

@@ -54,7 +54,12 @@ function useProtectedRoute() {
 
       // Schedule notifications based on current profile
       const cycle = useUserStore.getState().cycle;
-      scheduleAllNotifications({ events, cycleTracking: cycle.tracking ?? false });
+      scheduleAllNotifications({
+        events,
+        cycleTracking:  cycle.tracking ?? false,
+        lastPeriodDate: cycle.lastPeriodDate,
+        cycleDays:      cycle.cycleDays,
+      });
 
       router.replace('/(tabs)/' as any);
     } else if (!isOnboarded && !inAuth) {
