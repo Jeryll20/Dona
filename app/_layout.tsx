@@ -19,6 +19,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { supabase } from '@/lib/supabase';
 import { buildDefaultDay } from '@/lib/optimizer';
 import { scheduleAllNotifications } from '@/lib/notifications';
+import { useProfileSync } from '@/hooks/useProfileSync';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -141,6 +142,7 @@ export default function RootLayout() {
   });
 
   useProtectedRoute();
+  useProfileSync();
 
   useEffect(() => {
     if (fontError) throw fontError;
