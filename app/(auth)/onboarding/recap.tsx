@@ -19,7 +19,7 @@ function fmtHour(h: number) {
 
 function buildDayFromProfile(
   sleep: ReturnType<typeof useUserStore.getState>['sleep'],
-  mealTimes?: string[],
+  meals?: ReturnType<typeof useUserStore.getState>['meals'],
 ): TimelineEvent[] {
   return buildDefaultDay(
     {
@@ -27,7 +27,7 @@ function buildDayFromProfile(
       waketime:    sleep.waketime    ?? '07:00',
       prepMinutes: sleep.prepMinutes ?? 40,
     },
-    mealTimes,
+    meals,
   );
 }
 
@@ -37,7 +37,7 @@ export default function RecapScreen() {
   const { sleep, meals, cycle } = useUserStore();
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
 
-  const events = buildDayFromProfile(sleep, meals.times);
+  const events = buildDayFromProfile(sleep, meals);
 
   function handleStart() {
     completeOnboarding();

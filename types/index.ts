@@ -57,8 +57,14 @@ export interface SleepSchedule {
   prepMinutes: number;    // morning prep duration
 }
 
+export interface MealEntry {
+  time:  string;  // "HH:MM"
+  label: string;  // e.g. "Déjeuner", "Collation", "Petit-déjeuner"
+}
+
 export interface MealSchedule {
-  times: string[];        // ["HH:MM", ...]
+  times?:   string[];     // legacy — ["HH:MM", ...]
+  entries?: MealEntry[];  // current — [{ time, label }, ...]
 }
 
 export interface SportInfo {

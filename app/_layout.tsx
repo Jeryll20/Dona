@@ -114,7 +114,7 @@ function useProtectedRoute() {
       const events = (sleep.waketime && sleep.bedtime && sleep.prepMinutes != null)
         ? buildDefaultDay(
             { bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes },
-            meals.times,
+            meals,
           )
         : [];
       scheduleAllNotifications({

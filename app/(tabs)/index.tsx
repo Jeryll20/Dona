@@ -62,9 +62,9 @@ export default function TodayScreen() {
     if (!sleep.waketime || !sleep.bedtime || sleep.prepMinutes == null) return [];
     return buildDefaultDay(
       { bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes },
-      meals.times,
+      meals,
     );
-  }, [sleep.waketime, sleep.bedtime, sleep.prepMinutes, meals.times]);
+  }, [sleep.waketime, sleep.bedtime, sleep.prepMinutes, meals]);
 
   // User-added activities scheduled for today
   const activityEvents = useMemo<TimelineEvent[]>(() => (

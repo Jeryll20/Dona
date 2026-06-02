@@ -21,7 +21,7 @@ export default function SleepScreen() {
 
   function handleSave() {
     setSleep({ bedtime, waketime, sleepHours, prepMinutes: prepMins });
-    const events = buildDefaultDay({ bedtime, waketime, prepMinutes: prepMins }, meals.times);
+    const events = buildDefaultDay({ bedtime, waketime, prepMinutes: prepMins }, meals);
     scheduleAllNotifications({
       events,
       cycleTracking:  cycle.tracking ?? false,

@@ -1,4 +1,4 @@
-import type { TimelineEvent, Suggestion, SuggestionCat, CyclePhase } from '@/types';
+import type { TimelineEvent, Suggestion, SuggestionCat, CyclePhase, MealEntry } from '@/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -185,7 +185,7 @@ function mealLabel(startH: number): string {
 
 export function buildDefaultDay(
   sleep: { bedtime: string; waketime: string; prepMinutes: number },
-  mealTimes?: string[],
+  meals?: { entries?: MealEntry[]; times?: string[] },
 ): TimelineEvent[] {
   const wake    = toH(sleep.waketime);
   const bed     = toH(sleep.bedtime);
@@ -193,20 +193,23 @@ export function buildDefaultDay(
   const prepEnd = wake + prep;
   const events: TimelineEvent[] = [];
 
-  if (wake > 0) events.push({ cat: 'sommeil', title: 'Sommeil',      start: 0,       end: wake    });
-  events.push(              { cat: 'prep',    title: 'Préparation', start: wake,    end: prepEnd });
+  if (wake > 0) events.push({ cat: 'sommeil', title: 'Sommeil',      start: 0,    end: wake    });
+  events.push(              { cat: 'prep',    title: 'Préparation', start: wake, end: prepEnd });
 
-  if (mealTimes) {
-    for (const t of mealTimes) {
-      const s = toH(t);
-      const e = s + 0.5; // 30 min per meal
-      if (s >= prepEnd && e <= bed) {
-        events.push({ cat: 'repas', title: mealLabel(s), start: s, end: e });
-      }
+  // Prefer named entries, fall back to legacy times array
+  const mealList: MealEntry[] = meals?.entries
+    ?? meals?.times?.map((t) => ({ time: t, label: mealLabel(toH(t)) }))
+    ?? [];
+
+  for (const m of mealList) {
+    const s = toH(m.time);
+    const e = s + 0.5;
+    if (s >= prepEnd && e <= bed) {
+      events.push({ cat: 'repas', title: m.label, start: s, end: e });
     }
   }
 
-  if (bed > 0)  events.push({ cat: 'sommeil', title: 'Sommeil',      start: bed,     end: 24      });
+  if (bed > 0)  events.push({ cat: 'sommeil', title: 'Sommeil',      start: bed,  end: 24      });
 
   return events.sort((a, b) => a.start - b.start);
 }

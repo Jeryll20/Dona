@@ -1,4 +1,6 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  StyleSheet, View, Text, TouchableOpacity, ScrollView, TextInput,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { router } from 'expo-router';
@@ -8,34 +10,191 @@ import { useUserStore } from '@/store/useUserStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
+import type { MealEntry } from '@/types';
 
-function nextDefaultTime(existing: string[]): string {
-  const defaults = ['08:00', '12:30', '19:30', '10:00', '16:00'];
+const MEAL_LABELS = ['Petit-déjeuner', 'Déjeuner', 'Collation', 'Goûter', 'Dîner', 'Autre'];
+
+function defaultLabel(time: string): string {
+  const h = parseInt(time.split(':')[0], 10);
+  if (h < 11) return 'Petit-déjeuner';
+  if (h < 15) return 'Déjeuner';
+  if (h < 17) return 'Collation';
+  if (h < 19) return 'Goûter';
+  return 'Dîner';
+}
+
+function nextDefaultTime(existing: MealEntry[]): string {
+  const defaults = ['08:00', '12:30', '16:00', '19:30', '10:00'];
   for (const t of defaults) {
-    if (!existing.includes(t)) return t;
+    if (!existing.find((e) => e.time === t)) return t;
   }
   return '12:00';
 }
 
+interface MealRowProps {
+  entry: MealEntry;
+  index: number;
+  canDelete: boolean;
+  onTimeChange: (i: number, v: string) => void;
+  onLabelChange: (i: number, v: string) => void;
+  onDelete: (i: number) => void;
+}
+
+function MealRow({ entry, index, canDelete, onTimeChange, onLabelChange, onDelete }: MealRowProps) {
+  const isOther   = !MEAL_LABELS.slice(0, -1).includes(entry.label);
+  const [custom, setCustom] = useState(isOther ? entry.label : '');
+  const [showCustom, setShowCustom] = useState(isOther);
+
+  function selectLabel(label: string) {
+    if (label === 'Autre') {
+      setShowCustom(true);
+      onLabelChange(index, custom || 'Mon repas');
+    } else {
+      setShowCustom(false);
+      onLabelChange(index, label);
+    }
+  }
+
+  function handleCustomChange(v: string) {
+    setCustom(v);
+    onLabelChange(index, v || 'Mon repas');
+  }
+
+  const selectedChip = showCustom ? 'Autre' : (MEAL_LABELS.includes(entry.label) ? entry.label : 'Autre');
+
+  return (
+    <View style={row.wrap}>
+      <View style={row.header}>
+        <Text style={row.index}>Repas {index + 1}</Text>
+        {canDelete && (
+          <TouchableOpacity
+            style={row.deleteBtn}
+            onPress={() => onDelete(index)}
+            accessibilityLabel="Supprimer ce repas"
+            accessibilityRole="button"
+          >
+            <Ionicons name="trash-outline" size={16} color="#DC2626" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Label chips */}
+      <View style={row.chips}>
+        {MEAL_LABELS.map((label) => {
+          const active = label === selectedChip;
+          return (
+            <TouchableOpacity
+              key={label}
+              style={[row.chip, active && row.chipActive]}
+              onPress={() => selectLabel(label)}
+              accessibilityRole="button"
+              accessibilityLabel={label}
+            >
+              <Text style={[row.chipText, active && row.chipTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {showCustom && (
+        <TextInput
+          style={row.customInput}
+          value={custom}
+          onChangeText={handleCustomChange}
+          placeholder="Nom personnalisé…"
+          placeholderTextColor={Colors.light.ink3}
+          returnKeyType="done"
+          accessibilityLabel="Nom personnalisé du repas"
+        />
+      )}
+
+      {/* Time picker */}
+      <View style={row.timeCard}>
+        <TimeField value={entry.time} onChange={(v) => onTimeChange(index, v)} />
+      </View>
+    </View>
+  );
+}
+
+const row = StyleSheet.create({
+  wrap:   {
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.block,
+    padding: Spacing.base,
+    gap: Spacing.md,
+    ...Shadow.sm,
+  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  index:  { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.ink2 },
+  deleteBtn: {
+    width: 32, height: 32, borderRadius: Radius.input,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  chips:        { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  chip:         {
+    paddingHorizontal: Spacing.md, paddingVertical: 6,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.surfaceSunk,
+    borderWidth: 1.5, borderColor: 'transparent',
+  },
+  chipActive:   { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
+  chipText:     { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink3 },
+  chipTextActive: { color: Colors.light.primaryStrong },
+  customInput: {
+    backgroundColor: Colors.light.surfaceSunk,
+    borderRadius: Radius.input,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: FontSize.base,
+    fontWeight: '500',
+    color: Colors.light.ink,
+  },
+  timeCard: {
+    backgroundColor: Colors.light.surfaceSunk,
+    borderRadius: Radius.input,
+    paddingHorizontal: Spacing.base,
+  },
+});
+
+// ── Screen ────────────────────────────────────────────────────────────────────
+
 export default function MealsScreen() {
   const { meals, setMeals } = useUserStore();
-  const [times, setTimes] = useState<string[]>(meals.times ?? ['08:00', '12:30', '19:30']);
 
-  function updateTime(index: number, value: string) {
-    setTimes((prev) => prev.map((t, i) => (i === index ? value : t)));
+  const [entries, setEntries] = useState<MealEntry[]>(() => {
+    if (meals.entries?.length) return meals.entries;
+    // Migrate from legacy times array
+    if (meals.times?.length) {
+      return meals.times.map((t) => ({ time: t, label: defaultLabel(t) }));
+    }
+    return [
+      { time: '08:00', label: 'Petit-déjeuner' },
+      { time: '12:30', label: 'Déjeuner' },
+      { time: '19:30', label: 'Dîner' },
+    ];
+  });
+
+  function updateTime(i: number, value: string) {
+    setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, time: value } : e));
+  }
+
+  function updateLabel(i: number, value: string) {
+    setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, label: value } : e));
   }
 
   function addMeal() {
-    setTimes((prev) => [...prev, nextDefaultTime(prev)]);
+    const time = nextDefaultTime(entries);
+    setEntries((prev) => [...prev, { time, label: defaultLabel(time) }]);
   }
 
-  function removeMeal(index: number) {
-    setTimes((prev) => prev.filter((_, i) => i !== index));
+  function removeMeal(i: number) {
+    setEntries((prev) => prev.filter((_, idx) => idx !== i));
   }
 
   function handleSave() {
-    const sorted = [...times].sort();
-    setMeals({ times: sorted });
+    const sorted = [...entries].sort((a, b) => a.time.localeCompare(b.time));
+    setMeals({ entries: sorted, times: sorted.map((e) => e.time) });
     router.back();
   }
 
@@ -58,34 +217,19 @@ export default function MealsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.hint}>
-          Indique tes horaires habituels de repas. Ils seront affichés sur ta timeline quotidienne.
-        </Text>
-
-        {times.map((t, i) => (
-          <View key={i} style={styles.row}>
-            <Text style={styles.mealLabel}>
-              {t < '11:00' ? 'Petit-déjeuner' : t < '15:00' ? 'Déjeuner' : 'Dîner / Collation'}
-            </Text>
-            <View style={styles.rowBody}>
-              <View style={styles.fieldWrap}>
-                <TimeField value={t} onChange={(v) => updateTime(i, v)} />
-              </View>
-              {times.length > 1 && (
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => removeMeal(i)}
-                  accessibilityLabel="Supprimer ce repas"
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="trash-outline" size={18} color="#DC2626" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
+        {entries.map((entry, i) => (
+          <MealRow
+            key={i}
+            entry={entry}
+            index={i}
+            canDelete={entries.length > 1}
+            onTimeChange={updateTime}
+            onLabelChange={updateLabel}
+            onDelete={removeMeal}
+          />
         ))}
 
-        {times.length < 5 && (
+        {entries.length < 6 && (
           <TouchableOpacity
             style={styles.addBtn}
             onPress={addMeal}
@@ -124,59 +268,20 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.primaryTint,
     alignItems: 'center', justifyContent: 'center',
   },
-  title: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.3 },
-
-  scroll:  { flex: 1 },
-  content: { paddingHorizontal: Spacing.lg, paddingBottom: 120, gap: Spacing.xl },
-
-  hint: {
-    fontSize: FontSize.sm,
-    color: Colors.light.ink3,
-    lineHeight: 20,
-    marginTop: Spacing.sm,
-  },
-
-  row: { gap: Spacing.sm },
-  mealLabel: {
-    fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
-    textTransform: 'uppercase', letterSpacing: 0.6,
-  },
-  rowBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  fieldWrap: {
-    flex: 1,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.block,
-    paddingHorizontal: Spacing.base,
-    ...Shadow.sm,
-  },
-  deleteBtn: {
-    width: 42, height: 42,
-    backgroundColor: '#FEE2E2',
-    borderRadius: Radius.input,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  title:  { fontSize: FontSize.lg, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.3 },
+  scroll: { flex: 1 },
+  content: { paddingHorizontal: Spacing.lg, paddingBottom: 120, paddingTop: Spacing.sm, gap: Spacing.lg },
 
   addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.base,
-    backgroundColor: Colors.light.primaryTint,
-    borderRadius: Radius.pill,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: Spacing.sm, paddingVertical: Spacing.base,
+    backgroundColor: Colors.light.primaryTint, borderRadius: Radius.pill,
   },
   addBtnText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primary },
 
   saveBtn: {
-    backgroundColor: Colors.light.primary,
-    borderRadius: Radius.pill,
-    paddingVertical: Spacing.base,
-    alignItems: 'center',
-    ...Shadow.sm,
+    backgroundColor: Colors.light.primary, borderRadius: Radius.pill,
+    paddingVertical: Spacing.base, alignItems: 'center', ...Shadow.sm,
   },
   saveBtnText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.onPrimary },
 });
