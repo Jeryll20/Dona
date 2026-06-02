@@ -117,15 +117,20 @@ export default function CycleScreen() {
               </TouchableOpacity>
 
               {showPicker && (
-                <DateTimePicker
-                  value={lastPeriodDate ?? new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                  maximumDate={new Date()}
-                  onChange={handleDateChange}
-                  locale="fr-FR"
-                  accessibilityLabel="Sélecteur de date"
-                />
+                <View style={styles.pickerWrap}>
+                  <DateTimePicker
+                    value={lastPeriodDate ?? new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    maximumDate={new Date()}
+                    onChange={handleDateChange}
+                    locale="fr-FR"
+                    accentColor={Colors.light.primary}
+                    textColor={Colors.light.ink}
+                    themeVariant="light"
+                    accessibilityLabel="Sélecteur de date"
+                  />
+                </View>
               )}
             </View>
 
@@ -203,6 +208,14 @@ const styles = StyleSheet.create({
     ...Shadow.sm,
   },
   dateText: { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink },
+
+  pickerWrap: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.block,
+    overflow: 'hidden',
+    marginTop: Spacing.xs,
+    ...Shadow.sm,
+  },
 
   saveBtn: {
     backgroundColor: Colors.light.primary,
