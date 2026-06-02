@@ -87,7 +87,13 @@ const tpS = StyleSheet.create({
 function ActivityCard({ activity, onEdit, onDelete }: { activity: UserActivity; onEdit: () => void; onDelete: () => void }) {
   const cat = CATEGORIES.find((c) => c.key === activity.cat) ?? CATEGORIES[1];
   return (
-    <View style={cS.wrap} accessibilityLabel={activity.title}>
+    <TouchableOpacity
+      style={cS.wrap}
+      onPress={onEdit}
+      activeOpacity={0.75}
+      accessibilityLabel={activity.title}
+      accessibilityRole="button"
+    >
       <View style={[cS.icon, { backgroundColor: cat.bg }]}>
         <Ionicons name={cat.icon} size={20} color={cat.ink} />
       </View>
@@ -99,22 +105,14 @@ function ActivityCard({ activity, onEdit, onDelete }: { activity: UserActivity; 
         <Text style={[cS.pillText, { color: cat.ink }]}>{cat.label}</Text>
       </View>
       <TouchableOpacity
-        onPress={onEdit}
-        style={cS.action}
-        accessibilityLabel={`Modifier ${activity.title}`}
-        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-      >
-        <Ionicons name="pencil-outline" size={15} color={Colors.light.ink3} />
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={onDelete}
+        onPress={(e) => { e.stopPropagation(); onDelete(); }}
         style={cS.action}
         accessibilityLabel={`Supprimer ${activity.title}`}
         hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
       >
         <Ionicons name="trash-outline" size={15} color={Colors.light.ink3} />
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 }
 
