@@ -76,6 +76,18 @@ function useProtectedRoute() {
   useEffect(() => {
     if (authLoading || !storeHydrated) return;
 
+    // If a different user logged in, reset the profile store before routing
+    if (session) {
+      const { userId, resetForUser } = useUserStore.getState();
+      if (userId !== null && userId !== session.user.id) {
+        resetForUser(session.user.id);
+        return; // effect re-runs after reset
+      }
+      if (userId === null) {
+        useUserStore.setState({ userId: session.user.id });
+      }
+    }
+
     const inAuth = segments[0] === '(auth)';
     const inTabs = segments[0] === '(tabs)';
 
