@@ -1,4 +1,7 @@
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, PanResponder } from 'react-native';
+import {
+  StyleSheet, View, Text, ScrollView, TouchableOpacity,
+  PanResponder, Animated, useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { router } from 'expo-router';
@@ -83,6 +86,11 @@ export default function TodayScreen() {
 
   const [dayOffset, setDayOffset] = useState(0);
 
+  const { width } = useWindowDimensions();
+  const widthRef  = useRef(width);
+  widthRef.current = width;
+  const slideX = useRef(new Animated.Value(0)).current;
+
   const { sleep, meals, work, cycle } = useUserStore();
   const activities  = useScheduleStore((s) => s.activities);
   const viewMode    = useScheduleStore((s) => s.viewMode);
@@ -100,12 +108,41 @@ export default function TodayScreen() {
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
         Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 20,
-      onPanResponderRelease: (_, { dx }) => {
-        if (dx > 50) setDayOffset((o) => o - 1);
-        else if (dx < -50) setDayOffset((o) => o + 1);
+      onPanResponderMove: (_, { dx }) => slideX.setValue(dx),
+      onPanResponderRelease: (_, { dx, vx }) => {
+        const w = widthRef.current;
+        if (dx > 70 || vx > 0.5) {
+          Animated.timing(slideX, { toValue: w, duration: 150, useNativeDriver: true }).start(() => {
+            setDayOffset((o) => o - 1);
+            slideX.setValue(-w);
+            Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+          });
+        } else if (dx < -70 || vx < -0.5) {
+          Animated.timing(slideX, { toValue: -w, duration: 150, useNativeDriver: true }).start(() => {
+            setDayOffset((o) => o + 1);
+            slideX.setValue(w);
+            Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+          });
+        } else {
+          Animated.spring(slideX, { toValue: 0, useNativeDriver: true }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(slideX, { toValue: 0, useNativeDriver: true }).start();
       },
     })
   ).current;
+
+  const slideDay = (direction: 'prev' | 'next') => {
+    const w    = widthRef.current;
+    const outX = direction === 'prev' ? w : -w;
+    const inX  = direction === 'prev' ? -w : w;
+    Animated.timing(slideX, { toValue: outX, duration: 150, useNativeDriver: true }).start(() => {
+      setDayOffset((o) => direction === 'prev' ? o - 1 : o + 1);
+      slideX.setValue(inX);
+      Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    });
+  };
 
   // Base day events derived directly from user profile
   const baseEvents = useMemo<TimelineEvent[]>(() => {
@@ -163,7 +200,7 @@ export default function TodayScreen() {
           </Text>
           <View style={styles.titleRow}>
             <TouchableOpacity
-              onPress={() => setDayOffset((o) => o - 1)}
+              onPress={() => slideDay('prev')}
               style={styles.navArrow}
               accessibilityLabel="Jour précédent"
               accessibilityRole="button"
@@ -172,7 +209,7 @@ export default function TodayScreen() {
             </TouchableOpacity>
             <Text style={styles.title}>{getDayTitle(dayOffset)}</Text>
             <TouchableOpacity
-              onPress={() => setDayOffset((o) => o + 1)}
+              onPress={() => slideDay('next')}
               style={styles.navArrow}
               accessibilityLabel="Jour suivant"
               accessibilityRole="button"
@@ -211,6 +248,7 @@ export default function TodayScreen() {
       {viewMode === 'week'  && <WeekView />}
       {viewMode === 'month' && <MonthView />}
       {viewMode === 'day'   && (
+        <Animated.View style={[{ flex: 1 }, { transform: [{ translateX: slideX }] }]}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -243,6 +281,7 @@ export default function TodayScreen() {
             )}
           </View>
         </ScrollView>
+        </Animated.View>
       )}
       </View>
     </SafeAreaView>

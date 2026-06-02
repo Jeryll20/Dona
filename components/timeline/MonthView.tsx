@@ -1,4 +1,7 @@
-import { View, Text, TouchableOpacity, PanResponder, StyleSheet } from 'react-native';
+import {
+  View, Text, TouchableOpacity, PanResponder,
+  Animated, useWindowDimensions, StyleSheet,
+} from 'react-native';
 import { useState, useMemo, useRef } from 'react';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius } from '@/constants/spacing';
@@ -41,6 +44,59 @@ export function MonthView() {
   const grid       = useMemo(() => buildGrid(year, month), [year, month]);
   const todayStr   = now.toDateString();
 
+  const { width } = useWindowDimensions();
+  const widthRef  = useRef(width);
+  widthRef.current = width;
+
+  const slideX = useRef(new Animated.Value(0)).current;
+
+  const slideTo = (direction: 'prev' | 'next', doChange: () => void) => {
+    const w    = widthRef.current;
+    const outX = direction === 'prev' ? w : -w;
+    const inX  = direction === 'prev' ? -w : w;
+    Animated.timing(slideX, { toValue: outX, duration: 150, useNativeDriver: true }).start(() => {
+      doChange();
+      slideX.setValue(inX);
+      Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    });
+  };
+
+  const prevMonth = () => slideTo('prev', () => {
+    setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; });
+  });
+  const nextMonth = () => slideTo('next', () => {
+    setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; });
+  });
+
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 15,
+      onPanResponderMove: (_, { dx }) => slideX.setValue(dx),
+      onPanResponderRelease: (_, { dx, vx }) => {
+        const w = widthRef.current;
+        if (dx > 70 || vx > 0.5) {
+          Animated.timing(slideX, { toValue: w, duration: 150, useNativeDriver: true }).start(() => {
+            setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; });
+            slideX.setValue(-w);
+            Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+          });
+        } else if (dx < -70 || vx < -0.5) {
+          Animated.timing(slideX, { toValue: -w, duration: 150, useNativeDriver: true }).start(() => {
+            setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; });
+            slideX.setValue(w);
+            Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+          });
+        } else {
+          Animated.spring(slideX, { toValue: 0, useNativeDriver: true }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(slideX, { toValue: 0, useNativeDriver: true }).start();
+      },
+    })
+  ).current;
+
   const catsForDate = (date: Date): CatKey[] => {
     const wday = weekKey(date);
     const seen = new Set<CatKey>();
@@ -50,29 +106,9 @@ export function MonthView() {
     return [...seen];
   };
 
-  const prevMonth = () => {
-    if (month === 0) { setYear((y) => y - 1); setMonth(11); }
-    else setMonth((m) => m - 1);
-  };
-  const nextMonth = () => {
-    if (month === 11) { setYear((y) => y + 1); setMonth(0); }
-    else setMonth((m) => m + 1);
-  };
-
-  const swipe = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 15,
-      onPanResponderRelease: (_, { dx }) => {
-        if (dx > 50) prevMonth();
-        else if (dx < -50) nextMonth();
-      },
-    })
-  ).current;
-
   return (
     <View style={styles.container} {...swipe.panHandlers}>
-      {/* Month navigation */}
+      {/* Navigation header — stays fixed */}
       <View style={styles.nav}>
         <TouchableOpacity
           onPress={prevMonth}
@@ -93,41 +129,44 @@ export function MonthView() {
         </TouchableOpacity>
       </View>
 
-      {/* Weekday column headers */}
-      <View style={styles.colRow}>
-        {COL_LABELS.map((l, i) => (
-          <Text key={i} style={styles.colLabel}>{l}</Text>
-        ))}
-      </View>
+      {/* Animated content */}
+      <Animated.View style={{ transform: [{ translateX: slideX }] }}>
+        {/* Weekday column headers */}
+        <View style={styles.colRow}>
+          {COL_LABELS.map((l, i) => (
+            <Text key={i} style={styles.colLabel}>{l}</Text>
+          ))}
+        </View>
 
-      {/* Calendar cells */}
-      <View style={styles.grid}>
-        {grid.map((date, i) => {
-          if (!date) return <View key={i} style={styles.cell} />;
-          const isToday = date.toDateString() === todayStr;
-          const cats    = catsForDate(date).slice(0, 3);
+        {/* Calendar cells */}
+        <View style={styles.grid}>
+          {grid.map((date, i) => {
+            if (!date) return <View key={i} style={styles.cell} />;
+            const isToday = date.toDateString() === todayStr;
+            const cats    = catsForDate(date).slice(0, 3);
 
-          return (
-            <View key={i} style={styles.cell}>
-              <View style={[styles.numWrap, isToday && styles.numWrapToday]}>
-                <Text style={[styles.dayNum, isToday && styles.dayNumToday]}>
-                  {date.getDate()}
-                </Text>
-              </View>
-              {cats.length > 0 && (
-                <View style={styles.dotRow}>
-                  {cats.map((cat) => (
-                    <View
-                      key={cat}
-                      style={[styles.dot, { backgroundColor: CAT[cat].ink }]}
-                    />
-                  ))}
+            return (
+              <View key={i} style={styles.cell}>
+                <View style={[styles.numWrap, isToday && styles.numWrapToday]}>
+                  <Text style={[styles.dayNum, isToday && styles.dayNumToday]}>
+                    {date.getDate()}
+                  </Text>
                 </View>
-              )}
-            </View>
-          );
-        })}
-      </View>
+                {cats.length > 0 && (
+                  <View style={styles.dotRow}>
+                    {cats.map((cat) => (
+                      <View
+                        key={cat}
+                        style={[styles.dot, { backgroundColor: CAT[cat].ink }]}
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      </Animated.View>
     </View>
   );
 }
