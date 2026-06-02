@@ -25,7 +25,12 @@ export default function SleepScreen() {
     setSleep({ bedtime, waketime, sleepHours, prepMinutes: prepMins });
     const events = buildDefaultDay({ bedtime, waketime, prepMinutes: prepMins });
     setTodayEvents(events);
-    scheduleAllNotifications({ events, cycleTracking: cycle.tracking ?? false });
+    scheduleAllNotifications({
+      events,
+      cycleTracking:  cycle.tracking ?? false,
+      lastPeriodDate: cycle.lastPeriodDate,
+      cycleDays:      cycle.cycleDays,
+    });
     router.back();
   }
 

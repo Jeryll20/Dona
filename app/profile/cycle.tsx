@@ -1,31 +1,62 @@
-import { StyleSheet, View, Text, TouchableOpacity, Switch } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Switch, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stepper } from '@/components/ui/Stepper';
+import { PhaseCard } from '@/components/cycle/PhaseCard';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { scheduleAllNotifications, cancelCycleReminder } from '@/lib/notifications';
+import { getCycleStatus, toISODate } from '@/lib/cycle';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
 export default function CycleScreen() {
-  const { cycle, setCycle, sleep } = useUserStore();
+  const { cycle, setCycle } = useUserStore();
   const todayEvents = useScheduleStore((s) => s.todayEvents);
-  const [tracking,  setTracking]  = useState(cycle.tracking ?? false);
-  const [cycleDays, setCycleDays] = useState(cycle.cycleDays ?? 28);
+
+  const [tracking,        setTracking]        = useState(cycle.tracking ?? false);
+  const [cycleDays,       setCycleDays]       = useState(cycle.cycleDays ?? 28);
+  const [lastPeriodDate,  setLastPeriodDate]  = useState<Date | null>(
+    cycle.lastPeriodDate ? new Date(cycle.lastPeriodDate) : null,
+  );
+  const [showPicker, setShowPicker] = useState(false);
+
+  const cycleStatus =
+    tracking && lastPeriodDate
+      ? getCycleStatus(toISODate(lastPeriodDate), cycleDays)
+      : null;
+
+  function handleDateChange(_: unknown, selected?: Date) {
+    if (Platform.OS === 'android') setShowPicker(false);
+    if (selected) setLastPeriodDate(selected);
+  }
 
   function handleSave() {
-    setCycle({ tracking, cycleDays });
+    setCycle({
+      tracking,
+      cycleDays,
+      lastPeriodDate: lastPeriodDate ? toISODate(lastPeriodDate) : undefined,
+    });
     if (tracking) {
-      scheduleAllNotifications({ events: todayEvents, cycleTracking: true });
+      scheduleAllNotifications({
+        events:         todayEvents,
+        cycleTracking:  true,
+        lastPeriodDate: lastPeriodDate ? toISODate(lastPeriodDate) : undefined,
+        cycleDays,
+      });
     } else {
       cancelCycleReminder();
     }
     router.back();
   }
+
+  const dateLabel = lastPeriodDate
+    ? lastPeriodDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : 'Choisir une date';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -37,7 +68,12 @@ export default function CycleScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Toggle suivi */}
         <View style={styles.card}>
           <View style={styles.trackingRow}>
             <View style={styles.trackingText}>
@@ -57,18 +93,61 @@ export default function CycleScreen() {
         </View>
 
         {tracking && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Durée de ton cycle</Text>
-            <View style={styles.card}>
-              <Stepper value={cycleDays} setValue={setCycleDays} min={21} max={45} suffix=" j" />
+          <>
+            {/* Durée du cycle */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Durée de ton cycle</Text>
+              <View style={styles.card}>
+                <Stepper value={cycleDays} setValue={setCycleDays} min={21} max={45} suffix=" j" />
+              </View>
             </View>
-          </View>
+
+            {/* Date des dernières règles */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Dernières règles</Text>
+              <TouchableOpacity
+                style={styles.dateRow}
+                onPress={() => setShowPicker(true)}
+                accessibilityLabel="Choisir la date des dernières règles"
+                accessibilityRole="button"
+              >
+                <Ionicons name="calendar-outline" size={18} color={Colors.light.primary} />
+                <Text style={styles.dateText}>{dateLabel}</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.light.ink3} style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
+
+              {showPicker && (
+                <DateTimePicker
+                  value={lastPeriodDate ?? new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  maximumDate={new Date()}
+                  onChange={handleDateChange}
+                  locale="fr-FR"
+                  accessibilityLabel="Sélecteur de date"
+                />
+              )}
+            </View>
+
+            {/* PhaseCard */}
+            {cycleStatus && (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Ta phase actuelle</Text>
+                <PhaseCard status={cycleStatus} />
+              </View>
+            )}
+          </>
         )}
 
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} accessibilityRole="button" accessibilityLabel="Enregistrer">
+        <TouchableOpacity
+          style={styles.saveBtn}
+          onPress={handleSave}
+          accessibilityRole="button"
+          accessibilityLabel="Enregistrer"
+        >
           <Text style={styles.saveBtnText}>Enregistrer</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -89,7 +168,9 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.3 },
 
-  content: { flex: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, gap: Spacing.xl },
+  scroll:   { flex: 1 },
+  content:  { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.xl, gap: Spacing.xl },
+
   section: { gap: Spacing.sm },
   sectionLabel: {
     fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
@@ -110,6 +191,18 @@ const styles = StyleSheet.create({
   trackingText:  { flex: 1 },
   trackingLabel: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink },
   trackingDesc:  { fontSize: FontSize.sm, color: Colors.light.ink3, marginTop: 4, lineHeight: 18 },
+
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.light.surface,
+    borderRadius: Radius.block,
+    paddingHorizontal: Spacing.base,
+    paddingVertical: Spacing.base,
+    ...Shadow.sm,
+  },
+  dateText: { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink },
 
   saveBtn: {
     backgroundColor: Colors.light.primary,

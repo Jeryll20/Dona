@@ -52,7 +52,12 @@ export default function RecapScreen() {
   function handleStart() {
     setTodayEvents(events);
     completeOnboarding();
-    scheduleAllNotifications({ events, cycleTracking: cycle.tracking ?? false });
+    scheduleAllNotifications({
+      events,
+      cycleTracking:  cycle.tracking ?? false,
+      lastPeriodDate: cycle.lastPeriodDate,
+      cycleDays:      cycle.cycleDays,
+    });
     router.replace('/(tabs)/' as any);
   }
 
