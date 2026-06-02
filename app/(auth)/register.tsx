@@ -36,8 +36,10 @@ export default function RegisterScreen() {
 
     if (err) {
       setError(err.message);
+      return;
     }
-    // On success, onAuthStateChange in _layout.tsx handles navigation
+
+    router.replace({ pathname: '/(auth)/verify-email' as any, params: { email: email.trim() } });
   }
 
   return (

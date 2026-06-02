@@ -12,6 +12,7 @@ import {
   HankenGrotesk_800ExtraBold,
 } from '@expo-google-fonts/hanken-grotesk';
 import 'react-native-reanimated';
+import * as Linking from 'expo-linking';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -45,6 +46,23 @@ function useProtectedRoute() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Handle deep link email confirmation (dona://auth/callback?token_hash=...&type=email)
+  useEffect(() => {
+    async function handleUrl(url: string) {
+      const { queryParams } = Linking.parse(url);
+      const tokenHash = queryParams?.token_hash as string | undefined;
+      const type      = queryParams?.type      as string | undefined;
+      if (tokenHash && type === 'email') {
+        await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
+        // onAuthStateChange fires → setSession → routing redirects automatically
+      }
+    }
+
+    Linking.getInitialURL().then((url) => { if (url) handleUrl(url); });
+    const sub = Linking.addEventListener('url', (e) => handleUrl(e.url));
+    return () => sub.remove();
+  }, []);
+
   // Wait for Zustand persistence hydration
   useEffect(() => {
     const unsub = useUserStore.persist.onFinishHydration(() => setStoreHydrated(true));
@@ -67,8 +85,10 @@ function useProtectedRoute() {
     }
 
     if (!isOnboarded) {
-      // Logged in but not onboarded → welcome screen
-      if (!inAuth) router.replace('/(auth)/welcome');
+      // On verify-email with a session = just confirmed → go to welcome
+      const awaitingScreens = ['login', 'register', 'verify-email'];
+      const onAwaitingScreen = awaitingScreens.includes(segments[1] ?? '');
+      if (!inAuth || onAwaitingScreen) router.replace('/(auth)/welcome');
       return;
     }
 
