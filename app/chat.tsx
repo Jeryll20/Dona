@@ -10,7 +10,9 @@ import { Logo } from '@/components/ui/Logo';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
-import { sendChatMessage, HistoryMessage } from '@/lib/ai';
+import { sendChatMessage, HistoryMessage, PlanningAction, AddActivityAction, UpdateSleepAction } from '@/lib/ai';
+import { useScheduleStore } from '@/store/useScheduleStore';
+import { useUserStore } from '@/store/useUserStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -143,6 +145,73 @@ function QuickChips({
   );
 }
 
+// ── Action card ───────────────────────────────────────────────────────────────
+
+const DAY_FR: Record<string, string> = {
+  Mon: 'Lun', Tue: 'Mar', Wed: 'Mer', Thu: 'Jeu',
+  Fri: 'Ven', Sat: 'Sam', Sun: 'Dim',
+};
+
+function ActionCard({
+  action,
+  onConfirm,
+  onDismiss,
+}: {
+  action:    PlanningAction;
+  onConfirm: () => void;
+  onDismiss: () => void;
+}) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+  }, []);
+
+  let title = '';
+  let subtitle = '';
+
+  if (action.type === 'add_activity') {
+    const p = (action as AddActivityAction).payload;
+    title    = p.title;
+    const days = p.days.length === 7 ? 'Tous les jours' : p.days.map((d) => DAY_FR[d] ?? d).join(', ');
+    subtitle = `${days} · ${p.startTime} → ${p.endTime}`;
+  } else if (action.type === 'update_sleep') {
+    const p = (action as UpdateSleepAction).payload;
+    title    = 'Modifier le sommeil';
+    const parts: string[] = [];
+    if (p.waketime)    parts.push(`Réveil ${p.waketime}`);
+    if (p.bedtime)     parts.push(`Coucher ${p.bedtime}`);
+    if (p.prepMinutes) parts.push(`Prépa ${p.prepMinutes} min`);
+    subtitle = parts.join(' · ');
+  }
+
+  return (
+    <Animated.View style={[styles.actionCard, { opacity }]}>
+      <View style={styles.actionCardBody}>
+        <Text style={styles.actionCardTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.actionCardSub}>{subtitle}</Text> : null}
+      </View>
+      <View style={styles.actionCardBtns}>
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.actionBtnConfirm]}
+          onPress={onConfirm}
+          accessibilityLabel="Confirmer"
+          accessibilityRole="button"
+        >
+          <Text style={styles.actionBtnConfirmText}>Confirmer</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.actionBtnDismiss]}
+          onPress={onDismiss}
+          accessibilityLabel="Annuler"
+          accessibilityRole="button"
+        >
+          <Text style={styles.actionBtnDismissText}>Annuler</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 let msgId = 0;
@@ -161,10 +230,42 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([
     { id: uid(), role: 'bot', text: WELCOME_TEXT },
   ]);
-  const [chips,   setChips]   = useState<string[]>(WELCOME_CHIPS);
-  const [input,   setInput]   = useState('');
-  const [loading, setLoading] = useState(false);
+  const [chips,         setChips]         = useState<string[]>(WELCOME_CHIPS);
+  const [input,         setInput]         = useState('');
+  const [loading,       setLoading]       = useState(false);
+  const [pendingAction, setPendingAction] = useState<PlanningAction | null>(null);
   const historyRef = useRef<HistoryMessage[]>([]);
+
+  const addActivity  = useScheduleStore((s) => s.addActivity);
+  const setSleep     = useUserStore((s) => s.setSleep);
+
+  function executeAction(action: PlanningAction) {
+    if (action.type === 'add_activity') {
+      const p = (action as AddActivityAction).payload;
+      addActivity({
+        id:         Date.now().toString(),
+        title:      p.title,
+        cat:        p.cat,
+        startTime:  p.startTime,
+        endTime:    p.endTime,
+        days:       p.days,
+        recurrence: p.recurrence,
+      });
+      pushMessage('bot', `C'est ajouté ! "${p.title}" apparaît maintenant dans ton planning. 🎉`);
+    } else if (action.type === 'update_sleep') {
+      const p = (action as UpdateSleepAction).payload;
+      setSleep(p);
+      pushMessage('bot', 'Ton sommeil a été mis à jour ! ✨');
+    }
+    setPendingAction(null);
+    setChips([]);
+  }
+
+  function dismissAction() {
+    setPendingAction(null);
+    setChips([]);
+    pushMessage('bot', "Pas de problème, dis-moi si tu veux modifier autre chose !");
+  }
 
   function pushMessage(role: Role, text: string): Message {
     const msg: Message = { id: uid(), role, text };
@@ -189,10 +290,11 @@ export default function ChatScreen() {
       setLoading(false);
       pushMessage('bot', res.message);
       setChips(res.chips ?? []);
+      setPendingAction(res.action ?? null);
 
       historyRef.current = [...historyRef.current, { role: 'assistant', content: res.message }];
 
-      if (res.navigate) {
+      if (res.navigate && !res.action) {
         setTimeout(() => {
           router.back();
           router.push(res.navigate as any);
@@ -257,6 +359,15 @@ export default function ChatScreen() {
           {messages.map((m) => <Bubble key={m.id} message={m} />)}
           {loading && <TypingIndicator />}
         </ScrollView>
+
+        {/* Action confirmation card */}
+        {pendingAction && !loading && (
+          <ActionCard
+            action={pendingAction}
+            onConfirm={() => executeAction(pendingAction)}
+            onDismiss={dismissAction}
+          />
+        )}
 
         {/* Quick chips */}
         {chips.length > 0 && !loading && (
@@ -352,6 +463,58 @@ const styles = StyleSheet.create({
   typingDot: {
     width: 7, height: 7, borderRadius: 4,
     backgroundColor: Colors.light.primary,
+  },
+
+  actionCard: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.sm,
+    backgroundColor: Colors.light.primaryTint,
+    borderRadius: Radius.block,
+    borderWidth: 1,
+    borderColor: Colors.light.primaryTint2,
+    overflow: 'hidden',
+    ...Shadow.sm,
+  },
+  actionCardBody: {
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.base,
+    paddingBottom: Spacing.sm,
+  },
+  actionCardTitle: {
+    fontSize: FontSize.base,
+    fontWeight: '700',
+    color: Colors.light.primaryStrong,
+  },
+  actionCardSub: {
+    fontSize: FontSize.sm,
+    color: Colors.light.primary,
+    marginTop: 3,
+  },
+  actionCardBtns: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.primaryTint2,
+  },
+  actionBtn: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+  },
+  actionBtnConfirm: {
+    backgroundColor: Colors.light.primary,
+  },
+  actionBtnConfirmText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.light.onPrimary,
+  },
+  actionBtnDismiss: {
+    backgroundColor: 'transparent',
+  },
+  actionBtnDismissText: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    color: Colors.light.ink3,
   },
 
   chipsRow: {

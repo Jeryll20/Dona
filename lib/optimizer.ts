@@ -54,7 +54,7 @@ interface FreeSlot {
   duration: number; // decimal hours
 }
 
-function detectFreeSlots(events: TimelineEvent[]): FreeSlot[] {
+export function detectFreeSlots(events: TimelineEvent[]): FreeSlot[] {
   const sorted = [...events].sort((a, b) => a.start - b.start);
   const slots: FreeSlot[] = [];
   let cursor = 0;
@@ -73,6 +73,25 @@ function detectFreeSlots(events: TimelineEvent[]): FreeSlot[] {
   }
 
   return slots;
+}
+
+function hToHHMM(h: number): string {
+  const hh = Math.floor(h);
+  const mm  = Math.round((h - hh) * 60);
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+export function formatFreeSlotsForAI(events: TimelineEvent[]): string {
+  const slots = detectFreeSlots(events).filter((s) => s.duration >= 0.25);
+  if (!slots.length) return 'Aucun créneau libre significatif.';
+  return slots
+    .map((s) => {
+      const h = Math.floor(s.duration);
+      const m = Math.round((s.duration - h) * 60);
+      const dur = h > 0 ? `${h}h${m > 0 ? m : ''}` : `${m} min`;
+      return `${hToHHMM(s.start)} → ${hToHHMM(s.end)} (${dur} libres)`;
+    })
+    .join('\n');
 }
 
 // ── Scoring helpers ───────────────────────────────────────────────────────────

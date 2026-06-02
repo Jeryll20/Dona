@@ -14,14 +14,16 @@ interface MealEntry {
 }
 
 interface UserContext {
-  firstName?:    string;
-  bedtime?:      string;
-  waketime?:     string;
-  prepMinutes?:  number;
-  meals?:        MealEntry[];
-  activities?:   string;
-  goal?:         string;
-  cycleTracking?: boolean;
+  firstName?:          string;
+  bedtime?:            string;
+  waketime?:           string;
+  prepMinutes?:        number;
+  meals?:              MealEntry[];
+  activities?:         string;
+  goal?:               string;
+  cycleTracking?:      boolean;
+  freeSlots?:          string;
+  existingActivities?: string;
 }
 
 interface RequestBody {
@@ -37,47 +39,77 @@ const GOAL_LABELS: Record<string, string> = {
 };
 
 function buildSystemPrompt(ctx: UserContext): string {
-  const lines: string[] = [];
-  if (ctx.firstName)      lines.push(`Prénom : ${ctx.firstName}`);
-  if (ctx.bedtime)        lines.push(`Sommeil : coucher ${ctx.bedtime}, réveil ${ctx.waketime}, préparation matin ${ctx.prepMinutes ?? 40} min`);
-  if (ctx.meals?.length)  lines.push(`Repas : ${ctx.meals.map((m) => `${m.label} à ${m.time}`).join(', ')}`);
-  if (ctx.activities)     lines.push(`Activités pratiquées : ${ctx.activities}`);
-  if (ctx.goal)           lines.push(`Objectif principal : ${GOAL_LABELS[ctx.goal] ?? ctx.goal}`);
-  if (ctx.cycleTracking)  lines.push('Suit son cycle menstruel');
+  const profile: string[] = [];
+  if (ctx.firstName)      profile.push(`Prénom : ${ctx.firstName}`);
+  if (ctx.bedtime)        profile.push(`Coucher : ${ctx.bedtime} | Réveil : ${ctx.waketime} | Préparation matin : ${ctx.prepMinutes ?? 40} min`);
+  if (ctx.meals?.length)  profile.push(`Repas : ${ctx.meals.map((m) => `${m.label} à ${m.time}`).join(', ')}`);
+  if (ctx.activities)     profile.push(`Activités pratiquées : ${ctx.activities}`);
+  if (ctx.goal)           profile.push(`Objectif : ${GOAL_LABELS[ctx.goal] ?? ctx.goal}`);
+  if (ctx.cycleTracking)  profile.push('Suit son cycle menstruel');
 
-  const context = lines.length ? `\n\nProfil de l'utilisateur :\n${lines.join('\n')}` : '';
+  const profileBlock = profile.length
+    ? `\n\n## Profil\n${profile.join('\n')}`
+    : '';
 
-  return `Tu es Dona, une assistante planning concise et bienveillante. Tu aides l'utilisateur à gérer son planning dans l'application Dona.
+  const scheduleBlock = (ctx.freeSlots || ctx.existingActivities)
+    ? `\n\n## Planning du jour\nActivités enregistrées : ${ctx.existingActivities ?? 'aucune'}\n\nCréneaux libres :\n${ctx.freeSlots ?? 'inconnus'}`
+    : '';
 
-Tu réponds UNIQUEMENT en JSON valide (sans markdown, sans backticks) avec ce format :
+  return `Tu es Dona, une assistante planning intelligente et bienveillante. Ta mission principale est d'aider l'utilisateur à optimiser son planning.${profileBlock}${scheduleBlock}
+
+## Format de réponse
+Tu réponds UNIQUEMENT en JSON valide (sans markdown, sans backticks) :
 {
-  "message": "ta réponse en français, max 2 phrases",
+  "message": "ta réponse en français, max 2-3 phrases",
   "chips": ["option 1", "option 2"] ou null,
-  "navigate": "/profile/sleep" ou null
+  "navigate": "/profile/sleep" ou null,
+  "action": { "type": "...", "payload": {...} } ou null
 }
 
-Pages disponibles (utilise navigate dès que c'est pertinent) :
-- "/(tabs)/activities"  → ajouter ou modifier une activité (sport, cours, marche, etc.)
-- "/profile/sleep"      → modifier les heures de sommeil et de réveil
+## Actions disponibles
+
+### Ajouter une activité
+Quand l'utilisateur veut ajouter une activité, propose un créneau précis basé sur les créneaux libres, puis propose l'action :
+{
+  "type": "add_activity",
+  "payload": {
+    "title": "Marche matinale",
+    "cat": "activite",
+    "startTime": "07:40",
+    "endTime": "08:10",
+    "days": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+    "recurrence": "daily"
+  }
+}
+Valeurs cat valides : "activite", "travail", "repas", "trajet"
+Valeurs recurrence : "none", "daily", "weekly", "biweekly"
+Jours (EN) : "Mon","Tue","Wed","Thu","Fri","Sat","Sun"
+
+### Modifier le sommeil
+{
+  "type": "update_sleep",
+  "payload": { "bedtime": "22:30", "waketime": "06:30" }
+}
+
+## Navigation (si modification manuelle nécessaire)
+- "/(tabs)/activities"  → gérer les activités
+- "/profile/sleep"      → modifier le sommeil
 - "/profile/meals"      → modifier les repas
-- "/profile/cycle"      → suivi du cycle menstruel
-- "/profile/account"    → prénom, nom, date de naissance${context}
+- "/profile/cycle"      → cycle menstruel
 
-RÈGLES IMPÉRATIVES :
-1. Ne pose JAMAIS de questions de clarification inutiles. Si quelqu'un veut ajouter une activité, emmène-le directement sur "/(tabs)/activities" avec navigate.
-2. Ne demande jamais des infos que l'utilisateur devra de toute façon renseigner dans l'interface (heure, durée, jours…). L'interface s'en charge.
-3. Sois ultra-directe : une phrase d'acquiescement + navigate. Pas de questions rhétoriques.
-4. Propose des chips uniquement pour des choix réels (ex : "Voir mon planning" vs "Modifier le sommeil"), pas pour des sous-étapes inutiles.
-5. Réponds en français, ton humain, chaleureux et efficace. Jamais robotique ("Je suis opérationnelle" est interdit — parle comme une vraie personne bienveillante).
+## Règles impératives
+1. Utilise TOUJOURS les créneaux libres réels pour proposer des horaires précis
+2. Ne propose UNE SEULE action à la fois
+3. Quand tu proposes une action, inclus-la dans "action" ET confirme dans le message
+4. Ne pose pas de questions inutiles — propose directement un créneau et demande confirmation
+5. Chips pour la confirmation : ["Oui, ajouter !", "Modifier l'horaire", "Non merci"] ou similaire
+6. Réponds en français, ton humain et encourageant
+7. Hors sujet → redirige vers l'organisation sans répondre à la question hors-sujet
 
-EXEMPLES DE BONS COMPORTEMENTS :
-- "Je veux ajouter une marche le matin" → message: "Parfait, je t'emmène sur la page activités !", navigate: "/(tabs)/activities", chips: null
-- "Mon planning ne me correspond pas" → message: "Qu'est-ce qui ne te convient pas ?", chips: ["Mon sommeil", "Mes repas", "Mes activités"], navigate: null
-- "Décale mon réveil à 7h" → message: "Je t'emmène sur les réglages sommeil !", navigate: "/profile/sleep", chips: null
-- "Bonjour, comment vas-tu ?" → message: "Bonjour ! Toujours là pour toi 🌿 Qu'est-ce que je peux faire pour t'aider aujourd'hui ?", chips: ["Voir mes activités", "Modifier mon planning", "Paramètres"], navigate: null
-- "Quel temps fait-il ?" → message: "Je ne suis pas météorologue, mais je peux t'aider à planifier ta journée ! Par quoi on commence ?", chips: ["Ajouter une activité", "Mon planning"], navigate: null
-
-HORS SUJET : Si la question n'a rien à voir avec le planning, le temps, les habitudes ou l'organisation, réponds brièvement que ce n'est pas ton domaine, puis ramène sur l'app avec des chips. Ne réponds JAMAIS à une question hors sujet comme si tu étais un assistant généraliste.`;
+## Exemples
+- "Je veux 30 min de marche le matin" → trouve le premier créneau libre après le réveil, propose action add_activity avec chips ["Oui, ajouter !", "Modifier l'horaire", "Non merci"]
+- "Décale mon réveil à 6h30" → action update_sleep avec waketime "06:30"
+- "Qu'est-ce que je peux faire ce soir ?" → analyse les créneaux libres du soir, propose des suggestions adaptées`;
 }
 
 Deno.serve(async (req) => {
@@ -95,10 +127,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body = await req.json() as RequestBody;
-    const { message, history, userContext } = body;
-
-    console.log('Received message:', message);
+    const { message, history, userContext } = (await req.json()) as RequestBody;
+    console.log('Message:', message, '| Free slots:', userContext.freeSlots?.slice(0, 80));
 
     const systemPrompt = buildSystemPrompt(userContext);
 
@@ -118,34 +148,39 @@ Deno.serve(async (req) => {
         model:           'mistral-small-latest',
         messages:        mistralMessages,
         response_format: { type: 'json_object' },
-        temperature:     0.65,
-        max_tokens:      400,
+        temperature:     0.55,
+        max_tokens:      500,
       }),
     });
 
     const rawText = await res.text();
-    console.log('Mistral status:', res.status, 'body:', rawText.slice(0, 200));
-
     if (!res.ok) {
-      return new Response(JSON.stringify({ error: `Mistral error ${res.status}: ${rawText}` }), {
+      console.error('Mistral error', res.status, rawText.slice(0, 200));
+      return new Response(JSON.stringify({ error: `Mistral ${res.status}: ${rawText}` }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const data = JSON.parse(rawText);
+    const data     = JSON.parse(rawText);
     const raw: string = data.choices[0].message.content;
 
-    let parsed: { message: string; chips?: string[] | null; navigate?: string | null };
+    let parsed: {
+      message:  string;
+      chips?:   string[] | null;
+      navigate?: string | null;
+      action?:  Record<string, unknown> | null;
+    };
     try {
       parsed = JSON.parse(raw);
     } catch {
-      parsed = { message: raw, chips: null, navigate: null };
+      parsed = { message: raw };
     }
 
     if (!parsed.message)               parsed.message  = "Je n'ai pas pu générer une réponse. Réessaie.";
     if (!Array.isArray(parsed.chips))  parsed.chips    = null;
     if (typeof parsed.navigate !== 'string') parsed.navigate = null;
+    if (!parsed.action || typeof parsed.action !== 'object') parsed.action = null;
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
