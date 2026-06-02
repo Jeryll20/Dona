@@ -13,6 +13,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { TimeField } from '@/components/ui/TimeField';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
@@ -55,9 +56,6 @@ const SHEET_HEIGHT = 650;
 
 // ── Helpers ───────────────────────────────────────────────────────
 
-function fmtTime(h: number, m: number) {
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
 
 function formatDays(days: WeekDay[]): string {
   if (days.length === 0) return 'Aucun jour';
@@ -65,48 +63,22 @@ function formatDays(days: WeekDay[]): string {
   return days.map((d) => FR_DAY[d]).join(', ');
 }
 
-// ── TimePicker ────────────────────────────────────────────────────
+// ── TimePickerRow ─────────────────────────────────────────────────
 
-function TimePicker({ label, hour, minute, onChange }: {
-  label: string; hour: number; minute: number;
-  onChange: (h: number, m: number) => void;
+function TimePickerRow({ label, value, onChange }: {
+  label: string; value: string; onChange: (v: string) => void;
 }) {
   return (
     <View style={tpS.wrap}>
       <Text style={tpS.label}>{label}</Text>
-      <View style={tpS.inner}>
-        <View style={tpS.col}>
-          <TouchableOpacity onPress={() => onChange((hour + 23) % 24, minute)} style={tpS.btn} accessibilityLabel="Heure moins">
-            <Ionicons name="chevron-up" size={15} color={Colors.light.primaryStrong} />
-          </TouchableOpacity>
-          <Text style={tpS.digit}>{String(hour).padStart(2, '0')}</Text>
-          <TouchableOpacity onPress={() => onChange((hour + 1) % 24, minute)} style={tpS.btn} accessibilityLabel="Heure plus">
-            <Ionicons name="chevron-down" size={15} color={Colors.light.primaryStrong} />
-          </TouchableOpacity>
-        </View>
-        <Text style={tpS.colon}>:</Text>
-        <View style={tpS.col}>
-          <TouchableOpacity onPress={() => onChange(hour, (minute + 55) % 60)} style={tpS.btn} accessibilityLabel="Minute moins">
-            <Ionicons name="chevron-up" size={15} color={Colors.light.primaryStrong} />
-          </TouchableOpacity>
-          <Text style={tpS.digit}>{String(minute).padStart(2, '0')}</Text>
-          <TouchableOpacity onPress={() => onChange(hour, (minute + 5) % 60)} style={tpS.btn} accessibilityLabel="Minute plus">
-            <Ionicons name="chevron-down" size={15} color={Colors.light.primaryStrong} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <TimeField value={value} onChange={onChange} />
     </View>
   );
 }
 
 const tpS = StyleSheet.create({
   wrap:  { alignItems: 'center', flex: 1 },
-  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.light.ink3, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  inner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  col:   { alignItems: 'center', gap: 6 },
-  btn:   { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.light.primaryTint, alignItems: 'center', justifyContent: 'center' },
-  digit: { fontSize: 26, fontWeight: '700', color: Colors.light.ink, minWidth: 38, textAlign: 'center', lineHeight: 30 },
-  colon: { fontSize: 22, fontWeight: '700', color: Colors.light.ink2, marginTop: 4 },
+  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.light.ink3, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
 });
 
 // ── ActivityCard ──────────────────────────────────────────────────
@@ -162,17 +134,15 @@ export default function ActivitiesScreen() {
   const [step, setStep] = useState<Step>(1);
   const [catKey, setCatKey] = useState<CatKey | null>(null);
   const [name, setName] = useState('');
-  const [startH, setStartH] = useState(9);
-  const [startM, setStartM] = useState(0);
-  const [endH, setEndH] = useState(10);
-  const [endM, setEndM] = useState(0);
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime,   setEndTime]   = useState('10:00');
   const [days, setDays] = useState<Set<WeekDay>>(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
   const [recurrence, setRecurrence] = useState<Recurrence>('weekly');
   const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
 
   function openSheet() {
     setStep(1); setCatKey(null); setName('');
-    setStartH(9); setStartM(0); setEndH(10); setEndM(0);
+    setStartTime('09:00'); setEndTime('10:00');
     setDays(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
     setRecurrence('weekly');
     slideAnim.setValue(SHEET_HEIGHT);
@@ -200,8 +170,8 @@ export default function ActivitiesScreen() {
       id: Date.now().toString(),
       title: name.trim() || cat.label,
       cat: catKey ?? 'activite',
-      startTime: fmtTime(startH, startM),
-      endTime: fmtTime(endH, endM),
+      startTime,
+      endTime,
       days: [...days] as WeekDay[],
       recurrence,
     });
@@ -337,19 +307,9 @@ export default function ActivitiesScreen() {
                   <View style={s.fg}>
                     <Text style={s.fieldLabel}>Horaires</Text>
                     <View style={s.timeRow}>
-                      <TimePicker
-                        label="Début"
-                        hour={startH}
-                        minute={startM}
-                        onChange={(h, m) => { setStartH(h); setStartM(m); }}
-                      />
+                      <TimePickerRow label="Début" value={startTime} onChange={setStartTime} />
                       <View style={s.timeSep} />
-                      <TimePicker
-                        label="Fin"
-                        hour={endH}
-                        minute={endM}
-                        onChange={(h, m) => { setEndH(h); setEndM(m); }}
-                      />
+                      <TimePickerRow label="Fin"   value={endTime}   onChange={setEndTime} />
                     </View>
                   </View>
                 </View>
