@@ -170,26 +170,43 @@ export function buildSuggestions(input: OptimizerInput): Suggestion[] {
   return suggestions;
 }
 
-// ── Build default day events from sleep profile ───────────────────────────────
+// ── Build default day events from user profile ────────────────────────────────
 
-export function buildDefaultDay(sleep: {
-  bedtime: string;
-  waketime: string;
-  prepMinutes: number;
-}): TimelineEvent[] {
-  function toH(hhmm: string): number {
-    const [h, m] = hhmm.split(':').map(Number);
-    return h + m / 60;
-  }
+function toH(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h || 0) + (m || 0) / 60;
+}
 
-  const wake = toH(sleep.waketime);
-  const bed  = toH(sleep.bedtime);
-  const prep = sleep.prepMinutes / 60;
+function mealLabel(startH: number): string {
+  if (startH < 11) return 'Petit-déjeuner';
+  if (startH < 15) return 'Déjeuner';
+  return 'Dîner';
+}
+
+export function buildDefaultDay(
+  sleep: { bedtime: string; waketime: string; prepMinutes: number },
+  mealTimes?: string[],
+): TimelineEvent[] {
+  const wake    = toH(sleep.waketime);
+  const bed     = toH(sleep.bedtime);
+  const prep    = sleep.prepMinutes / 60;
+  const prepEnd = wake + prep;
   const events: TimelineEvent[] = [];
 
-  if (wake > 0) events.push({ cat: 'sommeil', title: 'Sommeil',      start: 0,    end: wake       });
-  events.push(            { cat: 'prep',    title: 'Préparation', start: wake, end: wake + prep });
-  if (bed > 0)  events.push({ cat: 'sommeil', title: 'Sommeil',      start: bed,  end: 24          });
+  if (wake > 0) events.push({ cat: 'sommeil', title: 'Sommeil',      start: 0,       end: wake    });
+  events.push(              { cat: 'prep',    title: 'Préparation', start: wake,    end: prepEnd });
 
-  return events;
+  if (mealTimes) {
+    for (const t of mealTimes) {
+      const s = toH(t);
+      const e = s + 0.5; // 30 min per meal
+      if (s >= prepEnd && e <= bed) {
+        events.push({ cat: 'repas', title: mealLabel(s), start: s, end: e });
+      }
+    }
+  }
+
+  if (bed > 0)  events.push({ cat: 'sommeil', title: 'Sommeil',      start: bed,     end: 24      });
+
+  return events.sort((a, b) => a.start - b.start);
 }

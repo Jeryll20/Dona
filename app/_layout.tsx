@@ -14,7 +14,6 @@ import {
 import 'react-native-reanimated';
 import * as Linking from 'expo-linking';
 import { useUserStore } from '@/store/useUserStore';
-import { useScheduleStore } from '@/store/useScheduleStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { supabase } from '@/lib/supabase';
 import { buildDefaultDay } from '@/lib/optimizer';
@@ -33,9 +32,7 @@ function useProtectedRoute() {
   const router   = useRouter();
   const segments = useSegments();
 
-  const isOnboarded    = useUserStore((s) => s.isOnboarded);
-  const sleep          = useUserStore((s) => s.sleep);
-  const setTodayEvents = useScheduleStore((s) => s.setTodayEvents);
+  const isOnboarded = useUserStore((s) => s.isOnboarded);
   const { session, loading: authLoading, setSession } = useAuthStore();
 
   const [storeHydrated, setStoreHydrated] = useState(false);
@@ -113,19 +110,19 @@ function useProtectedRoute() {
 
     // Logged in + onboarded → home (profile/chat screens are also valid destinations)
     if (!inTabs && !inProfile && !inChat) {
+      const { sleep, meals, cycle } = useUserStore.getState();
       const events = (sleep.waketime && sleep.bedtime && sleep.prepMinutes != null)
-        ? buildDefaultDay({ bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes })
+        ? buildDefaultDay(
+            { bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes },
+            meals.times,
+          )
         : [];
-      if (events.length) setTodayEvents(events);
-
-      const cycle = useUserStore.getState().cycle;
       scheduleAllNotifications({
         events,
         cycleTracking:  cycle.tracking ?? false,
         lastPeriodDate: cycle.lastPeriodDate,
         cycleDays:      cycle.cycleDays,
       });
-
       router.replace('/(tabs)/' as any);
     }
   }, [authLoading, storeHydrated, session, isOnboarded, segments]);

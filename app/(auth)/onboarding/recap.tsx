@@ -3,8 +3,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useUserStore } from '@/store/useUserStore';
-import { useScheduleStore } from '@/store/useScheduleStore';
 import { scheduleAllNotifications } from '@/lib/notifications';
+import { buildDefaultDay } from '@/lib/optimizer';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -17,40 +17,29 @@ function fmtHour(h: number) {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
-function buildDayFromProfile(sleep: ReturnType<typeof useUserStore.getState>['sleep']): TimelineEvent[] {
-  const bedHour  = parseTime(sleep.bedtime  ?? '23:00');
-  const wakeHour = parseTime(sleep.waketime ?? '07:00');
-  const prepH    = (sleep.prepMinutes ?? 40) / 60;
-
-  const events: TimelineEvent[] = [];
-
-  if (bedHour > 0) events.push({ cat: 'sommeil', title: 'Sommeil',    start: 0, end: wakeHour });
-  events.push({ cat: 'prep',    title: 'Préparation', start: wakeHour, end: wakeHour + prepH });
-  events.push({ cat: 'travail', title: 'Travail',     start: wakeHour + prepH + 0.5, end: wakeHour + prepH + 8.5 });
-  events.push({ cat: 'repas',   title: 'Déjeuner',    start: 12.5, end: 13.5 });
-  events.push({ cat: 'sommeil', title: 'Sommeil',     start: bedHour, end: 24 });
-
-  return events;
-}
-
-function parseTime(t: string): number {
-  const [h, m] = t.split(':').map(Number);
-  return (h || 0) + (m || 0) / 60;
+function buildDayFromProfile(
+  sleep: ReturnType<typeof useUserStore.getState>['sleep'],
+  mealTimes?: string[],
+): TimelineEvent[] {
+  return buildDefaultDay(
+    {
+      bedtime:     sleep.bedtime     ?? '23:00',
+      waketime:    sleep.waketime    ?? '07:00',
+      prepMinutes: sleep.prepMinutes ?? 40,
+    },
+    mealTimes,
+  );
 }
 
 const HH = 44; // px per hour in the recap preview
 
 export default function RecapScreen() {
-  const sleep = useUserStore((s) => s.sleep);
+  const { sleep, meals, cycle } = useUserStore();
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
-  const setTodayEvents = useScheduleStore((s) => s.setTodayEvents);
 
-  const events = buildDayFromProfile(sleep);
-
-  const cycle = useUserStore((s) => s.cycle);
+  const events = buildDayFromProfile(sleep, meals.times);
 
   function handleStart() {
-    setTodayEvents(events);
     completeOnboarding();
     scheduleAllNotifications({
       events,

@@ -14,7 +14,7 @@ import { SuggestionCard } from '@/components/suggestions/SuggestionCard';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useSuggestionsStore } from '@/store/useSuggestionsStore';
-import { buildSuggestions } from '@/lib/optimizer';
+import { buildSuggestions, buildDefaultDay } from '@/lib/optimizer';
 import { getCyclePhase } from '@/lib/cycle';
 import type { TimelineEvent, WeekDay } from '@/types';
 
@@ -50,15 +50,23 @@ const PHASE_COLOR: Record<string, string> = {
 export default function TodayScreen() {
   const nowHour = new Date().getHours() + new Date().getMinutes() / 60;
 
-  const { work, cycle } = useUserStore();
-  const todayEvents  = useScheduleStore((s) => s.todayEvents);
-  const activities   = useScheduleStore((s) => s.activities);
+  const { sleep, meals, work, cycle } = useUserStore();
+  const activities = useScheduleStore((s) => s.activities);
   const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion, lastGeneratedAt } =
     useSuggestionsStore();
 
   const todayKey = DAY_MAP[new Date().getDay()];
 
-  // Convert today's user activities to TimelineEvents
+  // Base day events derived directly from user profile
+  const baseEvents = useMemo<TimelineEvent[]>(() => {
+    if (!sleep.waketime || !sleep.bedtime || sleep.prepMinutes == null) return [];
+    return buildDefaultDay(
+      { bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes },
+      meals.times,
+    );
+  }, [sleep.waketime, sleep.bedtime, sleep.prepMinutes, meals.times]);
+
+  // User-added activities scheduled for today
   const activityEvents = useMemo<TimelineEvent[]>(() => (
     activities
       .filter((a) => a.days.includes(todayKey))
@@ -70,10 +78,10 @@ export default function TodayScreen() {
       }))
   ), [activities, todayKey]);
 
-  // Merge base events with user activities, sorted by start time
+  // Merge and sort all events
   const events = useMemo<TimelineEvent[]>(
-    () => [...todayEvents, ...activityEvents].sort((a, b) => a.start - b.start),
-    [todayEvents, activityEvents],
+    () => [...baseEvents, ...activityEvents].sort((a, b) => a.start - b.start),
+    [baseEvents, activityEvents],
   );
 
   const cyclePhase = useMemo(() => {
