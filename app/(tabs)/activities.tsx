@@ -11,7 +11,8 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { TimeField } from '@/components/ui/TimeField';
 import { useScheduleStore } from '@/store/useScheduleStore';
@@ -83,7 +84,7 @@ const tpS = StyleSheet.create({
 
 // ── ActivityCard ──────────────────────────────────────────────────
 
-function ActivityCard({ activity, onDelete }: { activity: UserActivity; onDelete: () => void }) {
+function ActivityCard({ activity, onEdit, onDelete }: { activity: UserActivity; onEdit: () => void; onDelete: () => void }) {
   const cat = CATEGORIES.find((c) => c.key === activity.cat) ?? CATEGORIES[1];
   return (
     <View style={cS.wrap} accessibilityLabel={activity.title}>
@@ -98,8 +99,16 @@ function ActivityCard({ activity, onDelete }: { activity: UserActivity; onDelete
         <Text style={[cS.pillText, { color: cat.ink }]}>{cat.label}</Text>
       </View>
       <TouchableOpacity
+        onPress={onEdit}
+        style={cS.action}
+        accessibilityLabel={`Modifier ${activity.title}`}
+        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+      >
+        <Ionicons name="pencil-outline" size={15} color={Colors.light.ink3} />
+      </TouchableOpacity>
+      <TouchableOpacity
         onPress={onDelete}
-        style={cS.del}
+        style={cS.action}
         accessibilityLabel={`Supprimer ${activity.title}`}
         hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
       >
@@ -121,30 +130,53 @@ const cS = StyleSheet.create({
   sub:      { fontSize: FontSize.sm, color: Colors.light.ink3, marginTop: 2 },
   pill:     { borderRadius: Radius.pill, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
   pillText: { fontSize: FontSize.xs, fontWeight: '700' },
-  del:      { padding: 6 },
+  action:   { padding: 6 },
 });
 
 // ── Main Screen ───────────────────────────────────────────────────
 
 export default function ActivitiesScreen() {
-  const { activities, addActivity, removeActivity } = useScheduleStore();
+  const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
   const insets = useSafeAreaInsets();
+  const { editId } = useLocalSearchParams<{ editId?: string }>();
 
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [step, setStep] = useState<Step>(1);
-  const [catKey, setCatKey] = useState<CatKey | null>(null);
-  const [name, setName] = useState('');
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime,   setEndTime]   = useState('10:00');
-  const [days, setDays] = useState<Set<WeekDay>>(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
-  const [recurrence, setRecurrence] = useState<Recurrence>('weekly');
+  const [sheetOpen,   setSheetOpen]   = useState(false);
+  const [editingId,   setEditingId]   = useState<string | null>(null);
+  const [step,        setStep]        = useState<Step>(1);
+  const [catKey,      setCatKey]      = useState<CatKey | null>(null);
+  const [name,        setName]        = useState('');
+  const [startTime,   setStartTime]   = useState('09:00');
+  const [endTime,     setEndTime]     = useState('10:00');
+  const [days,        setDays]        = useState<Set<WeekDay>>(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
+  const [recurrence,  setRecurrence]  = useState<Recurrence>('weekly');
   const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
 
-  function openSheet() {
-    setStep(1); setCatKey(null); setName('');
-    setStartTime('09:00'); setEndTime('10:00');
-    setDays(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
-    setRecurrence('weekly');
+  // Open edit sheet when arriving from timeline tap
+  useEffect(() => {
+    if (!editId) return;
+    const activity = activities.find((a) => a.id === editId);
+    if (activity) openSheet(activity);
+    router.setParams({ editId: undefined });
+  }, [editId]);
+
+  function openSheet(activity?: UserActivity) {
+    if (activity) {
+      setEditingId(activity.id);
+      setCatKey(activity.cat);
+      setName(activity.title);
+      setStartTime(activity.startTime);
+      setEndTime(activity.endTime);
+      setDays(new Set(activity.days));
+      setRecurrence(activity.recurrence);
+      setStep(2); // Skip category step when editing
+    } else {
+      setEditingId(null);
+      setCatKey(null); setName('');
+      setStartTime('09:00'); setEndTime('10:00');
+      setDays(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
+      setRecurrence('weekly');
+      setStep(1);
+    }
     slideAnim.setValue(SHEET_HEIGHT);
     setSheetOpen(true);
     Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 22, mass: 0.9, stiffness: 200 }).start();
@@ -165,20 +197,28 @@ export default function ActivitiesScreen() {
   }
 
   function handleSave() {
-    const cat = CATEGORIES.find((c) => c.key === catKey) ?? CATEGORIES[4];
-    addActivity({
-      id: Date.now().toString(),
+    const cat = CATEGORIES.find((c) => c.key === catKey) ?? CATEGORIES[1];
+    const data = {
       title: name.trim() || cat.label,
       cat: catKey ?? 'activite',
       startTime,
       endTime,
       days: [...days] as WeekDay[],
       recurrence,
-    });
+    };
+    if (editingId) {
+      updateActivity(editingId, data);
+    } else {
+      addActivity({ id: Date.now().toString(), ...data });
+    }
     closeSheet();
   }
 
-  const stepTitles: Record<Step, string> = { 1: 'Catégorie', 2: 'Détails', 3: 'Planning' };
+  const stepTitles: Record<Step, string> = {
+    1: 'Catégorie',
+    2: editingId ? 'Modifier l\'activité' : 'Détails',
+    3: 'Planning',
+  };
   const canNext = step === 1 ? catKey !== null : step === 2 ? true : days.size > 0;
 
   return (
@@ -191,7 +231,7 @@ export default function ActivitiesScreen() {
         </View>
         <TouchableOpacity
           style={s.addBtn}
-          onPress={openSheet}
+          onPress={() => openSheet()}
           accessibilityLabel="Ajouter une activité"
           accessibilityRole="button"
         >
@@ -219,7 +259,12 @@ export default function ActivitiesScreen() {
         ) : (
           <View style={s.list}>
             {activities.map((act) => (
-              <ActivityCard key={act.id} activity={act} onDelete={() => removeActivity(act.id)} />
+              <ActivityCard
+                key={act.id}
+                activity={act}
+                onEdit={() => openSheet(act)}
+                onDelete={() => removeActivity(act.id)}
+              />
             ))}
           </View>
         )}

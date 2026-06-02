@@ -20,19 +20,23 @@ import type { TimelineEvent, WeekDay } from '@/types';
 
 const DAY_MAP: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const EVENT_TARGET: Partial<Record<string, string>> = {
-  sommeil:  '/profile/sleep',
-  prep:     '/profile/sleep',
-  repas:    '/profile/meals',
-  activite: '/(tabs)/activities',
-  travail:  '/(tabs)/activities',
-  trajet:   '/(tabs)/activities',
+const PROFILE_TARGET: Partial<Record<string, string>> = {
+  sommeil: '/profile/sleep',
+  prep:    '/profile/sleep',
+  repas:   '/profile/meals',
 };
 
-function eventTarget(cat: string): (() => void) | undefined {
-  const path = EVENT_TARGET[cat];
-  if (!path) return undefined;
-  return () => router.push(path as any);
+function getEventPress(
+  ev: TimelineEvent & { activityId?: string },
+): (() => void) | undefined {
+  if (ev.activityId) {
+    return () => router.navigate({
+      pathname: '/(tabs)/activities',
+      params: { editId: ev.activityId },
+    } as any);
+  }
+  const path = PROFILE_TARGET[ev.cat];
+  return path ? () => router.push(path as any) : undefined;
 }
 
 function parseTime(hhmm: string): number {
@@ -81,15 +85,16 @@ export default function TodayScreen() {
     );
   }, [sleep.waketime, sleep.bedtime, sleep.prepMinutes, meals]);
 
-  // User-added activities scheduled for today
-  const activityEvents = useMemo<TimelineEvent[]>(() => (
+  // User-added activities scheduled for today (keep activityId for navigation)
+  const activityEvents = useMemo<(TimelineEvent & { activityId: string })[]>(() => (
     activities
       .filter((a) => a.days.includes(todayKey))
       .map((a) => ({
-        cat:   a.cat,
-        title: a.title,
-        start: parseTime(a.startTime),
-        end:   parseTime(a.endTime),
+        cat:        a.cat,
+        title:      a.title,
+        start:      parseTime(a.startTime),
+        end:        parseTime(a.endTime),
+        activityId: a.id,
       }))
   ), [activities, todayKey]);
 
@@ -180,8 +185,8 @@ export default function TodayScreen() {
           <NowIndicator nowHour={nowHour} hourHeight={HH} />
           {events.map((ev, i) =>
             ev.thin
-              ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={eventTarget(ev.cat)} />
-              : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={eventTarget(ev.cat)} />
+              ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
+              : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
           )}
         </View>
       </ScrollView>
