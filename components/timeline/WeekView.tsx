@@ -15,7 +15,6 @@ import type { TimelineEvent, WeekDay } from '@/types';
 
 const WEEK_ORDER: WeekDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const WEEK_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-
 const VIEW_START = 6;
 const VIEW_END   = 23;
 const VIEW_RANGE = VIEW_END - VIEW_START;
@@ -52,6 +51,92 @@ function parseTime(hhmm: string): number {
   return h + m / 60;
 }
 
+// ─── Single week panel ────────────────────────────────────────────────────────
+
+interface WeekPanelProps {
+  weekOffset: number;
+  baseEvents: TimelineEvent[];
+  activities: ReturnType<typeof useScheduleStore.getState>['activities'];
+  panelWidth: number;
+  timelineH: number | undefined;
+  onTimelineLayout: (h: number) => void;
+  todayStr: string;
+}
+
+function WeekPanel({
+  weekOffset, baseEvents, activities, panelWidth,
+  timelineH, onTimelineLayout, todayStr,
+}: WeekPanelProps) {
+  const monday = useMemo(() => getWeekMonday(weekOffset), [weekOffset]);
+  const weekDates = useMemo(
+    () => WEEK_ORDER.map((_, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      return d;
+    }),
+    [monday],
+  );
+
+  return (
+    <View style={{ width: panelWidth, flex: 1, flexDirection: 'row', gap: 4 }}>
+      {WEEK_ORDER.map((day, idx) => {
+        const date    = weekDates[idx];
+        const isToday = date.toDateString() === todayStr;
+
+        const dayActivities: TimelineEvent[] = activities
+          .filter((a) => a.days.includes(day))
+          .map((a) => ({
+            cat:   a.cat,
+            title: a.title,
+            start: parseTime(a.startTime),
+            end:   parseTime(a.endTime),
+          }));
+
+        const dayEvents = [...baseEvents, ...dayActivities].sort((a, b) => a.start - b.start);
+
+        return (
+          <View key={day} style={[styles.column, isToday && styles.columnToday]}>
+            <Text style={[styles.dayLetter, isToday && styles.dayLetterToday]}>
+              {WEEK_LABELS[idx]}
+            </Text>
+            <View style={[styles.dateBubble, isToday && styles.dateBubbleToday]}>
+              <Text style={[styles.dateNum, isToday && styles.dateNumToday]}>
+                {date.getDate()}
+              </Text>
+            </View>
+            <View
+              style={styles.timeline}
+              onLayout={(e) => onTimelineLayout(e.nativeEvent.layout.height)}
+            >
+              {timelineH != null &&
+                dayEvents
+                  .filter((ev) => !ev.thin)
+                  .map((ev, i) => {
+                    const cs = Math.max(ev.start, VIEW_START);
+                    const ce = Math.min(ev.end, VIEW_END);
+                    if (ce <= cs) return null;
+                    const top    = ((cs - VIEW_START) / VIEW_RANGE) * timelineH;
+                    const height = Math.max(((ce - cs) / VIEW_RANGE) * timelineH, 3);
+                    return (
+                      <View
+                        key={i}
+                        style={[
+                          styles.block,
+                          { top, height, backgroundColor: CAT[ev.cat]?.bg ?? Colors.light.hairline },
+                        ]}
+                      />
+                    );
+                  })}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function WeekView() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [timelineH, setTimelineH]   = useState<number | undefined>(undefined);
@@ -63,52 +148,9 @@ export function WeekView() {
   const widthRef  = useRef(width);
   widthRef.current = width;
 
-  const slideX = useRef(new Animated.Value(0)).current;
+  // slideX = -width means center panel is visible
+  const slideX = useRef(new Animated.Value(-width)).current;
 
-  const slideTo = (direction: 'prev' | 'next', doChange: () => void) => {
-    const w    = widthRef.current;
-    const outX = direction === 'prev' ? w : -w;
-    const inX  = direction === 'prev' ? -w : w;
-    Animated.timing(slideX, { toValue: outX, duration: 150, useNativeDriver: true }).start(() => {
-      doChange();
-      slideX.setValue(inX);
-      Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-    });
-  };
-
-  const goPrev = () => slideTo('prev', () => setWeekOffset((o) => o - 1));
-  const goNext = () => slideTo('next', () => setWeekOffset((o) => o + 1));
-
-  const swipe = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 15,
-      onPanResponderMove: (_, { dx }) => slideX.setValue(dx),
-      onPanResponderRelease: (_, { dx, vx }) => {
-        const w = widthRef.current;
-        if (dx > 70 || vx > 0.5) {
-          Animated.timing(slideX, { toValue: w, duration: 150, useNativeDriver: true }).start(() => {
-            setWeekOffset((o) => o - 1);
-            slideX.setValue(-w);
-            Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-          });
-        } else if (dx < -70 || vx < -0.5) {
-          Animated.timing(slideX, { toValue: -w, duration: 150, useNativeDriver: true }).start(() => {
-            setWeekOffset((o) => o + 1);
-            slideX.setValue(w);
-            Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-          });
-        } else {
-          Animated.spring(slideX, { toValue: 0, useNativeDriver: true }).start();
-        }
-      },
-      onPanResponderTerminate: () => {
-        Animated.spring(slideX, { toValue: 0, useNativeDriver: true }).start();
-      },
-    })
-  ).current;
-
-  const monday   = useMemo(() => getWeekMonday(weekOffset), [weekOffset]);
   const todayStr = new Date().toDateString();
 
   const baseEvents = useMemo<TimelineEvent[]>(() => {
@@ -119,107 +161,104 @@ export function WeekView() {
     );
   }, [sleep.waketime, sleep.bedtime, sleep.prepMinutes, meals]);
 
-  const weekDates = useMemo(
-    () => WEEK_ORDER.map((_, i) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      return d;
-    }),
-    [monday],
-  );
+  const handleTimelineLayout = (h: number) => {
+    if (h > 0 && h !== timelineH) setTimelineH(h);
+  };
+
+  const goPrev = () => {
+    const w = widthRef.current;
+    Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
+      setWeekOffset((o) => o - 1);
+      slideX.setValue(-w);
+    });
+  };
+  const goNext = () => {
+    const w = widthRef.current;
+    Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
+      setWeekOffset((o) => o + 1);
+      slideX.setValue(-w);
+    });
+  };
+
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 15,
+      onPanResponderGrant: () => {
+        slideX.stopAnimation((val) => {
+          slideX.setOffset(val);
+          slideX.setValue(0);
+        });
+      },
+      onPanResponderMove: (_, { dx }) => slideX.setValue(dx),
+      onPanResponderRelease: (_, { dx, vx }) => {
+        slideX.flattenOffset();
+        const w = widthRef.current;
+        if (dx > 70 || vx > 0.5) {
+          Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
+            setWeekOffset((o) => o - 1);
+            slideX.setValue(-w);
+          });
+        } else if (dx < -70 || vx < -0.5) {
+          Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
+            setWeekOffset((o) => o + 1);
+            slideX.setValue(-w);
+          });
+        } else {
+          Animated.spring(slideX, { toValue: -w, useNativeDriver: true }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        slideX.flattenOffset();
+        Animated.spring(slideX, { toValue: -widthRef.current, useNativeDriver: true }).start();
+      },
+    })
+  ).current;
+
+  const currentMonday = useMemo(() => getWeekMonday(weekOffset), [weekOffset]);
 
   return (
     <View style={styles.container} {...swipe.panHandlers}>
-      {/* Navigation header — stays fixed */}
+      {/* Fixed nav header */}
       <View style={styles.nav}>
-        <TouchableOpacity
-          onPress={goPrev}
-          style={styles.navBtn}
-          accessibilityLabel="Semaine précédente"
-          accessibilityRole="button"
-        >
+        <TouchableOpacity onPress={goPrev} style={styles.navBtn} accessibilityLabel="Semaine précédente" accessibilityRole="button">
           <Icon name="back" size={18} stroke={Colors.light.primary} />
         </TouchableOpacity>
-        <Text style={styles.weekLabel}>{formatWeekRange(monday)}</Text>
-        <TouchableOpacity
-          onPress={goNext}
-          style={styles.navBtn}
-          accessibilityLabel="Semaine suivante"
-          accessibilityRole="button"
-        >
+        <Text style={styles.weekLabel}>{formatWeekRange(currentMonday)}</Text>
+        <TouchableOpacity onPress={goNext} style={styles.navBtn} accessibilityLabel="Semaine suivante" accessibilityRole="button">
           <Icon name="arrow" size={18} stroke={Colors.light.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Animated content */}
-      <Animated.View style={[styles.content, { transform: [{ translateX: slideX }] }]}>
-        <View style={styles.row}>
-          {WEEK_ORDER.map((day, idx) => {
-            const date    = weekDates[idx];
-            const isToday = date.toDateString() === todayStr;
-
-            const dayActivities: TimelineEvent[] = activities
-              .filter((a) => a.days.includes(day))
-              .map((a) => ({
-                cat:   a.cat,
-                title: a.title,
-                start: parseTime(a.startTime),
-                end:   parseTime(a.endTime),
-              }));
-
-            const dayEvents = [...baseEvents, ...dayActivities].sort((a, b) => a.start - b.start);
-
-            return (
-              <View key={day} style={[styles.column, isToday && styles.columnToday]}>
-                <Text style={[styles.dayLetter, isToday && styles.dayLetterToday]}>
-                  {WEEK_LABELS[idx]}
-                </Text>
-                <View style={[styles.dateBubble, isToday && styles.dateBubbleToday]}>
-                  <Text style={[styles.dateNum, isToday && styles.dateNumToday]}>
-                    {date.getDate()}
-                  </Text>
-                </View>
-                <View
-                  style={styles.timeline}
-                  onLayout={(e) => {
-                    const h = e.nativeEvent.layout.height;
-                    if (h > 0 && h !== timelineH) setTimelineH(h);
-                  }}
-                >
-                  {timelineH != null &&
-                    dayEvents
-                      .filter((ev) => !ev.thin)
-                      .map((ev, i) => {
-                        const cs = Math.max(ev.start, VIEW_START);
-                        const ce = Math.min(ev.end, VIEW_END);
-                        if (ce <= cs) return null;
-                        const top    = ((cs - VIEW_START) / VIEW_RANGE) * timelineH;
-                        const height = Math.max(((ce - cs) / VIEW_RANGE) * timelineH, 3);
-                        return (
-                          <View
-                            key={i}
-                            style={[
-                              styles.block,
-                              { top, height, backgroundColor: CAT[ev.cat]?.bg ?? Colors.light.hairline },
-                            ]}
-                          />
-                        );
-                      })}
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
-        <View style={styles.legend}>
-          {CAT_LEGEND.map(({ key, label }) => (
-            <View key={key} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: CAT[key].bg, borderColor: CAT[key].ink }]} />
-              <Text style={styles.legendLabel}>{label}</Text>
-            </View>
+      {/* 3-panel sliding area */}
+      <View style={styles.clipper}>
+        <Animated.View
+          style={[styles.threePanels, { width: width * 3, transform: [{ translateX: slideX }] }]}
+        >
+          {[weekOffset - 1, weekOffset, weekOffset + 1].map((off) => (
+            <WeekPanel
+              key={off}
+              weekOffset={off}
+              baseEvents={baseEvents}
+              activities={activities}
+              panelWidth={width - Spacing.base * 2}
+              timelineH={timelineH}
+              onTimelineLayout={handleTimelineLayout}
+              todayStr={todayStr}
+            />
           ))}
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
+
+      {/* Fixed legend */}
+      <View style={styles.legend}>
+        {CAT_LEGEND.map(({ key, label }) => (
+          <View key={key} style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: CAT[key].bg, borderColor: CAT[key].ink }]} />
+            <Text style={styles.legendLabel}>{label}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -227,7 +266,6 @@ export function WeekView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: Spacing.base,
     paddingTop: Spacing.xs,
     paddingBottom: Spacing.base,
   },
@@ -237,6 +275,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.base,
   },
   navBtn: {
     width: 36,
@@ -253,14 +292,19 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
 
-  content: {
+  // Clips the 3x-wide animated strip to screen width
+  clipper: {
     flex: 1,
+    overflow: 'hidden',
   },
 
-  row: {
+  // 3 panels side by side; height fills via alignSelf:'stretch' on children
+  threePanels: {
     flex: 1,
     flexDirection: 'row',
-    gap: 4,
+    alignItems: 'stretch',
+    paddingHorizontal: Spacing.base,
+    gap: 0,
   },
 
   column: {
@@ -326,6 +370,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     marginTop: Spacing.md,
     justifyContent: 'center',
+    paddingHorizontal: Spacing.base,
   },
   legendItem: {
     flexDirection: 'row',

@@ -35,67 +35,26 @@ function buildGrid(year: number, month: number): (Date | null)[] {
   return grid;
 }
 
-export function MonthView() {
-  const now = new Date();
-  const [year,  setYear]  = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
+function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
+  let m = month + delta;
+  let y = year;
+  while (m < 0)  { m += 12; y--; }
+  while (m > 11) { m -= 12; y++; }
+  return { year: y, month: m };
+}
 
-  const activities = useScheduleStore((s) => s.activities);
-  const grid       = useMemo(() => buildGrid(year, month), [year, month]);
-  const todayStr   = now.toDateString();
+// ─── Single month panel ───────────────────────────────────────────────────────
 
-  const { width } = useWindowDimensions();
-  const widthRef  = useRef(width);
-  widthRef.current = width;
+interface MonthPanelProps {
+  year: number;
+  month: number;
+  activities: ReturnType<typeof useScheduleStore.getState>['activities'];
+  todayStr: string;
+  panelWidth: number;
+}
 
-  const slideX = useRef(new Animated.Value(0)).current;
-
-  const slideTo = (direction: 'prev' | 'next', doChange: () => void) => {
-    const w    = widthRef.current;
-    const outX = direction === 'prev' ? w : -w;
-    const inX  = direction === 'prev' ? -w : w;
-    Animated.timing(slideX, { toValue: outX, duration: 150, useNativeDriver: true }).start(() => {
-      doChange();
-      slideX.setValue(inX);
-      Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-    });
-  };
-
-  const prevMonth = () => slideTo('prev', () => {
-    setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; });
-  });
-  const nextMonth = () => slideTo('next', () => {
-    setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; });
-  });
-
-  const swipe = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 15,
-      onPanResponderMove: (_, { dx }) => slideX.setValue(dx),
-      onPanResponderRelease: (_, { dx, vx }) => {
-        const w = widthRef.current;
-        if (dx > 70 || vx > 0.5) {
-          Animated.timing(slideX, { toValue: w, duration: 150, useNativeDriver: true }).start(() => {
-            setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; });
-            slideX.setValue(-w);
-            Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-          });
-        } else if (dx < -70 || vx < -0.5) {
-          Animated.timing(slideX, { toValue: -w, duration: 150, useNativeDriver: true }).start(() => {
-            setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; });
-            slideX.setValue(w);
-            Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-          });
-        } else {
-          Animated.spring(slideX, { toValue: 0, useNativeDriver: true }).start();
-        }
-      },
-      onPanResponderTerminate: () => {
-        Animated.spring(slideX, { toValue: 0, useNativeDriver: true }).start();
-      },
-    })
-  ).current;
+function MonthPanel({ year, month, activities, todayStr, panelWidth }: MonthPanelProps) {
+  const grid = useMemo(() => buildGrid(year, month), [year, month]);
 
   const catsForDate = (date: Date): CatKey[] => {
     const wday = weekKey(date);
@@ -107,11 +66,116 @@ export function MonthView() {
   };
 
   return (
+    <View style={{ width: panelWidth, paddingHorizontal: Spacing.base }}>
+      <View style={styles.colRow}>
+        {COL_LABELS.map((l, i) => (
+          <Text key={i} style={styles.colLabel}>{l}</Text>
+        ))}
+      </View>
+      <View style={styles.grid}>
+        {grid.map((date, i) => {
+          if (!date) return <View key={i} style={styles.cell} />;
+          const isToday = date.toDateString() === todayStr;
+          const cats    = catsForDate(date).slice(0, 3);
+          return (
+            <View key={i} style={styles.cell}>
+              <View style={[styles.numWrap, isToday && styles.numWrapToday]}>
+                <Text style={[styles.dayNum, isToday && styles.dayNumToday]}>
+                  {date.getDate()}
+                </Text>
+              </View>
+              {cats.length > 0 && (
+                <View style={styles.dotRow}>
+                  {cats.map((cat) => (
+                    <View key={cat} style={[styles.dot, { backgroundColor: CAT[cat].ink }]} />
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export function MonthView() {
+  const now = new Date();
+  const [year,  setYear]  = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth());
+
+  const activities = useScheduleStore((s) => s.activities);
+  const todayStr   = now.toDateString();
+
+  const { width } = useWindowDimensions();
+  const widthRef  = useRef(width);
+  widthRef.current = width;
+
+  // slideX = -width means center panel is visible
+  const slideX = useRef(new Animated.Value(-width)).current;
+
+  const goPrev = () => {
+    const w = widthRef.current;
+    Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
+      setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; });
+      slideX.setValue(-w);
+    });
+  };
+
+  const goNext = () => {
+    const w = widthRef.current;
+    Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
+      setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; });
+      slideX.setValue(-w);
+    });
+  };
+
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 15,
+      onPanResponderGrant: () => {
+        slideX.stopAnimation((val) => {
+          slideX.setOffset(val);
+          slideX.setValue(0);
+        });
+      },
+      onPanResponderMove: (_, { dx }) => slideX.setValue(dx),
+      onPanResponderRelease: (_, { dx, vx }) => {
+        slideX.flattenOffset();
+        const w = widthRef.current;
+        if (dx > 70 || vx > 0.5) {
+          Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
+            setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; });
+            slideX.setValue(-w);
+          });
+        } else if (dx < -70 || vx < -0.5) {
+          Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
+            setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; });
+            slideX.setValue(-w);
+          });
+        } else {
+          Animated.spring(slideX, { toValue: -w, useNativeDriver: true }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        slideX.flattenOffset();
+        Animated.spring(slideX, { toValue: -widthRef.current, useNativeDriver: true }).start();
+      },
+    })
+  ).current;
+
+  const prevData = useMemo(() => shiftMonth(year, month, -1), [year, month]);
+  const nextData = useMemo(() => shiftMonth(year, month,  1), [year, month]);
+
+  return (
     <View style={styles.container} {...swipe.panHandlers}>
       {/* Navigation header — stays fixed */}
       <View style={styles.nav}>
         <TouchableOpacity
-          onPress={prevMonth}
+          onPress={goPrev}
           style={styles.navBtn}
           accessibilityLabel="Mois précédent"
           accessibilityRole="button"
@@ -120,7 +184,7 @@ export function MonthView() {
         </TouchableOpacity>
         <Text style={styles.monthTitle}>{MONTHS[month]} {year}</Text>
         <TouchableOpacity
-          onPress={nextMonth}
+          onPress={goNext}
           style={styles.navBtn}
           accessibilityLabel="Mois suivant"
           accessibilityRole="button"
@@ -129,44 +193,23 @@ export function MonthView() {
         </TouchableOpacity>
       </View>
 
-      {/* Animated content */}
-      <Animated.View style={{ transform: [{ translateX: slideX }] }}>
-        {/* Weekday column headers */}
-        <View style={styles.colRow}>
-          {COL_LABELS.map((l, i) => (
-            <Text key={i} style={styles.colLabel}>{l}</Text>
+      {/* 3-panel sliding area */}
+      <View style={styles.clipper}>
+        <Animated.View
+          style={[styles.threePanels, { width: width * 3, transform: [{ translateX: slideX }] }]}
+        >
+          {[prevData, { year, month }, nextData].map((m) => (
+            <MonthPanel
+              key={`${m.year}-${m.month}`}
+              year={m.year}
+              month={m.month}
+              activities={activities}
+              todayStr={todayStr}
+              panelWidth={width}
+            />
           ))}
-        </View>
-
-        {/* Calendar cells */}
-        <View style={styles.grid}>
-          {grid.map((date, i) => {
-            if (!date) return <View key={i} style={styles.cell} />;
-            const isToday = date.toDateString() === todayStr;
-            const cats    = catsForDate(date).slice(0, 3);
-
-            return (
-              <View key={i} style={styles.cell}>
-                <View style={[styles.numWrap, isToday && styles.numWrapToday]}>
-                  <Text style={[styles.dayNum, isToday && styles.dayNumToday]}>
-                    {date.getDate()}
-                  </Text>
-                </View>
-                {cats.length > 0 && (
-                  <View style={styles.dotRow}>
-                    {cats.map((cat) => (
-                      <View
-                        key={cat}
-                        style={[styles.dot, { backgroundColor: CAT[cat].ink }]}
-                      />
-                    ))}
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -174,7 +217,6 @@ export function MonthView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: Spacing.base,
     paddingTop: Spacing.xs,
   },
 
@@ -183,6 +225,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.base,
   },
   navBtn: {
     width: 36,
@@ -197,6 +240,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.light.ink,
     letterSpacing: -0.3,
+  },
+
+  clipper: {
+    overflow: 'hidden',
+  },
+
+  threePanels: {
+    flexDirection: 'row',
   },
 
   colRow: {

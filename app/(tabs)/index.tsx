@@ -21,7 +21,7 @@ import { useScheduleStore } from '@/store/useScheduleStore';
 import { useSuggestionsStore } from '@/store/useSuggestionsStore';
 import { buildSuggestions, buildDefaultDay } from '@/lib/optimizer';
 import { getCyclePhase } from '@/lib/cycle';
-import type { TimelineEvent, WeekDay } from '@/types';
+import type { TimelineEvent, WeekDay, UserActivity, Suggestion } from '@/types';
 
 const DAY_MAP: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -62,6 +62,78 @@ function parseTime(hhmm: string): number {
 export const HH = 58;
 const LEFT_OFFSET = 52;
 
+// ─── Single day panel (prev / current / next) ─────────────────────────────────
+
+interface DayPanelProps {
+  absOffset: number;
+  baseEvents: TimelineEvent[];
+  activities: UserActivity[];
+  visibleSuggestions: Suggestion[];
+  onAccept: (id: string) => void;
+  onDismiss: (id: string) => void;
+  nowHour: number;
+  panelWidth: number;
+}
+
+function DayPanel({
+  absOffset, baseEvents, activities, visibleSuggestions, onAccept, onDismiss, nowHour, panelWidth,
+}: DayPanelProps) {
+  const d = new Date();
+  d.setDate(d.getDate() + absOffset);
+  const weekDay = DAY_MAP[d.getDay()];
+  const isToday = absOffset === 0;
+
+  const activityEvents = useMemo<(TimelineEvent & { activityId: string })[]>(() => (
+    activities
+      .filter((a) => a.days.includes(weekDay))
+      .map((a) => ({
+        cat:        a.cat,
+        title:      a.title,
+        start:      parseTime(a.startTime),
+        end:        parseTime(a.endTime),
+        activityId: a.id,
+      }))
+  ), [activities, weekDay]);
+
+  const events = useMemo<TimelineEvent[]>(
+    () => [...baseEvents, ...activityEvents].sort((a, b) => a.start - b.start),
+    [baseEvents, activityEvents],
+  );
+
+  return (
+    <ScrollView
+      style={{ width: panelWidth, flex: 1 }}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      contentOffset={{ x: 0, y: 6 * HH }}
+    >
+      {isToday && visibleSuggestions.length > 0 && (
+        <View style={styles.suggestionsSection}>
+          <Text style={styles.sectionLabel}>Suggestions pour toi</Text>
+          {visibleSuggestions.map((s) => (
+            <SuggestionCard
+              key={s.id}
+              suggestion={s}
+              onAccept={() => onAccept(s.id)}
+              onDismiss={() => onDismiss(s.id)}
+            />
+          ))}
+        </View>
+      )}
+      <View style={[styles.grid, { minHeight: 24 * HH }]}>
+        <HourGrid hourHeight={HH} />
+        {isToday && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
+        {events.map((ev, i) =>
+          ev.thin
+            ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
+            : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function scheduledHours(events: TimelineEvent[]) {
   return events.filter((e) => !e.thin).reduce((sum, e) => sum + (e.end - e.start), 0);
@@ -89,7 +161,8 @@ export default function TodayScreen() {
   const { width } = useWindowDimensions();
   const widthRef  = useRef(width);
   widthRef.current = width;
-  const slideX = useRef(new Animated.Value(0)).current;
+  // slideX = -width means center panel (current day) is visible
+  const slideX = useRef(new Animated.Value(-width)).current;
 
   const { sleep, meals, work, cycle } = useUserStore();
   const activities  = useScheduleStore((s) => s.activities);
@@ -108,40 +181,50 @@ export default function TodayScreen() {
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
         Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 20,
+      onPanResponderGrant: () => {
+        slideX.stopAnimation((val) => {
+          slideX.setOffset(val);
+          slideX.setValue(0);
+        });
+      },
       onPanResponderMove: (_, { dx }) => slideX.setValue(dx),
       onPanResponderRelease: (_, { dx, vx }) => {
+        slideX.flattenOffset();
         const w = widthRef.current;
         if (dx > 70 || vx > 0.5) {
-          Animated.timing(slideX, { toValue: w, duration: 150, useNativeDriver: true }).start(() => {
+          Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
             setDayOffset((o) => o - 1);
             slideX.setValue(-w);
-            Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
           });
         } else if (dx < -70 || vx < -0.5) {
-          Animated.timing(slideX, { toValue: -w, duration: 150, useNativeDriver: true }).start(() => {
+          Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
             setDayOffset((o) => o + 1);
-            slideX.setValue(w);
-            Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+            slideX.setValue(-w);
           });
         } else {
-          Animated.spring(slideX, { toValue: 0, useNativeDriver: true }).start();
+          Animated.spring(slideX, { toValue: -w, useNativeDriver: true }).start();
         }
       },
       onPanResponderTerminate: () => {
-        Animated.spring(slideX, { toValue: 0, useNativeDriver: true }).start();
+        slideX.flattenOffset();
+        Animated.spring(slideX, { toValue: -widthRef.current, useNativeDriver: true }).start();
       },
     })
   ).current;
 
   const slideDay = (direction: 'prev' | 'next') => {
-    const w    = widthRef.current;
-    const outX = direction === 'prev' ? w : -w;
-    const inX  = direction === 'prev' ? -w : w;
-    Animated.timing(slideX, { toValue: outX, duration: 150, useNativeDriver: true }).start(() => {
-      setDayOffset((o) => direction === 'prev' ? o - 1 : o + 1);
-      slideX.setValue(inX);
-      Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-    });
+    const w = widthRef.current;
+    if (direction === 'prev') {
+      Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
+        setDayOffset((o) => o - 1);
+        slideX.setValue(-w);
+      });
+    } else {
+      Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
+        setDayOffset((o) => o + 1);
+        slideX.setValue(-w);
+      });
+    }
   };
 
   // Base day events derived directly from user profile
@@ -247,41 +330,26 @@ export default function TodayScreen() {
 
       {viewMode === 'week'  && <WeekView />}
       {viewMode === 'month' && <MonthView />}
-      {viewMode === 'day'   && (
-        <Animated.View style={[{ flex: 1 }, { transform: [{ translateX: slideX }] }]}>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          contentOffset={{ x: 0, y: 6 * HH }}
-        >
-          {/* Suggestions — today only */}
-          {dayOffset === 0 && visibleSuggestions.length > 0 && (
-            <View style={styles.suggestionsSection}>
-              <Text style={styles.sectionLabel}>Suggestions pour toi</Text>
-              {visibleSuggestions.map((s) => (
-                <SuggestionCard
-                  key={s.id}
-                  suggestion={s}
-                  onAccept={() => acceptSuggestion(s.id)}
-                  onDismiss={() => dismissSuggestion(s.id)}
-                />
-              ))}
-            </View>
-          )}
-
-          {/* Timeline */}
-          <View style={[styles.grid, { minHeight: 24 * HH }]}>
-            <HourGrid hourHeight={HH} />
-            {dayOffset === 0 && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
-            {events.map((ev, i) =>
-              ev.thin
-                ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
-                : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
-            )}
-          </View>
-        </ScrollView>
-        </Animated.View>
+      {viewMode === 'day' && (
+        <View style={styles.dayClipper}>
+          <Animated.View
+            style={[styles.dayPanels, { width: width * 3, transform: [{ translateX: slideX }] }]}
+          >
+            {[dayOffset - 1, dayOffset, dayOffset + 1].map((off) => (
+              <DayPanel
+                key={off}
+                absOffset={off}
+                baseEvents={baseEvents}
+                activities={activities}
+                visibleSuggestions={visibleSuggestions}
+                onAccept={acceptSuggestion}
+                onDismiss={dismissSuggestion}
+                nowHour={nowHour}
+                panelWidth={width}
+              />
+            ))}
+          </Animated.View>
+        </View>
       )}
       </View>
     </SafeAreaView>
@@ -358,7 +426,15 @@ const styles = StyleSheet.create({
   phaseDot:  { width: 7, height: 7, borderRadius: 4 },
   phaseText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
 
-  scroll:        { flex: 1 },
+  dayClipper: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  dayPanels: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
   scrollContent: { paddingBottom: 120, paddingHorizontal: Spacing.base, paddingTop: Spacing.sm },
 
   suggestionsSection: { marginBottom: Spacing.lg, gap: Spacing.xs },
