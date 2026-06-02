@@ -88,8 +88,10 @@ function useProtectedRoute() {
       }
     }
 
-    const inAuth = segments[0] === '(auth)';
-    const inTabs = segments[0] === '(tabs)';
+    const inAuth    = segments[0] === '(auth)';
+    const inTabs    = segments[0] === '(tabs)';
+    const inProfile = segments[0] === 'profile';
+    const inChat    = segments[0] === 'chat';
 
     if (!session) {
       // Not logged in → login screen (verify-email stays visible while waiting for confirmation)
@@ -108,8 +110,8 @@ function useProtectedRoute() {
       return;
     }
 
-    // Logged in + onboarded → home
-    if (!inTabs) {
+    // Logged in + onboarded → home (profile/chat screens are also valid destinations)
+    if (!inTabs && !inProfile && !inChat) {
       const events = (sleep.waketime && sleep.bedtime && sleep.prepMinutes != null)
         ? buildDefaultDay({ bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes })
         : [];
