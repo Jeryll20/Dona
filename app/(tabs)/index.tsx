@@ -28,19 +28,6 @@ function parseTime(hhmm: string): number {
 export const HH = 58;
 const LEFT_OFFSET = 52;
 
-const DEFAULT_DAY: TimelineEvent[] = [
-  { cat: 'sommeil',  title: 'Sommeil',          start: 0,     end: 7 },
-  { cat: 'prep',     title: 'Préparation',       start: 7,     end: 7.67 },
-  { cat: 'trajet',   title: 'Trajet bureau',     start: 7.67,  end: 8,     thin: true, dur: '20 min' },
-  { cat: 'travail',  title: 'Travail',           start: 8,     end: 12.5 },
-  { cat: 'repas',    title: 'Déjeuner',          start: 12.5,  end: 13.5 },
-  { cat: 'travail',  title: 'Travail',           start: 13.5,  end: 17 },
-  { cat: 'trajet',   title: 'Trajet bureau',     start: 17,    end: 17.33, thin: true, dur: '20 min' },
-  { cat: 'trajet',   title: 'Trajet activité',   start: 18,    end: 18.17, thin: true, dur: '10 min' },
-  { cat: 'activite', title: "Cours d'anglais",   start: 18.17, end: 19.17 },
-  { cat: 'repas',    title: 'Dîner',             start: 20,    end: 20.75 },
-  { cat: 'sommeil',  title: 'Sommeil',           start: 23,    end: 24 },
-];
 
 function scheduledHours(events: TimelineEvent[]) {
   return events.filter((e) => !e.thin).reduce((sum, e) => sum + (e.end - e.start), 0);
@@ -84,10 +71,10 @@ export default function TodayScreen() {
   ), [activities, todayKey]);
 
   // Merge base events with user activities, sorted by start time
-  const events = useMemo<TimelineEvent[]>(() => {
-    const base = todayEvents.length > 0 ? todayEvents : DEFAULT_DAY;
-    return [...base, ...activityEvents].sort((a, b) => a.start - b.start);
-  }, [todayEvents, activityEvents]);
+  const events = useMemo<TimelineEvent[]>(
+    () => [...todayEvents, ...activityEvents].sort((a, b) => a.start - b.start),
+    [todayEvents, activityEvents],
+  );
 
   const cyclePhase = useMemo(() => {
     if (!cycle.tracking || !cycle.lastPeriodDate) return undefined;
