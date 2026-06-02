@@ -123,6 +123,7 @@ export default function ProfileScreen() {
             iconInk={Colors.light.mealInk}
             label="Repas"
             value={mealsValue}
+            onPress={() => router.push('/profile/meals')}
           />
           <SettingsRow
             icon="flower-outline"

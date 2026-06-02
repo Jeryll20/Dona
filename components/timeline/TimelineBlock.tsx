@@ -21,13 +21,26 @@ export function TimelineBlock({ event, hourHeight, leftOffset }: TimelineBlockPr
   const top    = event.start * hourHeight;
   const height = Math.max((event.end - event.start) * hourHeight, 16);
 
+  const isSmall  = height < 32;  // ~33 min
+  const isMedium = height < 52;  // ~54 min
+
   return (
     <View
-      style={[styles.block, { top, height, left: leftOffset, backgroundColor: c.bg }]}
+      style={[
+        styles.block,
+        { top, height, left: leftOffset, backgroundColor: c.bg },
+        isSmall  && styles.blockSmall,
+      ]}
       accessibilityLabel={`${event.title}, ${fmtHour(event.start)} à ${fmtHour(event.end)}`}
     >
-      <Text style={[styles.title, { color: c.ink }]}>{event.title}</Text>
-      {height > 44 && (
+      <Text
+        style={[styles.title, { color: c.ink }, isSmall && styles.titleSmall]}
+        numberOfLines={1}
+        ellipsizeMode="tail"
+      >
+        {event.title}
+      </Text>
+      {!isMedium && (
         <Text style={[styles.time, { color: c.ink }]}>
           {fmtHour(event.start)} – {fmtHour(event.end)}
         </Text>
@@ -41,9 +54,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 4,
     borderRadius: 16,
-    padding: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     overflow: 'hidden',
+    justifyContent: 'center',
   },
-  title: { fontSize: FontSize.base, fontWeight: '700', letterSpacing: -0.2 },
-  time:  { fontSize: FontSize.sm, fontWeight: '600', opacity: 0.78, marginTop: 3 },
+  blockSmall: {
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  title:      { fontSize: FontSize.base, fontWeight: '700', letterSpacing: -0.2 },
+  titleSmall: { fontSize: FontSize.sm },
+  time:       { fontSize: FontSize.sm, fontWeight: '600', opacity: 0.78, marginTop: 3 },
 });

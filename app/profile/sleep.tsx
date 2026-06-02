@@ -6,16 +6,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { TimeField } from '@/components/ui/TimeField';
 import { Stepper } from '@/components/ui/Stepper';
 import { useUserStore } from '@/store/useUserStore';
-import { useScheduleStore } from '@/store/useScheduleStore';
-import { buildDefaultDay } from '@/lib/optimizer';
 import { scheduleAllNotifications } from '@/lib/notifications';
+import { buildDefaultDay } from '@/lib/optimizer';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
 export default function SleepScreen() {
-  const { sleep, setSleep, cycle } = useUserStore();
-  const setTodayEvents = useScheduleStore((s) => s.setTodayEvents);
+  const { sleep, meals, setSleep, cycle } = useUserStore();
   const [bedtime,    setBedtime]    = useState(sleep.bedtime    ?? '23:00');
   const [waketime,   setWaketime]   = useState(sleep.waketime   ?? '07:00');
   const [sleepHours, setSleepHours] = useState(sleep.sleepHours ?? 8);
@@ -23,8 +21,7 @@ export default function SleepScreen() {
 
   function handleSave() {
     setSleep({ bedtime, waketime, sleepHours, prepMinutes: prepMins });
-    const events = buildDefaultDay({ bedtime, waketime, prepMinutes: prepMins });
-    setTodayEvents(events);
+    const events = buildDefaultDay({ bedtime, waketime, prepMinutes: prepMins }, meals.times);
     scheduleAllNotifications({
       events,
       cycleTracking:  cycle.tracking ?? false,
