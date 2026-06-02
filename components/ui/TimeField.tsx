@@ -1,6 +1,6 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
 import {
-  StyleSheet, View, Text, ScrollView,
+  StyleSheet, View, Text, ScrollView, Animated,
   NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { Colors } from '@/constants/Colors';
@@ -27,18 +27,28 @@ interface WheelProps {
 function Wheel({ items, initial, onChange }: WheelProps) {
   const ref            = useRef<ScrollView>(null);
   const [selected, setSelected] = useState(initial);
-  const committedRef   = useRef(initial);  // last value passed to onChange
-  const isProgrammatic = useRef(false);    // true while we call scrollTo ourselves
+  const scrollY        = useRef(new Animated.Value(initial * ITEM_H)).current;
+  const committedRef   = useRef(initial);
+  const isProgrammatic = useRef(false);
   const dragTimer      = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Update visual selection in real-time as the user scrolls
-  const onScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (isProgrammatic.current) return;
-      const i = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
-      setSelected(Math.max(0, Math.min(items.length - 1, i)));
-    },
-    [items.length],
+  // Opacity for each item derived continuously from raw scroll position —
+  // symmetric interpolation gives a smooth fade without rounding artifacts
+  const opacities = useMemo(
+    () =>
+      items.map((_, i) =>
+        Animated.divide(
+          Animated.subtract(scrollY, i * ITEM_H),
+          ITEM_H,
+        ).interpolate({
+          inputRange:  [-2, -1, 0, 1, 2],
+          outputRange: [0.15, 0.35, 1, 0.35, 0.15],
+          extrapolate: 'clamp',
+        }),
+      ),
+    // scrollY is a stable ref — deps intentionally empty
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const snapTo = useCallback(
@@ -53,7 +63,6 @@ function Wheel({ items, initial, onChange }: WheelProps) {
         onChange(clamped);
       }
 
-      // animated:false → no new scroll events → no loop
       isProgrammatic.current = true;
       ref.current?.scrollTo({ y: clamped * ITEM_H, animated: false });
       isProgrammatic.current = false;
@@ -61,7 +70,6 @@ function Wheel({ items, initial, onChange }: WheelProps) {
     [items.length, onChange],
   );
 
-  // When the user flicks, momentum begins → cancel the drag-end timer
   const onMomentumScrollBegin = useCallback(() => {
     if (dragTimer.current) {
       clearTimeout(dragTimer.current);
@@ -69,7 +77,6 @@ function Wheel({ items, initial, onChange }: WheelProps) {
     }
   }, []);
 
-  // Momentum ended → snap to nearest item
   const onMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (isProgrammatic.current) return;
@@ -78,7 +85,6 @@ function Wheel({ items, initial, onChange }: WheelProps) {
     [snapTo],
   );
 
-  // Drag released without flick → timer guards against double-firing with momentum
   const onScrollEndDrag = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (isProgrammatic.current) return;
@@ -87,14 +93,33 @@ function Wheel({ items, initial, onChange }: WheelProps) {
       dragTimer.current = setTimeout(() => {
         dragTimer.current = null;
         snapTo(offsetY);
-      }, 60); // cancelled by onMomentumScrollBegin if user flicked
+      }, 60);
     },
     [snapTo],
   );
 
+  // JS-thread listener: update selected state for font size / color
+  const onScrollJS = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (isProgrammatic.current) return;
+      const i = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+      setSelected(Math.max(0, Math.min(items.length - 1, i)));
+    },
+    [items.length],
+  );
+
+  const scrollHandler = useMemo(
+    () =>
+      Animated.event(
+        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+        { useNativeDriver: true, listener: onScrollJS },
+      ),
+    [scrollY, onScrollJS],
+  );
+
   return (
-    <ScrollView
-      ref={ref}
+    <Animated.ScrollView
+      ref={ref as React.RefObject<ScrollView>}
       style={styles.wheel}
       contentContainerStyle={{ paddingVertical: PAD }}
       contentOffset={{ x: 0, y: initial * ITEM_H }}
@@ -102,23 +127,19 @@ function Wheel({ items, initial, onChange }: WheelProps) {
       snapToInterval={ITEM_H}
       decelerationRate={0.85}
       scrollEventThrottle={16}
-      onScroll={onScroll}
+      onScroll={scrollHandler}
       onMomentumScrollBegin={onMomentumScrollBegin}
       onMomentumScrollEnd={onMomentumScrollEnd}
       onScrollEndDrag={onScrollEndDrag}
     >
-      {items.map((item, i) => {
-        const dist = Math.abs(i - selected);
-        const opacity = dist === 0 ? 1 : dist === 1 ? 0.35 : 0.15;
-        return (
-          <View key={item} style={styles.item}>
-            <Text style={[styles.itemText, i === selected && styles.itemSelected, { opacity }]}>
-              {item}
-            </Text>
-          </View>
-        );
-      })}
-    </ScrollView>
+      {items.map((item, i) => (
+        <Animated.View key={item} style={[styles.item, { opacity: opacities[i] }]}>
+          <Text style={[styles.itemText, i === selected && styles.itemSelected]}>
+            {item}
+          </Text>
+        </Animated.View>
+      ))}
+    </Animated.ScrollView>
   );
 }
 
