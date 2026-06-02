@@ -1,9 +1,10 @@
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, PanResponder, StyleSheet } from 'react-native';
+import { useState, useMemo, useRef } from 'react';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { CAT } from '@/constants/categories';
+import { Icon } from '@/components/ui/Icon';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import type { WeekDay, CatKey } from '@/types';
 
@@ -14,14 +15,13 @@ const MONTHS = [
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
 
-// Returns the WeekDay key for a given Date (Monday = index 0)
 function weekKey(date: Date): WeekDay {
   return WEEK_KEYS[(date.getDay() + 6) % 7];
 }
 
 function buildGrid(year: number, month: number): (Date | null)[] {
   const first   = new Date(year, month, 1);
-  const leading = (first.getDay() + 6) % 7; // empty cells before 1st
+  const leading = (first.getDay() + 6) % 7;
   const grid: (Date | null)[] = Array(leading).fill(null);
   const d = new Date(first);
   while (d.getMonth() === month) {
@@ -33,7 +33,7 @@ function buildGrid(year: number, month: number): (Date | null)[] {
 }
 
 export function MonthView() {
-  const now  = new Date();
+  const now = new Date();
   const [year,  setYear]  = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
 
@@ -59,13 +59,20 @@ export function MonthView() {
     else setMonth((m) => m + 1);
   };
 
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 15,
+      onPanResponderRelease: (_, { dx }) => {
+        if (dx > 50) prevMonth();
+        else if (dx < -50) nextMonth();
+      },
+    })
+  ).current;
+
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Month navigation header */}
+    <View style={styles.container} {...swipe.panHandlers}>
+      {/* Month navigation */}
       <View style={styles.nav}>
         <TouchableOpacity
           onPress={prevMonth}
@@ -73,7 +80,7 @@ export function MonthView() {
           accessibilityLabel="Mois précédent"
           accessibilityRole="button"
         >
-          <Text style={styles.navArrow}>‹</Text>
+          <Icon name="back" size={18} stroke={Colors.light.primary} />
         </TouchableOpacity>
         <Text style={styles.monthTitle}>{MONTHS[month]} {year}</Text>
         <TouchableOpacity
@@ -82,7 +89,7 @@ export function MonthView() {
           accessibilityLabel="Mois suivant"
           accessibilityRole="button"
         >
-          <Text style={styles.navArrow}>›</Text>
+          <Icon name="arrow" size={18} stroke={Colors.light.primary} />
         </TouchableOpacity>
       </View>
 
@@ -121,13 +128,16 @@ export function MonthView() {
           );
         })}
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll:    { flex: 1 },
-  container: { paddingHorizontal: Spacing.base, paddingTop: Spacing.sm, paddingBottom: 120 },
+  container: {
+    flex: 1,
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.xs,
+  },
 
   nav: {
     flexDirection: 'row',
@@ -139,15 +149,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.light.surface,
+    backgroundColor: Colors.light.primaryTint,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  navArrow: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: Colors.light.primary,
-    lineHeight: 26,
   },
   monthTitle: {
     fontSize: FontSize.lg,

@@ -1,9 +1,10 @@
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useMemo } from 'react';
+import { View, Text, TouchableOpacity, PanResponder, StyleSheet } from 'react-native';
+import { useState, useMemo, useRef } from 'react';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { CAT } from '@/constants/categories';
+import { Icon } from '@/components/ui/Icon';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { buildDefaultDay } from '@/lib/optimizer';
@@ -15,7 +16,6 @@ const WEEK_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const VIEW_START = 6;
 const VIEW_END   = 23;
 const VIEW_RANGE = VIEW_END - VIEW_START;
-const COL_H      = 240;
 
 const CAT_LEGEND: { key: 'sommeil' | 'travail' | 'activite' | 'repas'; label: string }[] = [
   { key: 'sommeil',  label: 'Sommeil'  },
@@ -24,15 +24,24 @@ const CAT_LEGEND: { key: 'sommeil' | 'travail' | 'activite' | 'repas'; label: st
   { key: 'repas',    label: 'Repas'    },
 ];
 
-function getMonday(): Date {
+function getWeekMonday(offset: number): Date {
   const today = new Date();
+  const dow = (today.getDay() + 6) % 7; // 0 = Monday
   const d = new Date(today);
-  d.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  d.setDate(today.getDate() - dow + offset * 7);
+  d.setHours(0, 0, 0, 0);
   return d;
 }
 
-function getTodayKey(): WeekDay {
-  return WEEK_ORDER[(new Date().getDay() + 6) % 7];
+function formatWeekRange(monday: Date): string {
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const sd = monday.getDate();
+  const ed = sunday.getDate();
+  const sm = monday.toLocaleDateString('fr-FR', { month: 'short' });
+  const em = sunday.toLocaleDateString('fr-FR', { month: 'short' });
+  if (monday.getMonth() === sunday.getMonth()) return `${sd} – ${ed} ${sm}`;
+  return `${sd} ${sm} – ${ed} ${em}`;
 }
 
 function parseTime(hhmm: string): number {
@@ -41,11 +50,14 @@ function parseTime(hhmm: string): number {
 }
 
 export function WeekView() {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [timelineH, setTimelineH]   = useState<number | undefined>(undefined);
+
   const { sleep, meals } = useUserStore();
   const activities = useScheduleStore((s) => s.activities);
 
-  const monday   = useMemo(getMonday, []);
-  const todayKey = getTodayKey();
+  const monday   = useMemo(() => getWeekMonday(weekOffset), [weekOffset]);
+  const todayStr = new Date().toDateString();
 
   const baseEvents = useMemo<TimelineEvent[]>(() => {
     if (!sleep.waketime || !sleep.bedtime || sleep.prepMinutes == null) return [];
@@ -64,16 +76,48 @@ export function WeekView() {
     [monday],
   );
 
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 15,
+      onPanResponderRelease: (_, { dx }) => {
+        if (dx > 50) setWeekOffset((o) => o - 1);
+        else if (dx < -50) setWeekOffset((o) => o + 1);
+      },
+    })
+  ).current;
+
+  const goPrev = () => setWeekOffset((o) => o - 1);
+  const goNext = () => setWeekOffset((o) => o + 1);
+
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={styles.container} {...swipe.panHandlers}>
+      {/* Week navigation header */}
+      <View style={styles.nav}>
+        <TouchableOpacity
+          onPress={goPrev}
+          style={styles.navBtn}
+          accessibilityLabel="Semaine précédente"
+          accessibilityRole="button"
+        >
+          <Icon name="back" size={18} stroke={Colors.light.primary} />
+        </TouchableOpacity>
+        <Text style={styles.weekLabel}>{formatWeekRange(monday)}</Text>
+        <TouchableOpacity
+          onPress={goNext}
+          style={styles.navBtn}
+          accessibilityLabel="Semaine suivante"
+          accessibilityRole="button"
+        >
+          <Icon name="arrow" size={18} stroke={Colors.light.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* 7-column mini-timeline grid */}
       <View style={styles.row}>
         {WEEK_ORDER.map((day, idx) => {
-          const date     = weekDates[idx];
-          const isToday  = day === todayKey;
+          const date    = weekDates[idx];
+          const isToday = date.toDateString() === todayStr;
 
           const dayActivities: TimelineEvent[] = activities
             .filter((a) => a.days.includes(day))
@@ -97,31 +141,39 @@ export function WeekView() {
                 </Text>
               </View>
 
-              <View style={styles.timeline}>
-                {dayEvents
-                  .filter((ev) => !ev.thin)
-                  .map((ev, i) => {
-                    const cs = Math.max(ev.start, VIEW_START);
-                    const ce = Math.min(ev.end, VIEW_END);
-                    if (ce <= cs) return null;
-                    const top    = ((cs - VIEW_START) / VIEW_RANGE) * COL_H;
-                    const height = Math.max(((ce - cs) / VIEW_RANGE) * COL_H, 3);
-                    return (
-                      <View
-                        key={i}
-                        style={[
-                          styles.block,
-                          { top, height, backgroundColor: CAT[ev.cat]?.bg ?? Colors.light.hairline },
-                        ]}
-                      />
-                    );
-                  })}
+              <View
+                style={styles.timeline}
+                onLayout={(e) => {
+                  const h = e.nativeEvent.layout.height;
+                  if (h > 0 && h !== timelineH) setTimelineH(h);
+                }}
+              >
+                {timelineH != null &&
+                  dayEvents
+                    .filter((ev) => !ev.thin)
+                    .map((ev, i) => {
+                      const cs = Math.max(ev.start, VIEW_START);
+                      const ce = Math.min(ev.end, VIEW_END);
+                      if (ce <= cs) return null;
+                      const top    = ((cs - VIEW_START) / VIEW_RANGE) * timelineH;
+                      const height = Math.max(((ce - cs) / VIEW_RANGE) * timelineH, 3);
+                      return (
+                        <View
+                          key={i}
+                          style={[
+                            styles.block,
+                            { top, height, backgroundColor: CAT[ev.cat]?.bg ?? Colors.light.hairline },
+                          ]}
+                        />
+                      );
+                    })}
               </View>
             </View>
           );
         })}
       </View>
 
+      {/* Legend */}
       <View style={styles.legend}>
         {CAT_LEGEND.map(({ key, label }) => (
           <View key={key} style={styles.legendItem}>
@@ -130,15 +182,41 @@ export function WeekView() {
           </View>
         ))}
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll:    { flex: 1 },
-  container: { paddingHorizontal: Spacing.base, paddingTop: Spacing.sm, paddingBottom: 120 },
+  container: {
+    flex: 1,
+    paddingHorizontal: Spacing.base,
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.base,
+  },
+
+  nav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
+  },
+  navBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.primaryTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekLabel: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.light.ink,
+    letterSpacing: -0.2,
+  },
 
   row: {
+    flex: 1,
     flexDirection: 'row',
     gap: 4,
   },
@@ -147,7 +225,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     borderRadius: Radius.input,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
     backgroundColor: 'transparent',
   },
   columnToday: {
@@ -155,7 +233,7 @@ const styles = StyleSheet.create({
   },
 
   dayLetter: {
-    fontSize: FontSize.xs,
+    fontSize: 10,
     fontWeight: '700',
     color: Colors.light.ink3,
     letterSpacing: 0.3,
@@ -165,19 +243,19 @@ const styles = StyleSheet.create({
   },
 
   dateBubble: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   dateBubbleToday: {
     backgroundColor: Colors.light.primary,
   },
   dateNum: {
-    fontSize: FontSize.xs,
+    fontSize: 10,
     fontWeight: '700',
     color: Colors.light.ink3,
   },
@@ -186,9 +264,8 @@ const styles = StyleSheet.create({
   },
 
   timeline: {
+    flex: 1,
     width: '100%',
-    height: COL_H,
-    position: 'relative',
     backgroundColor: Colors.light.surfaceSunk,
     borderRadius: Radius.sm,
     overflow: 'hidden',
@@ -205,7 +282,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.sm,
-    marginTop: Spacing.lg,
+    marginTop: Spacing.md,
     justifyContent: 'center',
   },
   legendItem: {
@@ -214,9 +291,9 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     borderWidth: 1.5,
   },
   legendLabel: {

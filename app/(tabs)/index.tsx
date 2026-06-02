@@ -1,6 +1,6 @@
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, PanResponder } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
@@ -21,6 +21,16 @@ import { getCyclePhase } from '@/lib/cycle';
 import type { TimelineEvent, WeekDay } from '@/types';
 
 const DAY_MAP: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function getDayTitle(offset: number): string {
+  if (offset === 0) return "Aujourd'hui";
+  if (offset === -1) return 'Hier';
+  if (offset === 1) return 'Demain';
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const label = d.toLocaleDateString('fr-FR', { weekday: 'long' });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
 
 const PROFILE_TARGET: Partial<Record<string, string>> = {
   sommeil: '/profile/sleep',
@@ -71,13 +81,31 @@ const PHASE_COLOR: Record<string, string> = {
 export default function TodayScreen() {
   const nowHour = new Date().getHours() + new Date().getMinutes() / 60;
 
+  const [dayOffset, setDayOffset] = useState(0);
+
   const { sleep, meals, work, cycle } = useUserStore();
   const activities  = useScheduleStore((s) => s.activities);
   const viewMode    = useScheduleStore((s) => s.viewMode);
   const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion, lastGeneratedAt } =
     useSuggestionsStore();
 
-  const todayKey = DAY_MAP[new Date().getDay()];
+  const selectedDate    = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + dayOffset);
+    return d;
+  }, [dayOffset]);
+  const selectedWeekDay = DAY_MAP[selectedDate.getDay()];
+
+  const swipe = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 20,
+      onPanResponderRelease: (_, { dx }) => {
+        if (dx > 50) setDayOffset((o) => o - 1);
+        else if (dx < -50) setDayOffset((o) => o + 1);
+      },
+    })
+  ).current;
 
   // Base day events derived directly from user profile
   const baseEvents = useMemo<TimelineEvent[]>(() => {
@@ -91,7 +119,7 @@ export default function TodayScreen() {
   // User-added activities scheduled for today (keep activityId for navigation)
   const activityEvents = useMemo<(TimelineEvent & { activityId: string })[]>(() => (
     activities
-      .filter((a) => a.days.includes(todayKey))
+      .filter((a) => a.days.includes(selectedWeekDay))
       .map((a) => ({
         cat:        a.cat,
         title:      a.title,
@@ -99,7 +127,7 @@ export default function TodayScreen() {
         end:        parseTime(a.endTime),
         activityId: a.id,
       }))
-  ), [activities, todayKey]);
+  ), [activities, selectedWeekDay]);
 
   // Merge and sort all events
   const events = useMemo<TimelineEvent[]>(
@@ -127,12 +155,31 @@ export default function TodayScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <View style={{ flex: 1 }} {...(viewMode === 'day' ? swipe.panHandlers : {})}>
       <View style={styles.header}>
         <View>
           <Text style={styles.dateLabel} accessibilityLabel="Date du jour">
-            {new Date().toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
+            {selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
-          <Text style={styles.title}>Aujourd'hui</Text>
+          <View style={styles.titleRow}>
+            <TouchableOpacity
+              onPress={() => setDayOffset((o) => o - 1)}
+              style={styles.navArrow}
+              accessibilityLabel="Jour précédent"
+              accessibilityRole="button"
+            >
+              <Icon name="back" size={16} stroke={Colors.light.primary} />
+            </TouchableOpacity>
+            <Text style={styles.title}>{getDayTitle(dayOffset)}</Text>
+            <TouchableOpacity
+              onPress={() => setDayOffset((o) => o + 1)}
+              style={styles.navArrow}
+              accessibilityLabel="Jour suivant"
+              accessibilityRole="button"
+            >
+              <Icon name="arrow" size={16} stroke={Colors.light.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.headerRight}>
           <View style={styles.badge}>
@@ -170,8 +217,8 @@ export default function TodayScreen() {
           showsVerticalScrollIndicator={false}
           contentOffset={{ x: 0, y: 6 * HH }}
         >
-          {/* Suggestions */}
-          {visibleSuggestions.length > 0 && (
+          {/* Suggestions — today only */}
+          {dayOffset === 0 && visibleSuggestions.length > 0 && (
             <View style={styles.suggestionsSection}>
               <Text style={styles.sectionLabel}>Suggestions pour toi</Text>
               {visibleSuggestions.map((s) => (
@@ -188,7 +235,7 @@ export default function TodayScreen() {
           {/* Timeline */}
           <View style={[styles.grid, { minHeight: 24 * HH }]}>
             <HourGrid hourHeight={HH} />
-            <NowIndicator nowHour={nowHour} hourHeight={HH} />
+            {dayOffset === 0 && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
             {events.map((ev, i) =>
               ev.thin
                 ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
@@ -197,6 +244,7 @@ export default function TodayScreen() {
           </View>
         </ScrollView>
       )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -205,7 +253,7 @@ const styles = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: Colors.light.background },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
@@ -216,12 +264,25 @@ const styles = StyleSheet.create({
     color: Colors.light.primaryStrong,
     letterSpacing: 0.3,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: 2,
+  },
+  navArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.primaryTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   title: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: '800',
     color: Colors.light.ink,
-    letterSpacing: -0.6,
-    marginTop: 2,
+    letterSpacing: -0.5,
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   chatBtn: {
