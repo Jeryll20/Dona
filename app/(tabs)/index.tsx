@@ -16,7 +16,14 @@ import { useScheduleStore } from '@/store/useScheduleStore';
 import { useSuggestionsStore } from '@/store/useSuggestionsStore';
 import { buildSuggestions } from '@/lib/optimizer';
 import { getCyclePhase } from '@/lib/cycle';
-import type { TimelineEvent } from '@/types';
+import type { TimelineEvent, WeekDay } from '@/types';
+
+const DAY_MAP: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function parseTime(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h + m / 60;
+}
 
 export const HH = 58;
 const LEFT_OFFSET = 52;
@@ -57,11 +64,30 @@ export default function TodayScreen() {
   const nowHour = new Date().getHours() + new Date().getMinutes() / 60;
 
   const { work, cycle } = useUserStore();
-  const todayEvents     = useScheduleStore((s) => s.todayEvents);
+  const todayEvents  = useScheduleStore((s) => s.todayEvents);
+  const activities   = useScheduleStore((s) => s.activities);
   const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion, lastGeneratedAt } =
     useSuggestionsStore();
 
-  const events = todayEvents.length > 0 ? todayEvents : DEFAULT_DAY;
+  const todayKey = DAY_MAP[new Date().getDay()];
+
+  // Convert today's user activities to TimelineEvents
+  const activityEvents = useMemo<TimelineEvent[]>(() => (
+    activities
+      .filter((a) => a.days.includes(todayKey))
+      .map((a) => ({
+        cat:   a.cat,
+        title: a.title,
+        start: parseTime(a.startTime),
+        end:   parseTime(a.endTime),
+      }))
+  ), [activities, todayKey]);
+
+  // Merge base events with user activities, sorted by start time
+  const events = useMemo<TimelineEvent[]>(() => {
+    const base = todayEvents.length > 0 ? todayEvents : DEFAULT_DAY;
+    return [...base, ...activityEvents].sort((a, b) => a.start - b.start);
+  }, [todayEvents, activityEvents]);
 
   const cyclePhase = useMemo(() => {
     if (!cycle.tracking || !cycle.lastPeriodDate) return undefined;

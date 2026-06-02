@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Suggestion } from '../types';
 
 interface SuggestionsState {
@@ -10,24 +12,32 @@ interface SuggestionsState {
   dismissSuggestion: (id: string) => void;
 }
 
-export const useSuggestionsStore = create<SuggestionsState>((set) => ({
-  suggestions: [],
-  lastGeneratedAt: undefined,
+export const useSuggestionsStore = create<SuggestionsState>()(
+  persist(
+    (set) => ({
+      suggestions: [],
+      lastGeneratedAt: undefined,
 
-  setSuggestions: (suggestions) =>
-    set({ suggestions, lastGeneratedAt: new Date().toISOString() }),
+      setSuggestions: (suggestions) =>
+        set({ suggestions, lastGeneratedAt: new Date().toISOString() }),
 
-  acceptSuggestion: (id) =>
-    set((s) => ({
-      suggestions: s.suggestions.map((sg) =>
-        sg.id === id ? { ...sg, accepted: true, dismissed: false } : sg
-      ),
-    })),
+      acceptSuggestion: (id) =>
+        set((s) => ({
+          suggestions: s.suggestions.map((sg) =>
+            sg.id === id ? { ...sg, accepted: true, dismissed: false } : sg
+          ),
+        })),
 
-  dismissSuggestion: (id) =>
-    set((s) => ({
-      suggestions: s.suggestions.map((sg) =>
-        sg.id === id ? { ...sg, dismissed: true, accepted: false } : sg
-      ),
-    })),
-}));
+      dismissSuggestion: (id) =>
+        set((s) => ({
+          suggestions: s.suggestions.map((sg) =>
+            sg.id === id ? { ...sg, dismissed: true, accepted: false } : sg
+          ),
+        })),
+    }),
+    {
+      name:    'dona-suggestions',
+      storage: createJSONStorage(() => AsyncStorage),
+    }
+  )
+);
