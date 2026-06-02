@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Icon } from '@/components/ui/Icon';
+import { Logo } from '@/components/ui/Logo';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -46,7 +47,7 @@ function Bubble({ message }: { message: Message }) {
     >
       {isBot && (
         <View style={styles.avatar}>
-          <Icon name="spark" size={14} stroke={Colors.light.primary} />
+          <Logo size={28} />
         </View>
       )}
       <View style={[styles.bubble, isBot ? styles.bubbleBot : styles.bubbleUser]}>
@@ -213,9 +214,7 @@ export default function ChatScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.headerAvatar}>
-            <Icon name="spark" size={18} stroke={Colors.light.primary} />
-          </View>
+          <Logo size={40} />
           <View>
             <Text style={styles.headerName}>Dona</Text>
             <Text style={styles.headerSub}>Assistante planning</Text>
@@ -298,12 +297,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.light.hairline,
     backgroundColor: Colors.light.surface,
   },
-  headerLeft:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  headerAvatar: {
-    width: 40, height: 40, borderRadius: Radius.pill,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   headerName: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink },
   headerSub:  { fontSize: FontSize.sm,   fontWeight: '500', color: Colors.light.ink3 },
   closeBtn: {
@@ -320,10 +314,8 @@ const styles = StyleSheet.create({
   bubbleRowUser: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
 
   avatar: {
-    width: 28, height: 28, borderRadius: Radius.pill,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center', justifyContent: 'center',
-    marginTop: 2, flexShrink: 0,
+    marginTop: 2,
+    flexShrink: 0,
   },
 
   bubble: {

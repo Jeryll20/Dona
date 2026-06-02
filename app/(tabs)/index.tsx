@@ -143,7 +143,7 @@ export default function TodayScreen() {
             accessibilityLabel="Ouvrir le chat Dona"
             accessibilityRole="button"
           >
-            <Icon name="spark" size={20} stroke={Colors.light.primary} />
+            <Icon name="chat" size={20} stroke={Colors.light.primary} />
           </TouchableOpacity>
         </View>
       </View>

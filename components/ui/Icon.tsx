@@ -4,7 +4,7 @@ import { Colors } from '@/constants/Colors';
 export type IconName =
   | 'today' | 'list' | 'profile' | 'arrow' | 'back' | 'plus' | 'check' | 'x'
   | 'chevdown' | 'chevright' | 'moon' | 'fork' | 'run' | 'car' | 'target'
-  | 'spark' | 'cycle' | 'clock' | 'edit' | 'calendar' | 'book' | 'palette';
+  | 'spark' | 'cycle' | 'clock' | 'edit' | 'calendar' | 'book' | 'palette' | 'chat';
 
 interface IconProps {
   name: IconName;
@@ -95,6 +95,7 @@ const ICONS: Record<IconName, React.ReactNode> = {
     </>
   ),
   spark: <Path d="M13 2L3 13h8l-2 9 10-11h-8l2-9z" />,
+  chat: <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
   cycle: (
     <>
       <Polyline points="23 4 23 10 17 10" />
