@@ -3,14 +3,18 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { TimelineEvent, UserActivity } from '../types';
 
+export type ViewMode = 'day' | 'week' | 'month';
+
 interface ScheduleState {
   todayEvents: TimelineEvent[];
   activities:  UserActivity[];
+  viewMode:    ViewMode;
 
   setTodayEvents:  (events: TimelineEvent[])               => void;
   addActivity:     (activity: UserActivity)                 => void;
   removeActivity:  (id: string)                            => void;
   updateActivity:  (id: string, patch: Partial<UserActivity>) => void;
+  setViewMode:     (mode: ViewMode)                        => void;
 }
 
 export const useScheduleStore = create<ScheduleState>()(
@@ -18,8 +22,10 @@ export const useScheduleStore = create<ScheduleState>()(
     (set) => ({
       todayEvents: [],
       activities:  [],
+      viewMode:    'day',
 
       setTodayEvents: (events) => set({ todayEvents: events }),
+      setViewMode:    (mode)   => set({ viewMode: mode }),
 
       addActivity: (activity) =>
         set((s) => ({ activities: [activity, ...s.activities] })),

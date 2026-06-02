@@ -10,6 +10,8 @@ import { HourGrid } from '@/components/timeline/HourGrid';
 import { NowIndicator } from '@/components/timeline/NowIndicator';
 import { TimelineBlock } from '@/components/timeline/TimelineBlock';
 import { ThinBlock } from '@/components/timeline/ThinBlock';
+import { WeekView } from '@/components/timeline/WeekView';
+import { MonthView } from '@/components/timeline/MonthView';
 import { SuggestionCard } from '@/components/suggestions/SuggestionCard';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
@@ -70,7 +72,8 @@ export default function TodayScreen() {
   const nowHour = new Date().getHours() + new Date().getMinutes() / 60;
 
   const { sleep, meals, work, cycle } = useUserStore();
-  const activities = useScheduleStore((s) => s.activities);
+  const activities  = useScheduleStore((s) => s.activities);
+  const viewMode    = useScheduleStore((s) => s.viewMode);
   const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion, lastGeneratedAt } =
     useSuggestionsStore();
 
@@ -158,38 +161,42 @@ export default function TodayScreen() {
         </View>
       )}
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        contentOffset={{ x: 0, y: 6 * HH }}
-      >
-        {/* Suggestions */}
-        {visibleSuggestions.length > 0 && (
-          <View style={styles.suggestionsSection}>
-            <Text style={styles.sectionLabel}>Suggestions pour toi</Text>
-            {visibleSuggestions.map((s) => (
-              <SuggestionCard
-                key={s.id}
-                suggestion={s}
-                onAccept={() => acceptSuggestion(s.id)}
-                onDismiss={() => dismissSuggestion(s.id)}
-              />
-            ))}
-          </View>
-        )}
-
-        {/* Timeline */}
-        <View style={[styles.grid, { minHeight: 24 * HH }]}>
-          <HourGrid hourHeight={HH} />
-          <NowIndicator nowHour={nowHour} hourHeight={HH} />
-          {events.map((ev, i) =>
-            ev.thin
-              ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
-              : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
+      {viewMode === 'week'  && <WeekView />}
+      {viewMode === 'month' && <MonthView />}
+      {viewMode === 'day'   && (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          contentOffset={{ x: 0, y: 6 * HH }}
+        >
+          {/* Suggestions */}
+          {visibleSuggestions.length > 0 && (
+            <View style={styles.suggestionsSection}>
+              <Text style={styles.sectionLabel}>Suggestions pour toi</Text>
+              {visibleSuggestions.map((s) => (
+                <SuggestionCard
+                  key={s.id}
+                  suggestion={s}
+                  onAccept={() => acceptSuggestion(s.id)}
+                  onDismiss={() => dismissSuggestion(s.id)}
+                />
+              ))}
+            </View>
           )}
-        </View>
-      </ScrollView>
+
+          {/* Timeline */}
+          <View style={[styles.grid, { minHeight: 24 * HH }]}>
+            <HourGrid hourHeight={HH} />
+            <NowIndicator nowHour={nowHour} hourHeight={HH} />
+            {events.map((ev, i) =>
+              ev.thin
+                ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
+                : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
+            )}
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
