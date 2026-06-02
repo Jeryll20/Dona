@@ -214,6 +214,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.block,
     overflow: 'hidden',
     marginTop: Spacing.xs,
+    alignItems: 'center',
     ...Shadow.sm,
   },
 
