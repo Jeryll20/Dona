@@ -112,14 +112,14 @@ function Wheel({ items, initial, onChange }: WheelProps) {
     () =>
       Animated.event(
         [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-        { useNativeDriver: true, listener: onScrollJS },
+        { useNativeDriver: false, listener: onScrollJS },
       ),
     [scrollY, onScrollJS],
   );
 
   return (
-    <Animated.ScrollView
-      ref={ref as React.RefObject<ScrollView>}
+    <ScrollView
+      ref={ref}
       style={styles.wheel}
       contentContainerStyle={{ paddingVertical: PAD }}
       contentOffset={{ x: 0, y: initial * ITEM_H }}
@@ -139,7 +139,7 @@ function Wheel({ items, initial, onChange }: WheelProps) {
           </Text>
         </Animated.View>
       ))}
-    </Animated.ScrollView>
+    </ScrollView>
   );
 }
 
