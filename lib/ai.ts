@@ -34,6 +34,23 @@ export async function sendChatMessage(
     body: { message, history, userContext },
   });
 
-  if (error) throw new Error(error.message ?? 'AI request failed');
+  if (error) {
+    let detail = error.message ?? 'AI request failed';
+    try {
+      const ctx = (error as any).context as Response | undefined;
+      if (ctx && typeof ctx.text === 'function') {
+        const body = await ctx.text();
+        console.error('[ai] function response body:', body);
+        const parsed = JSON.parse(body);
+        detail = parsed.error ?? body;
+      }
+    } catch {}
+    console.error('[ai] invoke error detail:', detail);
+    throw new Error(detail);
+  }
+  if (!data?.message) {
+    console.error('[ai] unexpected response:', data);
+    throw new Error('Empty AI response');
+  }
   return data as AiResponse;
 }

@@ -1,5 +1,3 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -32,12 +30,6 @@ interface RequestBody {
   userContext: UserContext;
 }
 
-interface AiResponse {
-  message:  string;
-  chips:    string[] | null;
-  navigate: string | null;
-}
-
 const GOAL_LABELS: Record<string, string> = {
   organise: 'mieux organisé·e',
   activite: 'ajouter une activité',
@@ -46,19 +38,14 @@ const GOAL_LABELS: Record<string, string> = {
 
 function buildSystemPrompt(ctx: UserContext): string {
   const lines: string[] = [];
+  if (ctx.firstName)      lines.push(`Prénom : ${ctx.firstName}`);
+  if (ctx.bedtime)        lines.push(`Sommeil : coucher ${ctx.bedtime}, réveil ${ctx.waketime}, préparation matin ${ctx.prepMinutes ?? 40} min`);
+  if (ctx.meals?.length)  lines.push(`Repas : ${ctx.meals.map((m) => `${m.label} à ${m.time}`).join(', ')}`);
+  if (ctx.activities)     lines.push(`Activités pratiquées : ${ctx.activities}`);
+  if (ctx.goal)           lines.push(`Objectif principal : ${GOAL_LABELS[ctx.goal] ?? ctx.goal}`);
+  if (ctx.cycleTracking)  lines.push('Suit son cycle menstruel');
 
-  if (ctx.firstName) lines.push(`Prénom : ${ctx.firstName}`);
-  if (ctx.bedtime)   lines.push(`Sommeil : coucher ${ctx.bedtime}, réveil ${ctx.waketime}, préparation matin ${ctx.prepMinutes ?? 40} min`);
-  if (ctx.meals?.length) {
-    lines.push(`Repas : ${ctx.meals.map((m) => `${m.label} à ${m.time}`).join(', ')}`);
-  }
-  if (ctx.activities) lines.push(`Activités pratiquées : ${ctx.activities}`);
-  if (ctx.goal)       lines.push(`Objectif principal : ${GOAL_LABELS[ctx.goal] ?? ctx.goal}`);
-  if (ctx.cycleTracking) lines.push('Suit son cycle menstruel');
-
-  const context = lines.length
-    ? `\n\nProfil de l'utilisateur :\n${lines.join('\n')}`
-    : '';
+  const context = lines.length ? `\n\nProfil de l'utilisateur :\n${lines.join('\n')}` : '';
 
   return `Tu es Dona, une assistante planning bienveillante, chaleureuse et personnelle.
 Tu réponds UNIQUEMENT en JSON valide (sans markdown, sans backticks) avec ce format :
@@ -84,29 +71,25 @@ Règles :
 - Ramène doucement à l'organisation du temps si la question est hors sujet`;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const apiKey = Deno.env.get('MISTRAL_API_KEY');
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'MISTRAL_API_KEY not set' }), {
+      console.error('MISTRAL_API_KEY is not set');
+      return new Response(JSON.stringify({ error: 'MISTRAL_API_KEY not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { message, history, userContext } = (await req.json()) as RequestBody;
+    const body = await req.json() as RequestBody;
+    const { message, history, userContext } = body;
+
+    console.log('Received message:', message);
 
     const systemPrompt = buildSystemPrompt(userContext);
 
@@ -131,25 +114,27 @@ serve(async (req) => {
       }),
     });
 
+    const rawText = await res.text();
+    console.log('Mistral status:', res.status, 'body:', rawText.slice(0, 200));
+
     if (!res.ok) {
-      const errText = await res.text();
-      return new Response(JSON.stringify({ error: errText }), {
-        status: res.status,
+      return new Response(JSON.stringify({ error: `Mistral error ${res.status}: ${rawText}` }), {
+        status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const data = await res.json();
+    const data = JSON.parse(rawText);
     const raw: string = data.choices[0].message.content;
 
-    let parsed: AiResponse;
+    let parsed: { message: string; chips?: string[] | null; navigate?: string | null };
     try {
       parsed = JSON.parse(raw);
     } catch {
       parsed = { message: raw, chips: null, navigate: null };
     }
 
-    if (!parsed.message) parsed.message = "Je n'ai pas pu générer une réponse. Réessaie.";
+    if (!parsed.message)               parsed.message  = "Je n'ai pas pu générer une réponse. Réessaie.";
     if (!Array.isArray(parsed.chips))  parsed.chips    = null;
     if (typeof parsed.navigate !== 'string') parsed.navigate = null;
 
@@ -157,6 +142,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
+    console.error('Edge function error:', err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

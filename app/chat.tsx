@@ -195,9 +195,11 @@ export default function ChatScreen() {
           router.push(res.navigate as any);
         }, 900);
       }
-    } catch {
+    } catch (err) {
       setLoading(false);
-      pushMessage('bot', ERROR_TEXT);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error('[chat] send error:', errMsg);
+      pushMessage('bot', `Erreur : ${errMsg}`);
       setChips([]);
     }
   }
