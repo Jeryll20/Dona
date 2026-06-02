@@ -39,7 +39,13 @@ export default function RegisterScreen() {
     setLoading(false);
 
     if (err) {
-      setError(err.message);
+      if (err.message.toLowerCase().includes('rate limit')) {
+        setError('Trop de tentatives. Attends quelques minutes avant de réessayer.');
+      } else if (err.message.toLowerCase().includes('already registered') || err.message.toLowerCase().includes('user already')) {
+        setError('Un compte existe déjà avec cet email.');
+      } else {
+        setError(err.message);
+      }
       return;
     }
 
