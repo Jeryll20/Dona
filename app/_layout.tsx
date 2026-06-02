@@ -14,6 +14,8 @@ import {
 import 'react-native-reanimated';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { supabase } from '@/lib/supabase';
 import { buildDefaultDay } from '@/lib/optimizer';
 import { scheduleAllNotifications } from '@/lib/notifications';
 
@@ -28,31 +30,55 @@ SplashScreen.preventAutoHideAsync();
 function useProtectedRoute() {
   const router   = useRouter();
   const segments = useSegments();
-  const isOnboarded  = useUserStore((s) => s.isOnboarded);
-  const sleep        = useUserStore((s) => s.sleep);
+
+  const isOnboarded    = useUserStore((s) => s.isOnboarded);
+  const sleep          = useUserStore((s) => s.sleep);
   const setTodayEvents = useScheduleStore((s) => s.setTodayEvents);
+  const { session, loading: authLoading, setSession } = useAuthStore();
 
-  const [hydrated, setHydrated] = useState(false);
+  const [storeHydrated, setStoreHydrated] = useState(false);
 
+  // Listen to Supabase auth state
   useEffect(() => {
-    const unsub = useUserStore.persist.onFinishHydration(() => setHydrated(true));
-    if (useUserStore.persist.hasHydrated()) setHydrated(true);
+    supabase.auth.getSession().then(({ data: { session: s } }) => setSession(s));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Wait for Zustand persistence hydration
+  useEffect(() => {
+    const unsub = useUserStore.persist.onFinishHydration(() => setStoreHydrated(true));
+    if (useUserStore.persist.hasHydrated()) setStoreHydrated(true);
     return unsub;
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (authLoading || !storeHydrated) return;
 
     const inAuth = segments[0] === '(auth)';
+    const inTabs = segments[0] === '(tabs)';
 
-    if (isOnboarded && inAuth) {
-      // Rebuild today's events from persisted profile
+    if (!session) {
+      // Not logged in → login screen
+      if (!inAuth || (segments[1] !== 'login' && segments[1] !== 'register')) {
+        router.replace('/(auth)/login' as any);
+      }
+      return;
+    }
+
+    if (!isOnboarded) {
+      // Logged in but not onboarded → welcome screen
+      if (!inAuth) router.replace('/(auth)/welcome');
+      return;
+    }
+
+    // Logged in + onboarded → home
+    if (!inTabs) {
       const events = (sleep.waketime && sleep.bedtime && sleep.prepMinutes != null)
         ? buildDefaultDay({ bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes })
         : [];
       if (events.length) setTodayEvents(events);
 
-      // Schedule notifications based on current profile
       const cycle = useUserStore.getState().cycle;
       scheduleAllNotifications({
         events,
@@ -62,10 +88,8 @@ function useProtectedRoute() {
       });
 
       router.replace('/(tabs)/' as any);
-    } else if (!isOnboarded && !inAuth) {
-      router.replace('/(auth)/welcome');
     }
-  }, [hydrated, isOnboarded, segments]);
+  }, [authLoading, storeHydrated, session, isOnboarded, segments]);
 }
 
 export default function RootLayout() {
