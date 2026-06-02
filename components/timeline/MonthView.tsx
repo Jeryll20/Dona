@@ -1,5 +1,5 @@
 import {
-  View, Text, TouchableOpacity, PanResponder,
+  View, Text, TouchableOpacity, Pressable, PanResponder,
   Animated, useWindowDimensions, StyleSheet,
 } from 'react-native';
 import { useState, useMemo, useRef } from 'react';
@@ -51,9 +51,10 @@ interface MonthPanelProps {
   activities: ReturnType<typeof useScheduleStore.getState>['activities'];
   todayStr: string;
   panelWidth: number;
+  onDayPress: (date: Date) => void;
 }
 
-function MonthPanel({ year, month, activities, todayStr, panelWidth }: MonthPanelProps) {
+function MonthPanel({ year, month, activities, todayStr, panelWidth, onDayPress }: MonthPanelProps) {
   const grid = useMemo(() => buildGrid(year, month), [year, month]);
 
   const catsForDate = (date: Date): CatKey[] => {
@@ -78,7 +79,13 @@ function MonthPanel({ year, month, activities, todayStr, panelWidth }: MonthPane
           const isToday = date.toDateString() === todayStr;
           const cats    = catsForDate(date).slice(0, 3);
           return (
-            <View key={i} style={styles.cell}>
+            <Pressable
+              key={i}
+              style={styles.cell}
+              onPress={() => onDayPress(date)}
+              accessibilityRole="button"
+              accessibilityLabel={date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            >
               <View style={[styles.numWrap, isToday && styles.numWrapToday]}>
                 <Text style={[styles.dayNum, isToday && styles.dayNumToday]}>
                   {date.getDate()}
@@ -91,7 +98,7 @@ function MonthPanel({ year, month, activities, todayStr, panelWidth }: MonthPane
                   ))}
                 </View>
               )}
-            </View>
+            </Pressable>
           );
         })}
       </View>
@@ -106,8 +113,18 @@ export function MonthView() {
   const [year,  setYear]  = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
 
-  const activities = useScheduleStore((s) => s.activities);
-  const todayStr   = now.toDateString();
+  const activities   = useScheduleStore((s) => s.activities);
+  const setViewMode  = useScheduleStore((s) => s.setViewMode);
+  const setDayOffset = useScheduleStore((s) => s.setDayOffset);
+  const todayStr     = now.toDateString();
+
+  const handleDayPress = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const offset = Math.round((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    setDayOffset(offset);
+    setViewMode('day');
+  };
 
   const { width } = useWindowDimensions();
   const widthRef  = useRef(width);
@@ -206,6 +223,7 @@ export function MonthView() {
               activities={activities}
               todayStr={todayStr}
               panelWidth={width}
+              onDayPress={handleDayPress}
             />
           ))}
         </Animated.View>

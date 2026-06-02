@@ -1,6 +1,6 @@
 import {
   View, Text, TouchableOpacity, PanResponder,
-  Animated, useWindowDimensions, StyleSheet,
+  Animated, useWindowDimensions, StyleSheet, Pressable,
 } from 'react-native';
 import { useState, useMemo, useRef } from 'react';
 import { Colors } from '@/constants/Colors';
@@ -61,11 +61,12 @@ interface WeekPanelProps {
   timelineH: number | undefined;
   onTimelineLayout: (h: number) => void;
   todayStr: string;
+  onDayPress: (date: Date) => void;
 }
 
 function WeekPanel({
   weekOffset, baseEvents, activities, panelWidth,
-  timelineH, onTimelineLayout, todayStr,
+  timelineH, onTimelineLayout, todayStr, onDayPress,
 }: WeekPanelProps) {
   const monday = useMemo(() => getWeekMonday(weekOffset), [weekOffset]);
   const weekDates = useMemo(
@@ -95,7 +96,13 @@ function WeekPanel({
         const dayEvents = [...baseEvents, ...dayActivities].sort((a, b) => a.start - b.start);
 
         return (
-          <View key={day} style={[styles.column, isToday && styles.columnToday]}>
+          <Pressable
+            key={day}
+            style={[styles.column, isToday && styles.columnToday]}
+            onPress={() => onDayPress(date)}
+            accessibilityRole="button"
+            accessibilityLabel={`Voir le ${date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`}
+          >
             <Text style={[styles.dayLetter, isToday && styles.dayLetterToday]}>
               {WEEK_LABELS[idx]}
             </Text>
@@ -128,7 +135,7 @@ function WeekPanel({
                     );
                   })}
             </View>
-          </View>
+          </Pressable>
         );
       })}
     </View>
@@ -142,7 +149,17 @@ export function WeekView() {
   const [timelineH, setTimelineH]   = useState<number | undefined>(undefined);
 
   const { sleep, meals } = useUserStore();
-  const activities = useScheduleStore((s) => s.activities);
+  const activities   = useScheduleStore((s) => s.activities);
+  const setViewMode  = useScheduleStore((s) => s.setViewMode);
+  const setDayOffset = useScheduleStore((s) => s.setDayOffset);
+
+  const handleDayPress = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const offset = Math.round((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    setDayOffset(offset);
+    setViewMode('day');
+  };
 
   const { width } = useWindowDimensions();
   const widthRef  = useRef(width);
@@ -245,6 +262,7 @@ export function WeekView() {
               timelineH={timelineH}
               onTimelineLayout={handleTimelineLayout}
               todayStr={todayStr}
+              onDayPress={handleDayPress}
             />
           ))}
         </Animated.View>

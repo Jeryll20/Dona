@@ -9,12 +9,14 @@ interface ScheduleState {
   todayEvents: TimelineEvent[];
   activities:  UserActivity[];
   viewMode:    ViewMode;
+  dayOffset:   number;
 
   setTodayEvents:  (events: TimelineEvent[])               => void;
   addActivity:     (activity: UserActivity)                 => void;
   removeActivity:  (id: string)                            => void;
   updateActivity:  (id: string, patch: Partial<UserActivity>) => void;
   setViewMode:     (mode: ViewMode)                        => void;
+  setDayOffset:    (offset: number)                        => void;
 }
 
 export const useScheduleStore = create<ScheduleState>()(
@@ -23,9 +25,11 @@ export const useScheduleStore = create<ScheduleState>()(
       todayEvents: [],
       activities:  [],
       viewMode:    'day',
+      dayOffset:   0,
 
-      setTodayEvents: (events) => set({ todayEvents: events }),
-      setViewMode:    (mode)   => set({ viewMode: mode }),
+      setTodayEvents: (events)  => set({ todayEvents: events }),
+      setViewMode:    (mode)    => set({ viewMode: mode }),
+      setDayOffset:   (offset)  => set({ dayOffset: offset }),
 
       addActivity: (activity) =>
         set((s) => ({ activities: [activity, ...s.activities] })),

@@ -3,7 +3,7 @@ import {
   PanResponder, Animated, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
@@ -156,8 +156,6 @@ const PHASE_COLOR: Record<string, string> = {
 export default function TodayScreen() {
   const nowHour = new Date().getHours() + new Date().getMinutes() / 60;
 
-  const [dayOffset, setDayOffset] = useState(0);
-
   const { width } = useWindowDimensions();
   const widthRef  = useRef(width);
   widthRef.current = width;
@@ -165,8 +163,10 @@ export default function TodayScreen() {
   const slideX = useRef(new Animated.Value(-width)).current;
 
   const { sleep, meals, work, cycle } = useUserStore();
-  const activities  = useScheduleStore((s) => s.activities);
-  const viewMode    = useScheduleStore((s) => s.viewMode);
+  const activities   = useScheduleStore((s) => s.activities);
+  const viewMode     = useScheduleStore((s) => s.viewMode);
+  const dayOffset    = useScheduleStore((s) => s.dayOffset);
+  const setDayOffset = useScheduleStore((s) => s.setDayOffset);
   const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion, lastGeneratedAt } =
     useSuggestionsStore();
 
@@ -272,6 +272,14 @@ export default function TodayScreen() {
   }, [events, work.role, cyclePhase]);
 
   const visibleSuggestions = suggestions.filter((s) => !s.accepted && !s.dismissed);
+
+  // Reset slideX when entering day view from week/month (stop any in-flight animation)
+  useEffect(() => {
+    if (viewMode === 'day') {
+      slideX.stopAnimation();
+      slideX.setValue(-width);
+    }
+  }, [viewMode]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
