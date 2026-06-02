@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useUserStore } from '@/store/useUserStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -59,6 +60,7 @@ const row = StyleSheet.create({
 
 export default function ProfileScreen() {
   const { sleep, meals, sport, work, cycle } = useUserStore();
+  const signOut = useAuthStore((s) => s.signOut);
 
   const goalKey = work.role ?? null;
   const goalLabel = goalKey ? GOAL_LABELS[goalKey] : null;
@@ -163,6 +165,17 @@ export default function ProfileScreen() {
             label="Confidentialité"
           />
         </View>
+
+        {/* Sign out */}
+        <TouchableOpacity
+          style={styles.signOutBtn}
+          onPress={signOut}
+          accessibilityRole="button"
+          accessibilityLabel="Se déconnecter"
+        >
+          <Ionicons name="log-out-outline" size={18} color="#DC2626" />
+          <Text style={styles.signOutText}>Se déconnecter</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -202,6 +215,15 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: Spacing.md,
   },
   group: { gap: Spacing.md },
+
+  signOutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: Spacing.sm, marginTop: Spacing.xl, marginBottom: Spacing.lg,
+    paddingVertical: Spacing.base,
+    backgroundColor: '#FEE2E2',
+    borderRadius: Radius.pill,
+  },
+  signOutText: { fontSize: FontSize.base, fontWeight: '700', color: '#DC2626' },
 
   tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   tag: {
