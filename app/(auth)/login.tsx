@@ -1,6 +1,6 @@
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -32,11 +32,7 @@ export default function LoginScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          contentContainerStyle={s.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={s.inner}>
           <View style={s.logoWrap}>
             <Logo size={56} />
             <Text style={s.appName}>Dona</Text>
@@ -108,15 +104,15 @@ export default function LoginScreen() {
               <Text style={s.footerLink}>Créer un compte</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe:    { flex: 1, backgroundColor: Colors.light.background },
-  scroll:  { flexGrow: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, paddingBottom: Spacing.xl },
+  safe:  { flex: 1, backgroundColor: Colors.light.background },
+  inner: { flex: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, paddingBottom: Spacing.xl },
 
   logoWrap: { alignItems: 'center', marginBottom: Spacing.xl, gap: Spacing.sm },
   appName:  { fontSize: 22, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.5 },
