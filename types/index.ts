@@ -29,6 +29,8 @@ export interface UserActivity {
   recurrence: Recurrence;
   color?: { bg: string; ink: string };
   notifyWeekEnd?: boolean;
+  location?: ActivityLocation;
+  trajetMinutesBefore?: number;
 }
 
 // ── Single-occurrence override ────────────────────────────────────────────────
@@ -58,6 +60,14 @@ export interface Suggestion {
   dismissed?: boolean;
 }
 
+// ── Location ──────────────────────────────────────────────────────────────────
+
+export interface ActivityLocation {
+  address: string;
+  lat: number;
+  lng: number;
+}
+
 // ── User profile ──────────────────────────────────────────────────────────────
 
 export interface UserProfile {
@@ -66,6 +76,7 @@ export interface UserProfile {
   dateOfBirth?: string;   // ISO date "YYYY-MM-DD"
   gender?:      string;   // 'homme' | 'femme' | free text (inclusivité)
   goal?:        string;   // onboarding goal key: 'organise' | 'activite' | 'routine'
+  homeLocation?: ActivityLocation;
 }
 
 export interface SleepSchedule {

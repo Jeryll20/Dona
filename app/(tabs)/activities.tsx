@@ -18,12 +18,14 @@ import { useState, useRef, useEffect } from 'react';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { TimeField } from '@/components/ui/TimeField';
+import { LocationPicker } from '@/components/ui/LocationPicker';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useUserStore } from '@/store/useUserStore';
+import { getTravelTime } from '@/lib/maps';
 import { Colors, COLOR_PALETTE } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
-import type { CatKey, UserActivity, WeekDay, Recurrence } from '@/types';
+import type { CatKey, UserActivity, WeekDay, Recurrence, ActivityLocation } from '@/types';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 type Step = 1 | 2 | 3;
@@ -155,7 +157,7 @@ const cS = StyleSheet.create({
 
 export default function ActivitiesScreen() {
   const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
-  const { setWork, setSport, setOtherActivity } = useUserStore();
+  const { setWork, setSport, setOtherActivity, profile } = useUserStore();
   const insets = useSafeAreaInsets();
 
   const { editId } = useLocalSearchParams<{ editId?: string }>();
@@ -171,6 +173,8 @@ export default function ActivitiesScreen() {
   const [recurrence,  setRecurrence]  = useState<Recurrence>('weekly');
   const [color,          setColor]          = useState<{ bg: string; ink: string } | undefined>(undefined);
   const [notifyWeekEnd,  setNotifyWeekEnd]  = useState(false);
+  const [location,       setLocation]       = useState<ActivityLocation | undefined>(undefined);
+  const [trajetMinutes,  setTrajetMinutes]  = useState<number | undefined>(undefined);
   const slideAnim    = useSharedValue(SHEET_HEIGHT);
   const sheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: slideAnim.value }],
@@ -195,6 +199,8 @@ export default function ActivitiesScreen() {
       setRecurrence(activity.recurrence);
       setColor(activity.color);
       setNotifyWeekEnd(activity.notifyWeekEnd ?? false);
+      setLocation(activity.location);
+      setTrajetMinutes(activity.trajetMinutesBefore);
       setStep(2); // Skip category step when editing
     } else {
       setEditingId(null);
@@ -204,6 +210,8 @@ export default function ActivitiesScreen() {
       setRecurrence('weekly');
       setColor(undefined);
       setNotifyWeekEnd(false);
+      setLocation(undefined);
+      setTrajetMinutes(undefined);
       setStep(1);
     }
     slideAnim.value = SHEET_HEIGHT;
@@ -236,6 +244,8 @@ export default function ActivitiesScreen() {
       recurrence,
       color,
       notifyWeekEnd: recurrence === 'none' ? notifyWeekEnd : undefined,
+      location,
+      trajetMinutesBefore: trajetMinutes,
     };
     if (editingId) {
       updateActivity(editingId, data);
@@ -246,6 +256,15 @@ export default function ActivitiesScreen() {
       addActivity({ id: Date.now().toString(), ...data });
     }
     closeSheet();
+  }
+
+  async function handleLocationChange(loc: ActivityLocation | undefined) {
+    setLocation(loc);
+    if (!loc) { setTrajetMinutes(undefined); return; }
+    const home = profile.homeLocation;
+    if (!home) return;
+    const result = await getTravelTime(home, loc);
+    if (result) setTrajetMinutes(result.durationMinutes);
   }
 
   const stepTitles: Record<Step, string> = {
@@ -422,6 +441,22 @@ export default function ActivitiesScreen() {
                       })}
                     </ScrollView>
                   </View>
+
+                  {(catKey === 'travail' || catKey === 'activite') && (
+                    <View style={s.fg}>
+                      <Text style={s.fieldLabel}>Lieu (optionnel)</Text>
+                      <LocationPicker value={location} onChange={handleLocationChange} />
+                      {trajetMinutes !== undefined && (
+                        <View style={s.trajetChip}>
+                          <Ionicons name="car-outline" size={13} color={Colors.light.transitInk} />
+                          <Text style={s.trajetText}>{trajetMinutes} min de trajet calculés depuis ton domicile</Text>
+                        </View>
+                      )}
+                      {location && trajetMinutes === undefined && !profile.homeLocation && (
+                        <Text style={s.trajetHint}>Ajoute ton adresse domicile dans Mon compte pour calculer le temps de trajet.</Text>
+                      )}
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -719,6 +754,15 @@ const s = StyleSheet.create({
   },
   notifyLabel: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primaryStrong },
   notifySub:   { fontSize: FontSize.xs,   fontWeight: '500', color: Colors.light.primary, marginTop: 2 },
+
+  // Trajet chip
+  trajetChip: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
+    backgroundColor: Colors.light.transitBg, borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md, paddingVertical: 6, alignSelf: 'flex-start',
+  },
+  trajetText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.light.transitInk },
+  trajetHint: { fontSize: FontSize.xs, color: Colors.light.ink3, fontStyle: 'italic', marginTop: 2 },
 
   // Color picker
   colorRow:      { flexDirection: 'row', gap: 10, paddingVertical: 4 },

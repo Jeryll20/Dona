@@ -9,9 +9,11 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { LocationPicker } from '@/components/ui/LocationPicker';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
+import type { ActivityLocation } from '@/types';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -28,6 +30,9 @@ export default function AccountScreen() {
     profile.dateOfBirth ? new Date(profile.dateOfBirth) : null,
   );
   const [showPicker,  setShowPicker]  = useState(false);
+  const [homeLocation, setHomeLocation] = useState<ActivityLocation | undefined>(
+    profile.homeLocation,
+  );
 
   const storedGender = profile.gender;
   const [genderKey,   setGenderKey]   = useState<'homme' | 'femme' | 'autre' | null>(
@@ -48,10 +53,11 @@ export default function AccountScreen() {
       : undefined;
 
     setProfile({
-      firstName:   firstName.trim(),
-      lastName:    lastName.trim() || undefined,
-      dateOfBirth: dateOfBirth ? dateOfBirth.toISOString().split('T')[0] : undefined,
+      firstName:    firstName.trim(),
+      lastName:     lastName.trim() || undefined,
+      dateOfBirth:  dateOfBirth ? dateOfBirth.toISOString().split('T')[0] : undefined,
       gender,
+      homeLocation: homeLocation ?? undefined,
     });
     router.back();
   }
@@ -190,6 +196,14 @@ export default function AccountScreen() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Domicile</Text>
+          <Text style={styles.hint}>
+            Utilisée pour calculer les temps de trajet vers tes activités.
+          </Text>
+          <LocationPicker value={homeLocation} onChange={setHomeLocation} placeholder="Adresse de ton domicile…" />
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionLabel}>Compte</Text>
           <View style={styles.emailRow}>
             <Ionicons name="mail-outline" size={18} color={Colors.light.ink3} />
@@ -243,6 +257,8 @@ const styles = StyleSheet.create({
     fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
     textTransform: 'uppercase', letterSpacing: 0.6,
   },
+
+  hint: { fontSize: FontSize.sm, fontWeight: '400', color: Colors.light.ink3, lineHeight: 19 },
 
   field: { gap: Spacing.xs },
   label: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.ink2 },

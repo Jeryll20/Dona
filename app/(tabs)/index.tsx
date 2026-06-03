@@ -107,23 +107,45 @@ function DayPanel({
     );
   }, [sleep, meals]);
 
-  const activityEvents = useMemo<(TimelineEvent & { activityId: string })[]>(() => {
+  const activityEvents = useMemo<(TimelineEvent & { activityId?: string })[]>(() => {
     const getOverride = (id: string) =>
       overrides.find((o) => o.activityId === id && o.date === dateStr);
-    return activities
-      .filter((a) => a.days.includes(weekDay))
-      .filter((a) => !getOverride(a.id)?.cancelled)
-      .map((a) => {
-        const ov = getOverride(a.id);
-        return {
-          cat:        a.cat,
-          title:      ov?.title      ?? a.title,
-          start:      parseTime(ov?.startTime ?? a.startTime),
-          end:        parseTime(ov?.endTime   ?? a.endTime),
-          activityId: a.id,
-          color:      ov?.color ?? a.color,
-        };
+
+    const result: (TimelineEvent & { activityId?: string })[] = [];
+
+    for (const a of activities) {
+      if (!a.days.includes(weekDay)) continue;
+      const ov = getOverride(a.id);
+      if (ov?.cancelled) continue;
+
+      const start = parseTime(ov?.startTime ?? a.startTime);
+      const end   = parseTime(ov?.endTime   ?? a.endTime);
+      const title = ov?.title ?? a.title;
+
+      // Auto-insert trajet block before the activity
+      if (a.trajetMinutesBefore && a.trajetMinutesBefore > 0) {
+        const trajetH = a.trajetMinutesBefore / 60;
+        result.push({
+          cat:   'trajet',
+          title: `Trajet → ${title}`,
+          start: Math.max(0, start - trajetH),
+          end:   start,
+          thin:  true,
+          dur:   `${a.trajetMinutesBefore} min`,
+        });
+      }
+
+      result.push({
+        cat:        a.cat,
+        title,
+        start,
+        end,
+        activityId: a.id,
+        color:      ov?.color ?? a.color,
       });
+    }
+
+    return result;
   }, [activities, overrides, weekDay, dateStr]);
 
   const events = useMemo<TimelineEvent[]>(
