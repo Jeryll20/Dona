@@ -9,6 +9,7 @@ import { DayPicker } from '@/components/onboarding/DayPicker';
 import { Sheet } from '@/components/ui/Sheet';
 import { TimeField } from '@/components/ui/TimeField';
 import { useUserStore } from '@/store/useUserStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -17,6 +18,7 @@ import type { WeekDay } from '@/types';
 export default function SportScreen() {
   const setSport = useUserStore((s) => s.setSport);
   const stored   = useUserStore((s) => s.sport);
+  const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
 
   const [activity,  setActivity]  = useState(stored.activity  ?? '');
   const [days,      setDays]      = useState<WeekDay[]>(stored.days ?? []);
@@ -38,11 +40,15 @@ export default function SportScreen() {
 
   function handleSave() {
     setSport({ active: true, interested: false, activity, days, startTime, endTime });
+    const data = { title: activity || 'Sport & Activité', cat: 'activite' as const, startTime, endTime, days, recurrence: 'weekly' as const };
+    if (activities.find((a) => a.id === '__sport__')) updateActivity('__sport__', data);
+    else addActivity({ id: '__sport__', ...data });
     router.back();
   }
 
   function handleDelete() {
     setSport({ active: false, interested: false, activity: undefined, days: undefined, startTime: undefined, endTime: undefined });
+    removeActivity('__sport__');
     router.back();
   }
 

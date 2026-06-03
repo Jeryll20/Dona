@@ -1,4 +1,4 @@
-import type { TimelineEvent, Suggestion, SuggestionCat, CyclePhase, MealEntry, WeekDay } from '@/types';
+import type { TimelineEvent, Suggestion, SuggestionCat, CyclePhase, MealEntry } from '@/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -204,10 +204,6 @@ function mealLabel(startH: number): string {
   return 'Dîner';
 }
 
-type WorkLike        = { employed?: boolean; role?: string; days?: WeekDay[]; startTime?: string; endTime?: string };
-type SportLike       = { active?: boolean; activity?: string; days?: WeekDay[]; startTime?: string; endTime?: string };
-type OtherLike       = { active?: boolean; title?: string; days?: WeekDay[]; startTime?: string; endTime?: string };
-
 function buildBase(
   sleep: { bedtime: string; waketime: string; prepMinutes: number },
   meals?: { entries?: MealEntry[]; times?: string[] },
@@ -237,39 +233,15 @@ function buildBase(
   return { events, wake, bed, prepEnd };
 }
 
-// Day-aware build — includes work/sport/other only on their scheduled weekdays
+// Build profile events for a day — sleep/prep/meals only
+// Work/sport/other now live in the schedule store as regular activities
 export function buildDayEvents(
-  weekDay: WeekDay,
   sleep: { bedtime: string; waketime: string; prepMinutes: number },
   meals?: { entries?: MealEntry[]; times?: string[] },
-  work?: WorkLike,
-  sport?: SportLike,
-  otherActivity?: OtherLike,
 ): TimelineEvent[] {
-  const { events } = buildBase(sleep, meals);
-
-  if (work?.employed && work.startTime && work.endTime && work.days?.includes(weekDay)) {
-    const s = toH(work.startTime);
-    const e = toH(work.endTime);
-    if (e > s) events.push({ cat: 'travail', title: work.role || 'Travail', start: s, end: e, profileKey: 'work' });
-  }
-
-  if (sport?.active && sport.startTime && sport.endTime && sport.days?.includes(weekDay)) {
-    const s = toH(sport.startTime);
-    const e = toH(sport.endTime);
-    if (e > s) events.push({ cat: 'activite', title: sport.activity || 'Sport', start: s, end: e, profileKey: 'sport' });
-  }
-
-  if (otherActivity?.active && otherActivity.startTime && otherActivity.endTime && otherActivity.days?.includes(weekDay)) {
-    const s = toH(otherActivity.startTime);
-    const e = toH(otherActivity.endTime);
-    if (e > s) events.push({ cat: 'activite', title: otherActivity.title || 'Activité', start: s, end: e, profileKey: 'other' });
-  }
-
-  return events.sort((a, b) => a.start - b.start);
+  return buildBase(sleep, meals).events.sort((a, b) => a.start - b.start);
 }
 
-// Day-agnostic build — sleep/prep/meals only (used by notifications & sleep.tsx)
 export function buildDefaultDay(
   sleep: { bedtime: string; waketime: string; prepMinutes: number },
   meals?: { entries?: MealEntry[]; times?: string[] },

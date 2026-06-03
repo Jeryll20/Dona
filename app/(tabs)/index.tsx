@@ -51,15 +51,21 @@ const PROFILE_TARGET: Partial<Record<string, string>> = {
   repas:   '/profile/meals',
 };
 
+const PROFILE_ACTIVITY_ROUTE: Record<string, string> = {
+  __work__:  '/profile/work',
+  __sport__: '/profile/sport',
+  __other__: '/profile/other',
+};
+
 function getEventPress(
   ev: TimelineEvent & { activityId?: string },
 ): (() => void) | undefined {
+  if (ev.activityId && PROFILE_ACTIVITY_ROUTE[ev.activityId]) {
+    return () => router.push(PROFILE_ACTIVITY_ROUTE[ev.activityId!] as any);
+  }
   if (ev.activityId) {
     return () => router.navigate({ pathname: '/(tabs)/activities', params: { editId: ev.activityId } } as any);
   }
-  if (ev.profileKey === 'work')  return () => router.push('/profile/work'  as any);
-  if (ev.profileKey === 'sport') return () => router.push('/profile/sport' as any);
-  if (ev.profileKey === 'other') return () => router.push('/profile/other' as any);
   const path = PROFILE_TARGET[ev.cat];
   return path ? () => router.push(path as any) : undefined;
 }
@@ -78,9 +84,6 @@ interface DayPanelProps {
   absOffset: number;
   sleep: ReturnType<typeof useUserStore.getState>['sleep'];
   meals: ReturnType<typeof useUserStore.getState>['meals'];
-  work: ReturnType<typeof useUserStore.getState>['work'];
-  sport: ReturnType<typeof useUserStore.getState>['sport'];
-  otherActivity: ReturnType<typeof useUserStore.getState>['otherActivity'];
   activities: UserActivity[];
   visibleSuggestions: Suggestion[];
   onAccept: (id: string) => void;
@@ -90,7 +93,7 @@ interface DayPanelProps {
 }
 
 function DayPanel({
-  absOffset, sleep, meals, work, sport, otherActivity,
+  absOffset, sleep, meals,
   activities, visibleSuggestions, onAccept, onDismiss, nowHour, panelWidth,
 }: DayPanelProps) {
   const d = new Date();
@@ -101,11 +104,10 @@ function DayPanel({
   const profileEvents = useMemo<TimelineEvent[]>(() => {
     if (!sleep.waketime || !sleep.bedtime || sleep.prepMinutes == null) return [];
     return buildDayEvents(
-      weekDay,
       { bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes },
-      meals, work, sport, otherActivity,
+      meals,
     );
-  }, [weekDay, sleep, meals, work, sport, otherActivity]);
+  }, [sleep, meals]);
 
   const activityEvents = useMemo<(TimelineEvent & { activityId: string })[]>(() => (
     activities
@@ -187,7 +189,7 @@ export default function TodayScreen() {
   const slideX      = useSharedValue(-width);
   const slideStartX = useRef(-width);
 
-  const { sleep, meals, work, sport, otherActivity, cycle, profile } = useUserStore();
+  const { sleep, meals, cycle, profile } = useUserStore();
   const activities   = useScheduleStore((s) => s.activities);
   const viewMode     = useScheduleStore((s) => s.viewMode);
   const setViewMode  = useScheduleStore((s) => s.setViewMode);
@@ -260,11 +262,10 @@ export default function TodayScreen() {
   const todayProfileEvents = useMemo<TimelineEvent[]>(() => {
     if (!sleep.waketime || !sleep.bedtime || sleep.prepMinutes == null) return [];
     return buildDayEvents(
-      selectedWeekDay,
       { bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes },
-      meals, work, sport, otherActivity,
+      meals,
     );
-  }, [selectedWeekDay, sleep, meals, work, sport, otherActivity]);
+  }, [sleep, meals]);
 
   const todayActivityEvents = useMemo(() => (
     activities
@@ -394,9 +395,6 @@ export default function TodayScreen() {
                 absOffset={off}
                 sleep={sleep}
                 meals={meals}
-                work={work}
-                sport={sport}
-                otherActivity={otherActivity}
                 activities={activities}
                 visibleSuggestions={visibleSuggestions}
                 onAccept={acceptSuggestion}

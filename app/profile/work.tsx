@@ -9,6 +9,7 @@ import { DayPicker } from '@/components/onboarding/DayPicker';
 import { Sheet } from '@/components/ui/Sheet';
 import { TimeField } from '@/components/ui/TimeField';
 import { useUserStore } from '@/store/useUserStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -17,6 +18,7 @@ import type { WeekDay } from '@/types';
 export default function WorkScreen() {
   const setWork = useUserStore((s) => s.setWork);
   const stored  = useUserStore((s) => s.work);
+  const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
 
   const [role,      setRole]      = useState(stored.role      ?? '');
   const [days,      setDays]      = useState<WeekDay[]>(stored.days ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
@@ -38,11 +40,15 @@ export default function WorkScreen() {
 
   function handleSave() {
     setWork({ employed: true, role, days, startTime, endTime });
+    const data = { title: role || 'Emploi', cat: 'travail' as const, startTime, endTime, days, recurrence: 'weekly' as const };
+    if (activities.find((a) => a.id === '__work__')) updateActivity('__work__', data);
+    else addActivity({ id: '__work__', ...data });
     router.back();
   }
 
   function handleDelete() {
     setWork({ employed: false, role: undefined, days: undefined, startTime: undefined, endTime: undefined });
+    removeActivity('__work__');
     router.back();
   }
 

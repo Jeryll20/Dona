@@ -9,6 +9,7 @@ import { DayPicker } from '@/components/onboarding/DayPicker';
 import { Sheet } from '@/components/ui/Sheet';
 import { TimeField } from '@/components/ui/TimeField';
 import { useUserStore } from '@/store/useUserStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -17,6 +18,7 @@ import type { WeekDay } from '@/types';
 export default function OtherScreen() {
   const setOtherActivity = useUserStore((s) => s.setOtherActivity);
   const stored           = useUserStore((s) => s.otherActivity);
+  const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
 
   const [title,     setTitle]     = useState(stored.title     ?? '');
   const [days,      setDays]      = useState<WeekDay[]>(stored.days ?? []);
@@ -38,11 +40,15 @@ export default function OtherScreen() {
 
   function handleSave() {
     setOtherActivity({ active: true, interested: false, title, days, startTime, endTime });
+    const data = { title: title || 'Autre activité', cat: 'activite' as const, startTime, endTime, days, recurrence: 'weekly' as const };
+    if (activities.find((a) => a.id === '__other__')) updateActivity('__other__', data);
+    else addActivity({ id: '__other__', ...data });
     router.back();
   }
 
   function handleDelete() {
     setOtherActivity({ active: false, interested: false, title: undefined, days: undefined, startTime: undefined, endTime: undefined });
+    removeActivity('__other__');
     router.back();
   }
 

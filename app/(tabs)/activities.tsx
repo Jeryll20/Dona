@@ -146,21 +146,33 @@ const cS = StyleSheet.create({
 
 // ── Main Screen ───────────────────────────────────────────────────
 
+const PROFILE_ROUTES: Record<string, string> = {
+  __work__:  '/profile/work',
+  __sport__: '/profile/sport',
+  __other__: '/profile/other',
+};
+
 export default function ActivitiesScreen() {
   const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
-  const { work, sport, otherActivity } = useUserStore();
+  const { setWork, setSport, setOtherActivity } = useUserStore();
   const insets = useSafeAreaInsets();
 
-  const profileCards: (ActivityCardData & { route: string })[] = [];
-  if (work.employed && work.startTime && work.endTime) {
-    profileCards.push({ id: '__work__', title: work.role || 'Emploi', cat: 'travail', startTime: work.startTime, endTime: work.endTime, days: work.days ?? [], route: '/profile/work' });
-  }
-  if (sport.active && sport.startTime && sport.endTime) {
-    profileCards.push({ id: '__sport__', title: sport.activity || 'Sport & Activité', cat: 'activite', startTime: sport.startTime, endTime: sport.endTime, days: sport.days ?? [], route: '/profile/sport' });
-  }
-  if (otherActivity.active && otherActivity.startTime && otherActivity.endTime) {
-    profileCards.push({ id: '__other__', title: otherActivity.title || 'Autre activité', cat: 'activite', startTime: otherActivity.startTime, endTime: otherActivity.endTime, days: otherActivity.days ?? [], route: '/profile/other' });
-  }
+  // Migrate profile store → schedule store on first mount
+  useEffect(() => {
+    const acts = useScheduleStore.getState().activities;
+    const w    = useUserStore.getState().work;
+    const s    = useUserStore.getState().sport;
+    const o    = useUserStore.getState().otherActivity;
+    if (w.employed && w.startTime && w.endTime && !acts.find((a) => a.id === '__work__')) {
+      useScheduleStore.getState().addActivity({ id: '__work__', title: w.role || 'Emploi', cat: 'travail', startTime: w.startTime!, endTime: w.endTime!, days: w.days ?? [], recurrence: 'weekly' });
+    }
+    if (s.active && s.startTime && s.endTime && !acts.find((a) => a.id === '__sport__')) {
+      useScheduleStore.getState().addActivity({ id: '__sport__', title: s.activity || 'Sport & Activité', cat: 'activite', startTime: s.startTime!, endTime: s.endTime!, days: s.days ?? [], recurrence: 'weekly' });
+    }
+    if (o.active && o.startTime && o.endTime && !acts.find((a) => a.id === '__other__')) {
+      useScheduleStore.getState().addActivity({ id: '__other__', title: o.title || 'Autre activité', cat: 'activite', startTime: o.startTime!, endTime: o.endTime!, days: o.days ?? [], recurrence: 'weekly' });
+    }
+  }, []);
 
   const { editId } = useLocalSearchParams<{ editId?: string }>();
 
@@ -178,12 +190,16 @@ export default function ActivitiesScreen() {
     transform: [{ translateY: slideAnim.value }],
   }));
 
-  // Open edit sheet when arriving from timeline tap
+  // Open edit sheet (or navigate to profile screen) when arriving from timeline tap
   useEffect(() => {
     if (!editId) return;
+    router.setParams({ editId: undefined });
+    if (PROFILE_ROUTES[editId]) {
+      router.push(PROFILE_ROUTES[editId] as any);
+      return;
+    }
     const activity = activities.find((a) => a.id === editId);
     if (activity) openSheet(activity);
-    router.setParams({ editId: undefined });
   }, [editId]);
 
   function openSheet(activity?: UserActivity) {
@@ -273,43 +289,7 @@ export default function ActivitiesScreen() {
         contentContainerStyle={[s.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile-sourced cards */}
-        {profileCards.length > 0 && (
-          <>
-            <Text style={s.sectionLabel}>Profil</Text>
-            <View style={s.list}>
-              {profileCards.map((card) => (
-                <ActivityCard
-                  key={card.id}
-                  activity={card}
-                  onEdit={() => router.push(card.route as any)}
-                />
-              ))}
-            </View>
-          </>
-        )}
-
-        {/* User-added activities */}
-        {activities.length > 0 && (
-          <>
-            <Text style={[s.sectionLabel, { marginTop: profileCards.length > 0 ? Spacing.xl : 0 }]}>
-              Mes activités
-            </Text>
-            <View style={s.list}>
-              {activities.map((act) => (
-                <ActivityCard
-                  key={act.id}
-                  activity={act}
-                  onEdit={() => openSheet(act)}
-                  onDelete={() => removeActivity(act.id)}
-                />
-              ))}
-            </View>
-          </>
-        )}
-
-        {/* Empty state — no profile cards and no user activities */}
-        {profileCards.length === 0 && activities.length === 0 && (
+        {activities.length === 0 ? (
           <View style={s.empty}>
             <View style={s.emptyIcon}>
               <Ionicons name="calendar-outline" size={34} color={Colors.light.ink3} />
@@ -318,6 +298,25 @@ export default function ActivitiesScreen() {
             <Text style={s.emptySub}>
               Ajoute tes activités récurrentes pour les voir apparaître dans ton planning.
             </Text>
+          </View>
+        ) : (
+          <View style={s.list}>
+            {activities.map((act) => (
+              <ActivityCard
+                key={act.id}
+                activity={act}
+                onEdit={() => {
+                  if (PROFILE_ROUTES[act.id]) router.push(PROFILE_ROUTES[act.id] as any);
+                  else openSheet(act);
+                }}
+                onDelete={() => {
+                  removeActivity(act.id);
+                  if (act.id === '__work__')  setWork({ employed: false, role: undefined, days: undefined, startTime: undefined, endTime: undefined });
+                  if (act.id === '__sport__') setSport({ active: false, interested: false, activity: undefined, days: undefined, startTime: undefined, endTime: undefined });
+                  if (act.id === '__other__') setOtherActivity({ active: false, interested: false, title: undefined, days: undefined, startTime: undefined, endTime: undefined });
+                }}
+              />
+            ))}
           </View>
         )}
       </ScrollView>
@@ -515,11 +514,6 @@ const s = StyleSheet.create({
   scroll: { flex: 1 },
   listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },
   list: { gap: Spacing.md },
-
-  sectionLabel: {
-    fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
-    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: Spacing.md,
-  },
 
   empty: { alignItems: 'center', marginTop: 72, paddingHorizontal: Spacing.xl, gap: Spacing.md },
   emptyIcon: {
