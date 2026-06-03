@@ -3,11 +3,13 @@ import { router } from 'expo-router';
 import OnboardingShell from '@/components/onboarding/OnboardingShell';
 import { ActivityBlock, type ActivityStatus } from '@/components/onboarding/ActivityBlock';
 import { useUserStore } from '@/store/useUserStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import type { WeekDay } from '@/types';
 
 export default function Q5Sport() {
   const setSport = useUserStore((s) => s.setSport);
   const stored   = useUserStore((s) => s.sport);
+  const { activities, addActivity, updateActivity } = useScheduleStore();
 
   const [status, setStatus] = useState<ActivityStatus>(
     stored.active ? 'yes' : stored.interested ? 'interested' : stored.active === false ? 'no' : null,
@@ -26,6 +28,11 @@ export default function Q5Sport() {
       startTime:  status === 'yes' ? startTime : undefined,
       endTime:    status === 'yes' ? endTime : undefined,
     });
+    if (status === 'yes' && startTime && endTime) {
+      const data = { title: activity || 'Sport & Activité', cat: 'activite' as const, startTime, endTime, days, recurrence: 'weekly' as const };
+      if (activities.find((a) => a.id === '__sport__')) updateActivity('__sport__', data);
+      else addActivity({ id: '__sport__', ...data });
+    }
     router.push('/(auth)/onboarding/q7-work');
   }
 

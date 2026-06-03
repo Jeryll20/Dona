@@ -3,11 +3,13 @@ import { router } from 'expo-router';
 import OnboardingShell from '@/components/onboarding/OnboardingShell';
 import { ActivityBlock, type ActivityStatus } from '@/components/onboarding/ActivityBlock';
 import { useUserStore } from '@/store/useUserStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import type { WeekDay } from '@/types';
 
 export default function Q8Other() {
   const setOtherActivity = useUserStore((s) => s.setOtherActivity);
   const stored           = useUserStore((s) => s.otherActivity);
+  const { activities, addActivity, updateActivity } = useScheduleStore();
 
   const [status, setStatus] = useState<ActivityStatus>(
     stored.active ? 'yes' : stored.interested ? 'interested' : stored.active === false ? 'no' : null,
@@ -26,6 +28,11 @@ export default function Q8Other() {
       startTime:  status === 'yes' ? startTime : undefined,
       endTime:    status === 'yes' ? endTime : undefined,
     });
+    if (status === 'yes' && startTime && endTime) {
+      const data = { title: title || 'Autre activité', cat: 'activite' as const, startTime, endTime, days, recurrence: 'weekly' as const };
+      if (activities.find((a) => a.id === '__other__')) updateActivity('__other__', data);
+      else addActivity({ id: '__other__', ...data });
+    }
     router.push('/(auth)/onboarding/q9-cycle');
   }
 

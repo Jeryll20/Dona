@@ -151,23 +151,6 @@ export default function ActivitiesScreen() {
   const { setWork, setSport, setOtherActivity } = useUserStore();
   const insets = useSafeAreaInsets();
 
-  // Migrate profile store → schedule store on first mount
-  useEffect(() => {
-    const acts = useScheduleStore.getState().activities;
-    const w    = useUserStore.getState().work;
-    const s    = useUserStore.getState().sport;
-    const o    = useUserStore.getState().otherActivity;
-    if (w.employed && w.startTime && w.endTime && !acts.find((a) => a.id === '__work__')) {
-      useScheduleStore.getState().addActivity({ id: '__work__', title: w.role || 'Emploi', cat: 'travail', startTime: w.startTime!, endTime: w.endTime!, days: w.days ?? [], recurrence: 'weekly' });
-    }
-    if (s.active && s.startTime && s.endTime && !acts.find((a) => a.id === '__sport__')) {
-      useScheduleStore.getState().addActivity({ id: '__sport__', title: s.activity || 'Sport & Activité', cat: 'activite', startTime: s.startTime!, endTime: s.endTime!, days: s.days ?? [], recurrence: 'weekly' });
-    }
-    if (o.active && o.startTime && o.endTime && !acts.find((a) => a.id === '__other__')) {
-      useScheduleStore.getState().addActivity({ id: '__other__', title: o.title || 'Autre activité', cat: 'activite', startTime: o.startTime!, endTime: o.endTime!, days: o.days ?? [], recurrence: 'weekly' });
-    }
-  }, []);
-
   const { editId } = useLocalSearchParams<{ editId?: string }>();
 
   const [sheetOpen,   setSheetOpen]   = useState(false);
