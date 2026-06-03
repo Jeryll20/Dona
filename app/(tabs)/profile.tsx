@@ -118,8 +118,21 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={16} color={Colors.light.ink3} />
         </TouchableOpacity>
 
+        {/* Stats */}
+        <Text style={styles.sectionLabel}>Aperçu</Text>
+        <View style={styles.group}>
+          <SettingsRow
+            icon="bar-chart-outline"
+            iconBg={Colors.light.primaryTint}
+            iconInk={Colors.light.primary}
+            label="Statistiques & suivi"
+            value="Sommeil, activités, répartition"
+            onPress={() => router.push('/profile/stats')}
+          />
+        </View>
+
         {/* Settings */}
-        <Text style={styles.sectionLabel}>Mes paramètres</Text>
+        <Text style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Mes paramètres</Text>
         <View style={styles.group}>
           <SettingsRow
             icon="moon-outline"
