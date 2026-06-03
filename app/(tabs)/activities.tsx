@@ -9,6 +9,7 @@ import {
   TextInput,
   Keyboard,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS,
@@ -175,6 +176,8 @@ export default function ActivitiesScreen() {
   const [notifyWeekEnd,  setNotifyWeekEnd]  = useState(false);
   const [location,       setLocation]       = useState<ActivityLocation | undefined>(undefined);
   const [trajetMinutes,  setTrajetMinutes]  = useState<number | undefined>(undefined);
+  const [trajetLoading,  setTrajetLoading]  = useState(false);
+  const [trajetError,    setTrajetError]    = useState(false);
   const slideAnim    = useSharedValue(SHEET_HEIGHT);
   const sheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: slideAnim.value }],
@@ -211,6 +214,8 @@ export default function ActivitiesScreen() {
       setNotifyWeekEnd(activity.notifyWeekEnd ?? false);
       setLocation(activity.location);
       setTrajetMinutes(activity.trajetMinutesBefore);
+      setTrajetLoading(false);
+      setTrajetError(false);
       setStep(2); // Skip category step when editing
     } else {
       setEditingId(null);
@@ -222,6 +227,8 @@ export default function ActivitiesScreen() {
       setNotifyWeekEnd(false);
       setLocation(undefined);
       setTrajetMinutes(undefined);
+      setTrajetLoading(false);
+      setTrajetError(false);
       setStep(1);
     }
     slideAnim.value = SHEET_HEIGHT;
@@ -270,11 +277,22 @@ export default function ActivitiesScreen() {
 
   async function handleLocationChange(loc: ActivityLocation | undefined) {
     setLocation(loc);
-    if (!loc) { setTrajetMinutes(undefined); return; }
+    setTrajetMinutes(undefined);
+    setTrajetError(false);
+    if (!loc) return;
     const home = profile.homeLocation;
-    if (!home) return;
+    // Guard: home missing or entered manually (no real coords)
+    if (!home || (home.lat === 0 && home.lng === 0)) return;
+    // Guard: activity location entered manually (no real coords)
+    if (loc.lat === 0 && loc.lng === 0) return;
+    setTrajetLoading(true);
     const result = await getTravelTime(home, loc);
-    if (result) setTrajetMinutes(result.durationMinutes);
+    setTrajetLoading(false);
+    if (result) {
+      setTrajetMinutes(result.durationMinutes);
+    } else {
+      setTrajetError(true);
+    }
   }
 
   const stepTitles: Record<Step, string> = {
@@ -457,14 +475,29 @@ export default function ActivitiesScreen() {
                     <View style={s.fg}>
                       <Text style={s.fieldLabel}>Lieu (optionnel)</Text>
                       <LocationPicker value={location} onChange={handleLocationChange} />
-                      {trajetMinutes !== undefined && (
+                      {trajetLoading && (
+                        <View style={s.trajetChip}>
+                          <ActivityIndicator size="small" color={Colors.light.transitInk} />
+                          <Text style={s.trajetText}>Calcul du trajet…</Text>
+                        </View>
+                      )}
+                      {!trajetLoading && trajetMinutes !== undefined && (
                         <View style={s.trajetChip}>
                           <Ionicons name="car-outline" size={13} color={Colors.light.transitInk} />
                           <Text style={s.trajetText}>{trajetMinutes} min de trajet calculés depuis ton domicile</Text>
                         </View>
                       )}
-                      {location && trajetMinutes === undefined && !profile.homeLocation && (
-                        <Text style={s.trajetHint}>Ajoute ton adresse domicile dans Mon compte pour calculer le temps de trajet.</Text>
+                      {!trajetLoading && trajetError && (
+                        <Text style={s.trajetHint}>Temps de trajet non disponible — le trajet ne sera pas ajouté automatiquement.</Text>
+                      )}
+                      {!trajetLoading && !trajetError && location && trajetMinutes === undefined && (
+                        <Text style={s.trajetHint}>
+                          {!profile.homeLocation || (profile.homeLocation.lat === 0 && profile.homeLocation.lng === 0)
+                            ? 'Ajoute une adresse domicile géolocalisée dans Mon compte pour calculer le trajet.'
+                            : location.lat === 0 && location.lng === 0
+                            ? 'Adresse saisie manuellement — temps de trajet non calculable.'
+                            : null}
+                        </Text>
                       )}
                     </View>
                   )}
