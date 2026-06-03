@@ -13,8 +13,9 @@ interface ThinBlockProps {
 
 export function ThinBlock({ event, hourHeight, leftOffset, onPress }: ThinBlockProps) {
   const c = CAT[event.cat];
-  const top    = event.start * hourHeight;
   const height = Math.max((event.end - event.start) * hourHeight, 16);
+  // Align bottom of thin block to event.end so it always sits just above the activity block
+  const top    = event.end * hourHeight - height;
 
   return (
     <TouchableOpacity
