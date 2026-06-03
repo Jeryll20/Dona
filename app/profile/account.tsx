@@ -29,11 +29,29 @@ export default function AccountScreen() {
   );
   const [showPicker,  setShowPicker]  = useState(false);
 
+  const storedGender = profile.gender;
+  const [genderKey,   setGenderKey]   = useState<'homme' | 'femme' | 'autre' | null>(
+    storedGender === 'homme' ? 'homme'
+    : storedGender === 'femme' ? 'femme'
+    : storedGender ? 'autre'
+    : null,
+  );
+  const [genderOther, setGenderOther] = useState(
+    storedGender && storedGender !== 'homme' && storedGender !== 'femme' ? storedGender : '',
+  );
+
   function handleSave() {
+    const gender =
+      genderKey === 'homme' ? 'homme'
+      : genderKey === 'femme' ? 'femme'
+      : genderKey === 'autre' ? (genderOther.trim() || 'autre')
+      : undefined;
+
     setProfile({
       firstName:   firstName.trim(),
       lastName:    lastName.trim() || undefined,
       dateOfBirth: dateOfBirth ? dateOfBirth.toISOString().split('T')[0] : undefined,
+      gender,
     });
     router.back();
   }
@@ -97,6 +115,39 @@ export default function AccountScreen() {
               accessibilityLabel="Nom de famille"
             />
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Sexe</Text>
+          <View style={styles.genderRow}>
+            {(['homme', 'femme', 'autre'] as const).map((key) => {
+              const labels = { homme: 'Homme', femme: 'Femme', autre: 'Autre' };
+              const on = genderKey === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.genderPill, on && styles.genderPillOn]}
+                  onPress={() => setGenderKey(key)}
+                  accessibilityLabel={labels[key]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                >
+                  <Text style={[styles.genderText, on && styles.genderTextOn]}>{labels[key]}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {genderKey === 'autre' && (
+            <TextInput
+              style={styles.input}
+              value={genderOther}
+              onChangeText={setGenderOther}
+              placeholder="Précise si tu le souhaites…"
+              placeholderTextColor={Colors.light.ink3}
+              returnKeyType="done"
+              accessibilityLabel="Préciser le genre"
+            />
+          )}
         </View>
 
         <View style={styles.section}>
@@ -233,6 +284,17 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   readonlyText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.light.ink3 },
+
+  genderRow:    { flexDirection: 'row', gap: Spacing.sm },
+  genderPill: {
+    flex: 1, paddingVertical: Spacing.base,
+    backgroundColor: Colors.light.surface, borderRadius: Radius.input,
+    borderWidth: 1.5, borderColor: Colors.light.hairline,
+    alignItems: 'center', justifyContent: 'center', ...Shadow.sm,
+  },
+  genderPillOn:  { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
+  genderText:    { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink2 },
+  genderTextOn:  { color: Colors.light.primaryStrong, fontWeight: '700' },
 
   saveBtn: {
     backgroundColor: Colors.light.primary, borderRadius: Radius.pill,
