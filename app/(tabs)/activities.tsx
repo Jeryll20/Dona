@@ -18,6 +18,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { TimeField } from '@/components/ui/TimeField';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useUserStore } from '@/store/useUserStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -137,7 +138,20 @@ const cS = StyleSheet.create({
 
 export default function ActivitiesScreen() {
   const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
+  const { work, sport, otherActivity } = useUserStore();
   const insets = useSafeAreaInsets();
+
+  const workValue = work.employed
+    ? `${work.role ? work.role + ' · ' : ''}${work.startTime} → ${work.endTime}`
+    : work.interested ? "J'aimerais bien" : undefined;
+
+  const sportValue = sport.active
+    ? `${sport.activity ? sport.activity + ' · ' : ''}${sport.startTime} → ${sport.endTime}`
+    : sport.interested ? "J'aimerais bien" : undefined;
+
+  const otherValue = otherActivity.active
+    ? `${otherActivity.title ? otherActivity.title + ' · ' : ''}${otherActivity.startTime} → ${otherActivity.endTime}`
+    : otherActivity.interested ? "J'aimerais bien" : undefined;
   const { editId } = useLocalSearchParams<{ editId?: string }>();
 
   const [sheetOpen,   setSheetOpen]   = useState(false);
@@ -249,6 +263,37 @@ export default function ActivitiesScreen() {
         contentContainerStyle={[s.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Profile activity rows */}
+        <Text style={s.sectionLabel}>Profil</Text>
+        <View style={s.profileGroup}>
+          {(
+            [
+              { icon: 'briefcase-outline' as const, iconBg: Colors.light.workBg,     iconInk: Colors.light.workInk,     label: 'Emploi',          value: workValue,  route: '/profile/work'  },
+              { icon: 'walk-outline'      as const, iconBg: Colors.light.activityBg, iconInk: Colors.light.activityInk, label: 'Sport & Activité', value: sportValue, route: '/profile/sport' },
+              { icon: 'sparkles-outline'  as const, iconBg: Colors.light.primaryTint, iconInk: Colors.light.primaryStrong, label: 'Autre activité', value: otherValue, route: '/profile/other' },
+            ] as const
+          ).map((row) => (
+            <TouchableOpacity
+              key={row.label}
+              style={s.profileRow}
+              onPress={() => router.push(row.route as any)}
+              activeOpacity={0.7}
+              accessibilityLabel={row.label}
+              accessibilityRole="button"
+            >
+              <View style={[s.profileIcon, { backgroundColor: row.iconBg }]}>
+                <Ionicons name={row.icon} size={18} color={row.iconInk} />
+              </View>
+              <View style={s.profileContent}>
+                <Text style={s.profileRowLabel}>{row.label}</Text>
+                {row.value ? <Text style={s.profileRowValue}>{row.value}</Text> : null}
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.light.ink3} />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={[s.sectionLabel, { marginTop: Spacing.xl }]}>Mes activités</Text>
         {activities.length === 0 ? (
           <View style={s.empty}>
             <View style={s.emptyIcon}>
@@ -466,6 +511,21 @@ const s = StyleSheet.create({
   scroll: { flex: 1 },
   listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },
   list: { gap: Spacing.md },
+
+  sectionLabel: {
+    fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
+    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: Spacing.md,
+  },
+  profileGroup: { gap: Spacing.md },
+  profileRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+    backgroundColor: Colors.light.surface, borderRadius: Radius.block,
+    padding: Spacing.base, ...Shadow.sm,
+  },
+  profileIcon:     { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  profileContent:  { flex: 1 },
+  profileRowLabel: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink, letterSpacing: -0.2 },
+  profileRowValue: { fontSize: FontSize.sm, color: Colors.light.ink3, marginTop: 2 },
 
   empty: { alignItems: 'center', marginTop: 72, paddingHorizontal: Spacing.xl, gap: Spacing.md },
   emptyIcon: {
