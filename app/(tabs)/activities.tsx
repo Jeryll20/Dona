@@ -182,6 +182,7 @@ export default function ActivitiesScreen() {
 
   const { height: windowH } = useWindowDimensions();
   const [keyboardH, setKeyboardH] = useState(0);
+  const sheetHeight = Math.min(SHEET_HEIGHT, windowH - insets.top - keyboardH - 20);
 
   useEffect(() => {
     const show = Keyboard.addListener('keyboardWillShow', (e) => setKeyboardH(e.endCoordinates.height));
@@ -347,13 +348,13 @@ export default function ActivitiesScreen() {
       >
         <View style={s.modalRoot}>
           <TouchableOpacity
-            style={{ flex: 1 }}
+            style={StyleSheet.absoluteFillObject}
             onPress={closeSheet}
             activeOpacity={1}
             accessibilityLabel="Fermer"
           />
           <Animated.View
-            style={[s.sheet, { paddingBottom: insets.bottom + Spacing.lg, height: SHEET_HEIGHT, maxHeight: windowH - insets.top - keyboardH - 20 }, sheetAnimStyle]}
+            style={[s.sheet, { position: 'absolute', left: 0, right: 0, bottom: keyboardH, height: sheetHeight, paddingBottom: insets.bottom + Spacing.lg }, sheetAnimStyle]}
           >
               {/* Handle */}
               <View style={s.handle} />
