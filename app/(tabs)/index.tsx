@@ -32,11 +32,10 @@ import type { ViewMode } from '@/store/useScheduleStore';
 
 const DAY_MAP: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const VIEW_MODES: { key: ViewMode; label: string }[] = [
-  { key: 'day',   label: 'Jour' },
-  { key: 'week',  label: 'Sem'  },
-  { key: 'month', label: 'Mois' },
-];
+const VIEW_MODE_LABELS: Record<ViewMode, string> = {
+  day: 'Jour', week: 'Semaine', month: 'Mois',
+};
+const VIEW_MODE_ORDER: ViewMode[] = ['day', 'week', 'month'];
 
 function getDayTitle(offset: number): string {
   if (offset === 0) return "Aujourd'hui";
@@ -388,30 +387,44 @@ export default function TodayScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={{ flex: 1 }} {...(viewMode === 'day' ? swipe.panHandlers : {})}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.dateLabel} accessibilityLabel="Date du jour">
-            {selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </Text>
-          <View style={styles.titleRow}>
-            <TouchableOpacity
-              onPress={() => slideDay('prev')}
-              style={styles.navArrow}
-              accessibilityLabel="Jour précédent"
-              accessibilityRole="button"
-            >
-              <Icon name="back" size={16} stroke={Colors.light.primary} />
-            </TouchableOpacity>
-            <Text style={styles.title}>{getDayTitle(dayOffset)}</Text>
-            <TouchableOpacity
-              onPress={() => slideDay('next')}
-              style={styles.navArrow}
-              accessibilityLabel="Jour suivant"
-              accessibilityRole="button"
-            >
-              <Icon name="arrow" size={16} stroke={Colors.light.primary} />
-            </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setViewMode(VIEW_MODE_ORDER[(VIEW_MODE_ORDER.indexOf(viewMode) + 1) % 3])}
+          accessibilityRole="button"
+          accessibilityLabel="Changer la vue"
+        >
+          <View style={styles.dateLabelRow}>
+            <Text style={styles.dateLabel} accessibilityLabel="Date du jour">
+              {selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </Text>
+            <View style={styles.viewChip}>
+              <Text style={styles.viewChipText}>{VIEW_MODE_LABELS[viewMode]}</Text>
+            </View>
           </View>
-        </View>
+          <View style={styles.titleRow}>
+            {viewMode === 'day' && (
+              <TouchableOpacity
+                onPress={() => slideDay('prev')}
+                style={styles.navArrow}
+                accessibilityLabel="Jour précédent"
+                accessibilityRole="button"
+              >
+                <Icon name="back" size={16} stroke={Colors.light.primary} />
+              </TouchableOpacity>
+            )}
+            <Text style={styles.title}>{getDayTitle(dayOffset)}</Text>
+            {viewMode === 'day' && (
+              <TouchableOpacity
+                onPress={() => slideDay('next')}
+                style={styles.navArrow}
+                accessibilityLabel="Jour suivant"
+                accessibilityRole="button"
+              >
+                <Icon name="arrow" size={16} stroke={Colors.light.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           <View style={styles.badge}>
             <Icon name="clock" size={14} stroke={Colors.light.ink2} />
@@ -428,24 +441,6 @@ export default function TodayScreen() {
             <Icon name="spark" size={20} stroke={Colors.light.primary} />
           </TouchableOpacity>
         </View>
-      </View>
-
-      {/* View mode pills */}
-      <View style={styles.modeRow}>
-        {VIEW_MODES.map((v) => (
-          <TouchableOpacity
-            key={v.key}
-            style={[styles.modePill, viewMode === v.key && styles.modePillActive]}
-            onPress={() => setViewMode(v.key)}
-            accessibilityRole="button"
-            accessibilityLabel={v.label}
-            accessibilityState={{ selected: viewMode === v.key }}
-          >
-            <Text style={[styles.modePillText, viewMode === v.key && styles.modePillTextActive]}>
-              {v.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
       </View>
 
       {/* Cycle phase mini-badge */}
@@ -686,30 +681,18 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 13.5, fontWeight: '600', color: Colors.light.ink2 },
 
-  modeRow: {
-    flexDirection: 'row',
-    alignSelf: 'center',
-    backgroundColor: Colors.light.surfaceSunk,
+  dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  viewChip: {
+    backgroundColor: Colors.light.primaryTint,
     borderRadius: Radius.pill,
-    padding: 2,
-    marginBottom: Spacing.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  modePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: Radius.pill,
-  },
-  modePillActive: {
-    backgroundColor: Colors.light.primary,
-  },
-  modePillText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.light.ink3,
-  },
-  modePillTextActive: {
-    color: Colors.light.onPrimary,
+  viewChipText: {
+    fontSize: 10,
     fontWeight: '700',
+    color: Colors.light.primary,
+    letterSpacing: 0.3,
   },
 
   phaseBadge: {
