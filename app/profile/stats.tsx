@@ -143,21 +143,16 @@ export default function StatsScreen() {
 
   // Daily scheduled hours (fixed profile events + user activities)
   const dailyHours = useMemo(() => {
-    const sleepH   = sleep.sleepHours  ?? 8;
-    const prepH    = (sleep.prepMinutes ?? 40) / 60;
-    const mealsH   = (meals.entries?.length ?? 3) * 0.5;
-    const baseH    = sleepH + prepH + mealsH;
-
     const map = {} as Record<WeekDay, number>;
     for (const day of WEEK_DAYS) {
-      let total = baseH;
+      let total = 0;
       for (const a of activities) {
         if (a.days.includes(day)) total += duration(a);
       }
       map[day] = total;
     }
     return map;
-  }, [activities, sleep, meals]);
+  }, [activities]);
 
   const maxDailyH = Math.max(...Object.values(dailyHours), 1);
   const maxCatH   = Math.max(...weeklyByCategory.map(([, h]) => h), 1);
