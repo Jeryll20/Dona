@@ -498,7 +498,7 @@ npx expo run:android
 - [x] Project init (Expo + TypeScript)
 - [x] `constants/` — colors, typography, spacing, categories
 - [x] `components/ui/` — full design system (Icon, Button, Screen, etc.)
-- [x] Onboarding flow — all 9 screens (intro → recap)
+- [x] Onboarding flow — refait complet 9 étapes : infos perso, sommeil (coucher+réveil), prépa matin (stepper libre), repas (horaires individuels + ajout dynamique), sport/emploi/autre activité (Oui/Non/J'aimerais + jours + horaires), cycle menstruel (date + durée + pas de menstruation), objectif
 - [x] Home / Today timeline — vues Jour/Semaine/Mois, swipe 3 panneaux, tap pour naviguer
 - [x] Design handoff pixel-perfect — TabBar flottant, OptionRow ring imbriqué, pills Jour/Sem/Mois dans header Home, conversation Oui/Non, colors danger/dangerTint
 - [x] Activities list + AddActivityFlow sheet

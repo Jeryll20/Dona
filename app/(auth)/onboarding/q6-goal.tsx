@@ -24,10 +24,11 @@ export default function Q6Goal() {
 
   return (
     <OnboardingShell
-      step={6}
+      step={9}
       eyebrow="Objectif"
       eyebrowIcon="albums-outline"
       question="Quel est ton objectif principal ?"
+      onBack={() => router.push('/(auth)/onboarding/q9-cycle')}
       onNext={handleNext}
       nextDisabled={!selected}
       nextLabel="Créer mon planning"

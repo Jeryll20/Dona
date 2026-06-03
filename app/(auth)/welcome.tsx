@@ -46,7 +46,7 @@ export default function WelcomeScreen() {
 
         <TouchableOpacity
           style={styles.cta}
-          onPress={() => router.push('/(auth)/onboarding/q1-bedtime')}
+          onPress={() => router.push('/(auth)/onboarding/personal-info')}
           accessibilityLabel="On y va ?"
           accessibilityRole="button"
         >

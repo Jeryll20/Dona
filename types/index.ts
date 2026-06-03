@@ -70,17 +70,28 @@ export interface MealSchedule {
 export interface SportInfo {
   active: boolean;
   interested: boolean;
-  activity?: string;      // comma-separated activity names from q5
-  schedule?: string;
-  location?: string;
+  activity?: string;
+  days?: WeekDay[];
+  startTime?: string;   // "HH:MM"
+  endTime?: string;     // "HH:MM"
 }
 
 export interface WorkInfo {
   employed: boolean;
   interested: boolean;
-  role?: string;          // goal key from q6: 'organise' | 'activite' | 'routine'
-  schedule?: string;
-  location?: string;
+  role?: string;        // job description / goal key
+  days?: WeekDay[];
+  startTime?: string;
+  endTime?: string;
+}
+
+export interface OtherActivityInfo {
+  active: boolean;
+  interested: boolean;
+  title?: string;
+  days?: WeekDay[];
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface CycleInfo {

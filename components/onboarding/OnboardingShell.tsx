@@ -31,7 +31,7 @@ interface OnboardingShellProps {
 
 export default function OnboardingShell({
   step,
-  total = 6,
+  total = 9,
   eyebrow,
   eyebrowIcon,
   question,

@@ -9,10 +9,10 @@ interface StepperProps {
   min: number;
   max: number;
   suffix?: string;
+  step?: number;
 }
 
-// Increment/decrement number picker — matches CLAUDE.md § Stepper component
-export function Stepper({ value, setValue, min, max, suffix }: StepperProps) {
+export function Stepper({ value, setValue, min, max, suffix, step = 1 }: StepperProps) {
   const atMin = value <= min;
   const atMax = value >= max;
 
@@ -20,7 +20,7 @@ export function Stepper({ value, setValue, min, max, suffix }: StepperProps) {
     <View style={styles.wrap}>
       <TouchableOpacity
         style={[styles.btn, atMin && styles.btnOff]}
-        onPress={() => setValue(Math.max(min, value - 1))}
+        onPress={() => setValue(Math.max(min, value - step))}
         disabled={atMin}
         accessibilityLabel="Diminuer"
       >
@@ -34,7 +34,7 @@ export function Stepper({ value, setValue, min, max, suffix }: StepperProps) {
 
       <TouchableOpacity
         style={[styles.btn, atMax && styles.btnOff]}
-        onPress={() => setValue(Math.min(max, value + 1))}
+        onPress={() => setValue(Math.min(max, value + step))}
         disabled={atMax}
         accessibilityLabel="Augmenter"
       >
