@@ -213,7 +213,8 @@ function buildBase(
   meals?: { entries?: MealEntry[]; times?: string[] },
 ): { events: TimelineEvent[]; wake: number; bed: number; prepEnd: number } {
   const wake    = toH(sleep.waketime);
-  const bed     = toH(sleep.bedtime);
+  // Midnight (00:00) means end-of-day on a 24-h scale, not start
+  const bed     = toH(sleep.bedtime) || 24;
   const prep    = sleep.prepMinutes / 60;
   const prepEnd = wake + prep;
   const events: TimelineEvent[] = [];
@@ -228,12 +229,12 @@ function buildBase(
   for (const m of mealList) {
     const s = toH(m.time);
     const e = s + 0.5;
-    if (s >= prepEnd && e <= bed) {
-      events.push({ cat: 'repas', title: m.label, start: s, end: e });
+    if (s >= prepEnd && s < bed) {
+      events.push({ cat: 'repas', title: m.label, start: s, end: Math.min(e, bed) });
     }
   }
 
-  if (bed > 0) events.push({ cat: 'sommeil', title: 'Sommeil', start: bed, end: 24 });
+  if (bed < 24) events.push({ cat: 'sommeil', title: 'Sommeil', start: bed, end: 24 });
   return { events, wake, bed, prepEnd };
 }
 
