@@ -6,8 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
-import { searchPlaces, getPlaceDetails } from '@/lib/maps';
-import type { PlacePrediction } from '@/lib/maps';
+import { searchAddresses } from '@/lib/maps';
+import type { AddressResult } from '@/lib/maps';
 import type { ActivityLocation } from '@/types';
 
 interface Props {
@@ -17,39 +17,34 @@ interface Props {
 }
 
 export function LocationPicker({ value, onChange, placeholder = 'Rechercher une adresse…' }: Props) {
-  const [query,       setQuery]       = useState('');
-  const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
-  const [loading,     setLoading]     = useState(false);
-  const [editing,     setEditing]     = useState(false);
+  const [query,   setQuery]   = useState('');
+  const [results, setResults] = useState<AddressResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSearch = useCallback((text: string) => {
     setQuery(text);
     if (debounce.current) clearTimeout(debounce.current);
-    if (text.length < 2) { setPredictions([]); return; }
+    if (text.length < 3) { setResults([]); return; }
     debounce.current = setTimeout(async () => {
       setLoading(true);
-      const results = await searchPlaces(text);
-      setPredictions(results.slice(0, 4));
+      const found = await searchAddresses(text);
+      setResults(found);
       setLoading(false);
-    }, 380);
+    }, 500);
   }, []);
 
-  async function selectPlace(pred: PlacePrediction) {
-    setPredictions([]);
+  function selectResult(r: AddressResult) {
+    setResults([]);
     setEditing(false);
-    setLoading(true);
-    const details = await getPlaceDetails(pred.place_id);
-    setLoading(false);
-    if (details) {
-      setQuery('');
-      onChange(details);
-    }
+    setQuery('');
+    onChange({ address: r.address, lat: r.lat, lng: r.lng });
   }
 
   function clear() {
     setQuery('');
-    setPredictions([]);
+    setResults([]);
     setEditing(false);
     onChange(undefined);
   }
@@ -96,31 +91,24 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
           ? <ActivityIndicator size="small" color={Colors.light.primary} />
           : query.length > 0
           ? (
-            <TouchableOpacity onPress={clear} accessibilityLabel="Effacer la recherche">
+            <TouchableOpacity onPress={clear} accessibilityLabel="Effacer">
               <Ionicons name="close-circle" size={15} color={Colors.light.ink3} />
             </TouchableOpacity>
           ) : null
         }
       </View>
 
-      {predictions.length > 0 && (
+      {results.length > 0 && (
         <View style={s.dropdown}>
-          {predictions.map((p, i) => (
+          {results.map((r, i) => (
             <TouchableOpacity
-              key={p.place_id}
-              style={[s.prediction, i < predictions.length - 1 && s.predBorder]}
-              onPress={() => selectPlace(p)}
-              accessibilityLabel={p.description}
+              key={r.id}
+              style={[s.prediction, i < results.length - 1 && s.predBorder]}
+              onPress={() => selectResult(r)}
+              accessibilityLabel={r.address}
             >
               <Ionicons name="location-outline" size={13} color={Colors.light.ink3} style={s.predIcon} />
-              <View style={s.predText}>
-                <Text style={s.predMain} numberOfLines={1}>
-                  {p.structured_formatting.main_text}
-                </Text>
-                <Text style={s.predSub} numberOfLines={1}>
-                  {p.structured_formatting.secondary_text}
-                </Text>
-              </View>
+              <Text style={s.predText} numberOfLines={2}>{r.address}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -181,8 +169,6 @@ const s = StyleSheet.create({
     paddingVertical: 10,
   },
   predBorder: { borderBottomWidth: 1, borderBottomColor: Colors.light.hairline },
-  predIcon:   { marginTop: 2 },
-  predText:   { flex: 1 },
-  predMain:   { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink },
-  predSub:    { fontSize: FontSize.xs, fontWeight: '400', color: Colors.light.ink3, marginTop: 1 },
+  predIcon:   { marginTop: 2, flexShrink: 0 },
+  predText:   { flex: 1, fontSize: FontSize.sm, fontWeight: '500', color: Colors.light.ink, lineHeight: 18 },
 });

@@ -1,87 +1,74 @@
 import type { ActivityLocation } from '@/types';
 
-const MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? '';
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface PlacePrediction {
-  place_id: string;
-  description: string;
-  structured_formatting: {
-    main_text: string;
-    secondary_text: string;
-  };
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+export interface AddressResult {
+  id:      string;
+  address: string;
+  lat:     number;
+  lng:     number;
 }
 
 export interface DistanceResult {
   durationMinutes: number;
-  distanceKm: number;
+  distanceKm:      number;
 }
 
-// ── Places Autocomplete ───────────────────────────────────────────────────────
+// ── Address search — Nominatim (OpenStreetMap) ────────────────────────────────
 
-export async function searchPlaces(input: string): Promise<PlacePrediction[]> {
-  if (!MAPS_KEY || MAPS_KEY === 'YOUR_GOOGLE_MAPS_API_KEY' || input.length < 2) return [];
+export async function searchAddresses(query: string): Promise<AddressResult[]> {
+  if (query.length < 3) return [];
   try {
     const url =
-      `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-      `?input=${encodeURIComponent(input)}` +
-      `&language=fr` +
-      `&key=${MAPS_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    return (data.predictions ?? []) as PlacePrediction[];
+      `https://nominatim.openstreetmap.org/search` +
+      `?q=${encodeURIComponent(query)}` +
+      `&format=json&limit=5&accept-language=fr`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'DonaApp/1.0 contact@dona.app' },
+    });
+    const data: NominatimResult[] = await res.json();
+    return data.map((r) => ({
+      id:      String(r.place_id),
+      address: r.display_name,
+      lat:     parseFloat(r.lat),
+      lng:     parseFloat(r.lon),
+    }));
   } catch {
     return [];
   }
 }
 
-export async function getPlaceDetails(placeId: string): Promise<ActivityLocation | null> {
-  if (!MAPS_KEY || MAPS_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') return null;
-  try {
-    const url =
-      `https://maps.googleapis.com/maps/api/place/details/json` +
-      `?place_id=${placeId}` +
-      `&fields=formatted_address,geometry` +
-      `&key=${MAPS_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    const result = data.result;
-    if (!result?.geometry?.location) return null;
-    return {
-      address: result.formatted_address as string,
-      lat:     result.geometry.location.lat as number,
-      lng:     result.geometry.location.lng as number,
-    };
-  } catch {
-    return null;
-  }
-}
-
-// ── Distance Matrix ───────────────────────────────────────────────────────────
+// ── Travel time — OSRM (open-source routing) ──────────────────────────────────
+// Note: OSRM expects lng,lat order (not lat,lng)
 
 export async function getTravelTime(
   origin:      { lat: number; lng: number },
   destination: { lat: number; lng: number },
-  mode: 'driving' | 'transit' | 'walking' = 'driving',
 ): Promise<DistanceResult | null> {
-  if (!MAPS_KEY || MAPS_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') return null;
   try {
     const url =
-      `https://maps.googleapis.com/maps/api/distancematrix/json` +
-      `?origins=${origin.lat},${origin.lng}` +
-      `&destinations=${destination.lat},${destination.lng}` +
-      `&mode=${mode}` +
-      `&key=${MAPS_KEY}`;
+      `https://router.project-osrm.org/route/v1/driving/` +
+      `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
+      `?overview=false`;
     const res = await fetch(url);
     const data = await res.json();
-    const el = data?.rows?.[0]?.elements?.[0];
-    if (el?.status !== 'OK') return null;
+    const route = data?.routes?.[0];
+    if (!route) return null;
     return {
-      durationMinutes: Math.ceil((el.duration.value as number) / 60),
-      distanceKm:      Math.round((el.distance.value as number) / 100) / 10,
+      durationMinutes: Math.ceil((route.duration as number) / 60),
+      distanceKm:      Math.round((route.distance as number) / 100) / 10,
     };
   } catch {
     return null;
   }
 }
+
+// Re-export ActivityLocation for convenience
+export type { ActivityLocation };
