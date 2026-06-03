@@ -1,7 +1,10 @@
 import {
   View, Text, TouchableOpacity, Pressable, PanResponder,
-  Animated, useWindowDimensions, StyleSheet,
+  useWindowDimensions, StyleSheet,
 } from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, cancelAnimation,
+} from 'react-native-reanimated';
 import { useState, useMemo, useRef } from 'react';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius } from '@/constants/spacing';
@@ -131,21 +134,27 @@ export function MonthView() {
   widthRef.current = width;
 
   // slideX = -width means center panel is visible
-  const slideX = useRef(new Animated.Value(-width)).current;
+  const slideX      = useSharedValue(-width);
+  const slideStartX = useRef(-width);
+
+  function goPrevMonth() {
+    slideX.value = -widthRef.current;
+    setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; });
+  }
+  function goNextMonth() {
+    slideX.value = -widthRef.current;
+    setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; });
+  }
 
   const goPrev = () => {
-    const w = widthRef.current;
-    Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
-      setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; });
-      slideX.setValue(-w);
+    slideX.value = withTiming(0, { duration: 280 }, () => {
+      runOnJS(goPrevMonth)();
     });
   };
-
   const goNext = () => {
     const w = widthRef.current;
-    Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
-      setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; });
-      slideX.setValue(-w);
+    slideX.value = withTiming(-2 * w, { duration: 280 }, () => {
+      runOnJS(goNextMonth)();
     });
   };
 
@@ -154,35 +163,35 @@ export function MonthView() {
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
         Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 15,
       onPanResponderGrant: () => {
-        slideX.stopAnimation((val) => {
-          slideX.setOffset(val);
-          slideX.setValue(0);
-        });
+        cancelAnimation(slideX);
+        slideStartX.current = slideX.value;
       },
-      onPanResponderMove: (_, { dx }) => slideX.setValue(dx),
+      onPanResponderMove: (_, { dx }) => {
+        slideX.value = slideStartX.current + dx;
+      },
       onPanResponderRelease: (_, { dx, vx }) => {
-        slideX.flattenOffset();
         const w = widthRef.current;
         if (dx > 70 || vx > 0.5) {
-          Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
-            setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; });
-            slideX.setValue(-w);
+          slideX.value = withTiming(0, { duration: 280 }, () => {
+            runOnJS(goPrevMonth)();
           });
         } else if (dx < -70 || vx < -0.5) {
-          Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
-            setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; });
-            slideX.setValue(-w);
+          slideX.value = withTiming(-2 * w, { duration: 280 }, () => {
+            runOnJS(goNextMonth)();
           });
         } else {
-          Animated.spring(slideX, { toValue: -w, useNativeDriver: true }).start();
+          slideX.value = withSpring(-w, { damping: 22, mass: 0.9, stiffness: 200 });
         }
       },
       onPanResponderTerminate: () => {
-        slideX.flattenOffset();
-        Animated.spring(slideX, { toValue: -widthRef.current, useNativeDriver: true }).start();
+        slideX.value = withSpring(-widthRef.current, { damping: 22, mass: 0.9, stiffness: 200 });
       },
     })
   ).current;
+
+  const panelsStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: slideX.value }],
+  }));
 
   const prevData = useMemo(() => shiftMonth(year, month, -1), [year, month]);
   const nextData = useMemo(() => shiftMonth(year, month,  1), [year, month]);
@@ -213,7 +222,7 @@ export function MonthView() {
       {/* 3-panel sliding area */}
       <View style={styles.clipper}>
         <Animated.View
-          style={[styles.threePanels, { width: width * 3, transform: [{ translateX: slideX }] }]}
+          style={[styles.threePanels, { width: width * 3 }, panelsStyle]}
         >
           {[prevData, { year, month }, nextData].map((m) => (
             <MonthPanel

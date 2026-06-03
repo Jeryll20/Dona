@@ -1,7 +1,10 @@
 import {
   View, Text, TouchableOpacity, PanResponder,
-  Animated, useWindowDimensions, StyleSheet, Pressable,
+  useWindowDimensions, StyleSheet, Pressable,
 } from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, cancelAnimation,
+} from 'react-native-reanimated';
 import { useState, useMemo, useRef } from 'react';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius } from '@/constants/spacing';
@@ -166,7 +169,8 @@ export function WeekView() {
   widthRef.current = width;
 
   // slideX = -width means center panel is visible
-  const slideX = useRef(new Animated.Value(-width)).current;
+  const slideX      = useSharedValue(-width);
+  const slideStartX = useRef(-width);
 
   const todayStr = new Date().toDateString();
 
@@ -182,18 +186,24 @@ export function WeekView() {
     if (h > 0 && h !== timelineH) setTimelineH(h);
   };
 
+  function goPrevWeek() {
+    slideX.value = -widthRef.current;
+    setWeekOffset((o: number) => o - 1);
+  }
+  function goNextWeek() {
+    slideX.value = -widthRef.current;
+    setWeekOffset((o: number) => o + 1);
+  }
+
   const goPrev = () => {
-    const w = widthRef.current;
-    Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
-      setWeekOffset((o) => o - 1);
-      slideX.setValue(-w);
+    slideX.value = withTiming(0, { duration: 280 }, () => {
+      runOnJS(goPrevWeek)();
     });
   };
   const goNext = () => {
     const w = widthRef.current;
-    Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
-      setWeekOffset((o) => o + 1);
-      slideX.setValue(-w);
+    slideX.value = withTiming(-2 * w, { duration: 280 }, () => {
+      runOnJS(goNextWeek)();
     });
   };
 
@@ -202,35 +212,35 @@ export function WeekView() {
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
         Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 15,
       onPanResponderGrant: () => {
-        slideX.stopAnimation((val) => {
-          slideX.setOffset(val);
-          slideX.setValue(0);
-        });
+        cancelAnimation(slideX);
+        slideStartX.current = slideX.value;
       },
-      onPanResponderMove: (_, { dx }) => slideX.setValue(dx),
+      onPanResponderMove: (_, { dx }) => {
+        slideX.value = slideStartX.current + dx;
+      },
       onPanResponderRelease: (_, { dx, vx }) => {
-        slideX.flattenOffset();
         const w = widthRef.current;
         if (dx > 70 || vx > 0.5) {
-          Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
-            setWeekOffset((o) => o - 1);
-            slideX.setValue(-w);
+          slideX.value = withTiming(0, { duration: 280 }, () => {
+            runOnJS(goPrevWeek)();
           });
         } else if (dx < -70 || vx < -0.5) {
-          Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
-            setWeekOffset((o) => o + 1);
-            slideX.setValue(-w);
+          slideX.value = withTiming(-2 * w, { duration: 280 }, () => {
+            runOnJS(goNextWeek)();
           });
         } else {
-          Animated.spring(slideX, { toValue: -w, useNativeDriver: true }).start();
+          slideX.value = withSpring(-w, { damping: 22, mass: 0.9, stiffness: 200 });
         }
       },
       onPanResponderTerminate: () => {
-        slideX.flattenOffset();
-        Animated.spring(slideX, { toValue: -widthRef.current, useNativeDriver: true }).start();
+        slideX.value = withSpring(-widthRef.current, { damping: 22, mass: 0.9, stiffness: 200 });
       },
     })
   ).current;
+
+  const panelsStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: slideX.value }],
+  }));
 
   const currentMonday = useMemo(() => getWeekMonday(weekOffset), [weekOffset]);
 
@@ -250,7 +260,7 @@ export function WeekView() {
       {/* 3-panel sliding area */}
       <View style={styles.clipper}>
         <Animated.View
-          style={[styles.threePanels, { width: width * 3, transform: [{ translateX: slideX }] }]}
+          style={[styles.threePanels, { width: width * 3 }, panelsStyle]}
         >
           {[weekOffset - 1, weekOffset, weekOffset + 1].map((off) => (
             <WeekPanel

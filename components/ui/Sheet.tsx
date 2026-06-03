@@ -1,15 +1,9 @@
-import {
-  StyleSheet,
-  View,
-  Text,
-  Modal,
-  Animated,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { StyleSheet, View, Text, Modal, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRef, useEffect } from 'react';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withSpring, withTiming,
+} from 'react-native-reanimated';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -23,29 +17,22 @@ interface SheetProps {
   children: React.ReactNode;
 }
 
-// Bottom sheet modal — matches CLAUDE.md § Sheet component
 export function Sheet({ open, onClose, title, children }: SheetProps) {
   const insets = useSafeAreaInsets();
-  const anim = useRef(new Animated.Value(SLIDE_HEIGHT)).current;
+  const anim   = useSharedValue(SLIDE_HEIGHT);
 
   useEffect(() => {
     if (open) {
-      anim.setValue(SLIDE_HEIGHT);
-      Animated.spring(anim, {
-        toValue: 0,
-        useNativeDriver: true,
-        damping: 22,
-        mass: 0.9,
-        stiffness: 200,
-      }).start();
+      anim.value = SLIDE_HEIGHT;
+      anim.value = withSpring(0, { damping: 22, mass: 0.9, stiffness: 200 });
     } else {
-      Animated.timing(anim, {
-        toValue: SLIDE_HEIGHT,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      anim.value = withTiming(SLIDE_HEIGHT, { duration: 200 });
     }
   }, [open]);
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: anim.value }],
+  }));
 
   return (
     <Modal
@@ -57,25 +44,24 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
     >
       <View style={styles.overlay}>
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} accessibilityLabel="Fermer" />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Animated.View
-            style={[
-              styles.sheet,
-              { transform: [{ translateY: anim }], paddingBottom: insets.bottom + Spacing.lg },
-            ]}
-          >
-            <View style={styles.handle} />
-            {title && (
-              <View style={styles.header}>
-                <Text style={styles.title}>{title}</Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityLabel="Fermer">
-                  <Text style={styles.closeX}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            {children}
-          </Animated.View>
-        </KeyboardAvoidingView>
+        <Animated.View
+          style={[
+            styles.sheet,
+            { paddingBottom: insets.bottom + Spacing.lg },
+            sheetStyle,
+          ]}
+        >
+          <View style={styles.handle} />
+          {title && (
+            <View style={styles.header}>
+              <Text style={styles.title}>{title}</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityLabel="Fermer">
+                <Text style={styles.closeX}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {children}
+        </Animated.View>
       </View>
     </Modal>
   );

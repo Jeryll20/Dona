@@ -5,11 +5,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
-  Animated,
   TextInput,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS,
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect } from 'react';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -147,7 +149,10 @@ export default function ActivitiesScreen() {
   const [endTime,     setEndTime]     = useState('10:00');
   const [days,        setDays]        = useState<Set<WeekDay>>(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
   const [recurrence,  setRecurrence]  = useState<Recurrence>('weekly');
-  const slideAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  const slideAnim    = useSharedValue(SHEET_HEIGHT);
+  const sheetAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: slideAnim.value }],
+  }));
 
   // Open edit sheet when arriving from timeline tap
   useEffect(() => {
@@ -175,15 +180,15 @@ export default function ActivitiesScreen() {
       setRecurrence('weekly');
       setStep(1);
     }
-    slideAnim.setValue(SHEET_HEIGHT);
+    slideAnim.value = SHEET_HEIGHT;
     setSheetOpen(true);
-    Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 22, mass: 0.9, stiffness: 200 }).start();
+    slideAnim.value = withSpring(0, { damping: 22, mass: 0.9, stiffness: 200 });
   }
 
   function closeSheet() {
-    Animated.timing(slideAnim, { toValue: SHEET_HEIGHT, duration: 200, useNativeDriver: true }).start(() =>
-      setSheetOpen(false)
-    );
+    slideAnim.value = withTiming(SHEET_HEIGHT, { duration: 200 }, () => {
+      runOnJS(setSheetOpen)(false);
+    });
   }
 
   function toggleDay(day: WeekDay) {
@@ -285,7 +290,7 @@ export default function ActivitiesScreen() {
           />
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <Animated.View
-              style={[s.sheet, { transform: [{ translateY: slideAnim }], paddingBottom: insets.bottom + Spacing.lg }]}
+              style={[s.sheet, { paddingBottom: insets.bottom + Spacing.lg }, sheetAnimStyle]}
             >
               {/* Handle */}
               <View style={s.handle} />

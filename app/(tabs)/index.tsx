@@ -1,7 +1,10 @@
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
-  PanResponder, Animated, useWindowDimensions,
+  PanResponder, useWindowDimensions,
 } from 'react-native';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, cancelAnimation,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useMemo, useRef } from 'react';
 import { router } from 'expo-router';
@@ -167,7 +170,8 @@ export default function TodayScreen() {
   const widthRef  = useRef(width);
   widthRef.current = width;
   // slideX = -width means center panel (current day) is visible
-  const slideX = useRef(new Animated.Value(-width)).current;
+  const slideX      = useSharedValue(-width);
+  const slideStartX = useRef(-width);
 
   const { sleep, meals, work, cycle } = useUserStore();
   const activities   = useScheduleStore((s) => s.activities);
@@ -185,37 +189,42 @@ export default function TodayScreen() {
   }, [dayOffset]);
   const selectedWeekDay = DAY_MAP[selectedDate.getDay()];
 
+  function goPrevDay() {
+    slideX.value = -widthRef.current;
+    setDayOffset((o: number) => o - 1);
+  }
+  function goNextDay() {
+    slideX.value = -widthRef.current;
+    setDayOffset((o: number) => o + 1);
+  }
+
   const swipe = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
         Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 20,
       onPanResponderGrant: () => {
-        slideX.stopAnimation((val) => {
-          slideX.setOffset(val);
-          slideX.setValue(0);
-        });
+        cancelAnimation(slideX);
+        slideStartX.current = slideX.value;
       },
-      onPanResponderMove: (_, { dx }) => slideX.setValue(dx),
+      onPanResponderMove: (_, { dx }) => {
+        slideX.value = slideStartX.current + dx;
+      },
       onPanResponderRelease: (_, { dx, vx }) => {
-        slideX.flattenOffset();
         const w = widthRef.current;
         if (dx > 70 || vx > 0.5) {
-          Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
-            setDayOffset((o) => o - 1);
-            slideX.setValue(-w);
+          slideX.value = withTiming(0, { duration: 280 }, () => {
+            runOnJS(goPrevDay)();
           });
         } else if (dx < -70 || vx < -0.5) {
-          Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
-            setDayOffset((o) => o + 1);
-            slideX.setValue(-w);
+          slideX.value = withTiming(-2 * w, { duration: 280 }, () => {
+            runOnJS(goNextDay)();
           });
         } else {
-          Animated.spring(slideX, { toValue: -w, useNativeDriver: true }).start();
+          slideX.value = withSpring(-w, { damping: 22, mass: 0.9, stiffness: 200 });
         }
       },
       onPanResponderTerminate: () => {
-        slideX.flattenOffset();
-        Animated.spring(slideX, { toValue: -widthRef.current, useNativeDriver: true }).start();
+        slideX.value = withSpring(-widthRef.current, { damping: 22, mass: 0.9, stiffness: 200 });
       },
     })
   ).current;
@@ -223,14 +232,12 @@ export default function TodayScreen() {
   const slideDay = (direction: 'prev' | 'next') => {
     const w = widthRef.current;
     if (direction === 'prev') {
-      Animated.timing(slideX, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => {
-        setDayOffset((o) => o - 1);
-        slideX.setValue(-w);
+      slideX.value = withTiming(0, { duration: 280 }, () => {
+        runOnJS(goPrevDay)();
       });
     } else {
-      Animated.timing(slideX, { toValue: -2 * w, duration: 280, useNativeDriver: true }).start(() => {
-        setDayOffset((o) => o + 1);
-        slideX.setValue(-w);
+      slideX.value = withTiming(-2 * w, { duration: 280 }, () => {
+        runOnJS(goNextDay)();
       });
     }
   };
@@ -281,11 +288,15 @@ export default function TodayScreen() {
 
   const visibleSuggestions = suggestions.filter((s) => !s.accepted && !s.dismissed);
 
+  const panelsStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: slideX.value }],
+  }));
+
   // Reset slideX when entering day view from week/month (stop any in-flight animation)
   useEffect(() => {
     if (viewMode === 'day') {
-      slideX.stopAnimation();
-      slideX.setValue(-width);
+      cancelAnimation(slideX);
+      slideX.value = -width;
     }
   }, [viewMode]);
 
@@ -368,7 +379,7 @@ export default function TodayScreen() {
       {viewMode === 'day' && (
         <View style={styles.dayClipper}>
           <Animated.View
-            style={[styles.dayPanels, { width: width * 3, transform: [{ translateX: slideX }] }]}
+            style={[styles.dayPanels, { width: width * 3 }, panelsStyle]}
           >
             {[dayOffset - 1, dayOffset, dayOffset + 1].map((off) => (
               <DayPanel
