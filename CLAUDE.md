@@ -500,6 +500,7 @@ npx expo run:android
 - [x] `components/ui/` — full design system (Icon, Button, Screen, etc.)
 - [x] Onboarding flow — all 9 screens (intro → recap)
 - [x] Home / Today timeline — vues Jour/Semaine/Mois, swipe 3 panneaux, tap pour naviguer
+- [x] Design handoff pixel-perfect — TabBar flottant, OptionRow ring imbriqué, pills Jour/Sem/Mois dans header Home, conversation Oui/Non, colors danger/dangerTint
 - [x] Activities list + AddActivityFlow sheet
 - [x] Profile screen + Sleep/Cycle/Meals/Account detail screens
 - [x] Timeline components (TimelineBlock, ThinBlock, NowIndicator, HourGrid, WeekView, MonthView)
