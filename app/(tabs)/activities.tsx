@@ -146,12 +146,6 @@ const cS = StyleSheet.create({
 
 // ── Main Screen ───────────────────────────────────────────────────
 
-const PROFILE_ROUTES: Record<string, string> = {
-  __work__:  '/profile/work',
-  __sport__: '/profile/sport',
-  __other__: '/profile/other',
-};
-
 export default function ActivitiesScreen() {
   const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
   const { setWork, setSport, setOtherActivity } = useUserStore();
@@ -190,14 +184,10 @@ export default function ActivitiesScreen() {
     transform: [{ translateY: slideAnim.value }],
   }));
 
-  // Open edit sheet (or navigate to profile screen) when arriving from timeline tap
+  // Open edit sheet when arriving from timeline tap
   useEffect(() => {
     if (!editId) return;
     router.setParams({ editId: undefined });
-    if (PROFILE_ROUTES[editId]) {
-      router.push(PROFILE_ROUTES[editId] as any);
-      return;
-    }
     const activity = activities.find((a) => a.id === editId);
     if (activity) openSheet(activity);
   }, [editId]);
@@ -251,6 +241,9 @@ export default function ActivitiesScreen() {
     };
     if (editingId) {
       updateActivity(editingId, data);
+      if (editingId === '__work__')  setWork({ employed: true, role: data.title, days: data.days, startTime: data.startTime, endTime: data.endTime });
+      if (editingId === '__sport__') setSport({ active: true, interested: false, activity: data.title, days: data.days, startTime: data.startTime, endTime: data.endTime });
+      if (editingId === '__other__') setOtherActivity({ active: true, interested: false, title: data.title, days: data.days, startTime: data.startTime, endTime: data.endTime });
     } else {
       addActivity({ id: Date.now().toString(), ...data });
     }
@@ -305,10 +298,7 @@ export default function ActivitiesScreen() {
               <ActivityCard
                 key={act.id}
                 activity={act}
-                onEdit={() => {
-                  if (PROFILE_ROUTES[act.id]) router.push(PROFILE_ROUTES[act.id] as any);
-                  else openSheet(act);
-                }}
+                onEdit={() => openSheet(act)}
                 onDelete={() => {
                   removeActivity(act.id);
                   if (act.id === '__work__')  setWork({ employed: false, role: undefined, days: undefined, startTime: undefined, endTime: undefined });

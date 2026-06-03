@@ -51,18 +51,9 @@ const PROFILE_TARGET: Partial<Record<string, string>> = {
   repas:   '/profile/meals',
 };
 
-const PROFILE_ACTIVITY_ROUTE: Record<string, string> = {
-  __work__:  '/profile/work',
-  __sport__: '/profile/sport',
-  __other__: '/profile/other',
-};
-
 function getEventPress(
   ev: TimelineEvent & { activityId?: string },
 ): (() => void) | undefined {
-  if (ev.activityId && PROFILE_ACTIVITY_ROUTE[ev.activityId]) {
-    return () => router.push(PROFILE_ACTIVITY_ROUTE[ev.activityId!] as any);
-  }
   if (ev.activityId) {
     return () => router.navigate({ pathname: '/(tabs)/activities', params: { editId: ev.activityId } } as any);
   }
