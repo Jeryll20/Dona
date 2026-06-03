@@ -52,6 +52,7 @@ export interface UserProfile {
   firstName:    string;
   lastName?:    string;
   dateOfBirth?: string;   // ISO date "YYYY-MM-DD"
+  gender?:      string;   // 'homme' | 'femme' | free text (inclusivité)
   goal?:        string;   // onboarding goal key: 'organise' | 'activite' | 'routine'
 }
 

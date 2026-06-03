@@ -31,6 +31,17 @@ export default function PersonalInfo() {
   const [showPicker, setShowPicker] = useState(false);
   const [tempDob, setTempDob] = useState<Date>(new Date(1995, 0, 1));
 
+  const storedGender = stored.gender;
+  const [genderKey,   setGenderKey]   = useState<'homme' | 'femme' | 'autre' | null>(
+    storedGender === 'homme' ? 'homme'
+    : storedGender === 'femme' ? 'femme'
+    : storedGender ? 'autre'
+    : null,
+  );
+  const [genderOther, setGenderOther] = useState(
+    storedGender && storedGender !== 'homme' && storedGender !== 'femme' ? storedGender : '',
+  );
+
   const canContinue = firstName.trim().length > 0;
 
   function openDatePicker() {
@@ -44,10 +55,17 @@ export default function PersonalInfo() {
   }
 
   function handleNext() {
+    const gender =
+      genderKey === 'homme' ? 'homme'
+      : genderKey === 'femme' ? 'femme'
+      : genderKey === 'autre' ? (genderOther.trim() || 'autre')
+      : undefined;
+
     setProfile({
-      firstName: firstName.trim(),
-      lastName:  lastName.trim() || undefined,
+      firstName:   firstName.trim(),
+      lastName:    lastName.trim() || undefined,
       dateOfBirth: dob ? dateToISO(dob) : undefined,
+      gender,
     });
     router.push('/(auth)/onboarding/q1-bedtime');
   }
@@ -92,6 +110,39 @@ export default function PersonalInfo() {
               accessibilityLabel="Nom de famille"
             />
           </View>
+        </View>
+
+        <View>
+          <Text style={styles.label}>Sexe</Text>
+          <View style={styles.genderRow}>
+            {(['homme', 'femme', 'autre'] as const).map((key) => {
+              const labels = { homme: 'Homme', femme: 'Femme', autre: 'Autre' };
+              const on = genderKey === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.genderPill, on && styles.genderPillOn]}
+                  onPress={() => setGenderKey(key)}
+                  accessibilityLabel={labels[key]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                >
+                  <Text style={[styles.genderText, on && styles.genderTextOn]}>{labels[key]}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {genderKey === 'autre' && (
+            <TextInput
+              style={[styles.input, { marginTop: Spacing.sm }]}
+              value={genderOther}
+              onChangeText={setGenderOther}
+              placeholder="Précise si tu le souhaites…"
+              placeholderTextColor={Colors.light.ink3}
+              returnKeyType="done"
+              accessibilityLabel="Préciser le genre"
+            />
+          )}
         </View>
 
         <View>
@@ -166,6 +217,18 @@ const styles = StyleSheet.create({
     color: Colors.light.ink,
     ...Shadow.sm,
   },
+
+  genderRow: { flexDirection: 'row', gap: Spacing.sm },
+  genderPill: {
+    flex: 1, paddingVertical: 13, borderRadius: Radius.input,
+    backgroundColor: Colors.light.surface,
+    borderWidth: 1.5, borderColor: Colors.light.hairline,
+    alignItems: 'center', justifyContent: 'center',
+    ...Shadow.sm,
+  },
+  genderPillOn: { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
+  genderText:   { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink2 },
+  genderTextOn: { color: Colors.light.primaryStrong, fontWeight: '700' },
 
   datePill: {
     backgroundColor: Colors.light.surface,
