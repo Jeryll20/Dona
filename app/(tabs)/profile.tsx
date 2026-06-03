@@ -59,7 +59,7 @@ const row = StyleSheet.create({
 });
 
 export default function ProfileScreen() {
-  const { profile, sleep, meals, cycle, work, sport, otherActivity } = useUserStore();
+  const { profile, sleep, meals, cycle } = useUserStore();
   const signOut = useAuthStore((s) => s.signOut);
 
   const firstName = profile.firstName ?? '';
@@ -82,18 +82,6 @@ export default function ProfileScreen() {
   const cycleValue = cycle.tracking
     ? `Cycle ${cycle.cycleDays ?? 28} jours`
     : 'Non activé';
-
-  const workValue = work.employed
-    ? `${work.role ? work.role + ' · ' : ''}${work.startTime} → ${work.endTime}`
-    : undefined;
-
-  const sportValue = sport.active
-    ? `${sport.activity ? sport.activity + ' · ' : ''}${sport.startTime} → ${sport.endTime}`
-    : undefined;
-
-  const otherValue = otherActivity.active
-    ? `${otherActivity.title ? otherActivity.title + ' · ' : ''}${otherActivity.startTime} → ${otherActivity.endTime}`
-    : undefined;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -148,30 +136,6 @@ export default function ProfileScreen() {
             label="Repas"
             value={mealsValue}
             onPress={() => router.push('/profile/meals')}
-          />
-          <SettingsRow
-            icon="briefcase-outline"
-            iconBg={Colors.light.workBg}
-            iconInk={Colors.light.workInk}
-            label="Emploi"
-            value={workValue}
-            onPress={() => router.push('/profile/work')}
-          />
-          <SettingsRow
-            icon="walk-outline"
-            iconBg={Colors.light.activityBg}
-            iconInk={Colors.light.activityInk}
-            label="Sport & Activité"
-            value={sportValue}
-            onPress={() => router.push('/profile/sport')}
-          />
-          <SettingsRow
-            icon="sparkles-outline"
-            iconBg={Colors.light.primaryTint}
-            iconInk={Colors.light.primaryStrong}
-            label="Autre activité"
-            value={otherValue}
-            onPress={() => router.push('/profile/other')}
           />
           <SettingsRow
             icon="flower-outline"
