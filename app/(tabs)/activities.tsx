@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
+  Keyboard,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS,
@@ -180,6 +180,15 @@ export default function ActivitiesScreen() {
     transform: [{ translateY: slideAnim.value }],
   }));
 
+  const { height: windowH } = useWindowDimensions();
+  const [keyboardH, setKeyboardH] = useState(0);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', (e) => setKeyboardH(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKeyboardH(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
   // Open edit sheet when arriving from timeline tap
   useEffect(() => {
     if (!editId) return;
@@ -343,10 +352,9 @@ export default function ActivitiesScreen() {
             activeOpacity={1}
             accessibilityLabel="Fermer"
           />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <Animated.View
-              style={[s.sheet, { paddingBottom: insets.bottom + Spacing.lg }, sheetAnimStyle]}
-            >
+          <Animated.View
+            style={[s.sheet, { paddingBottom: insets.bottom + Spacing.lg, height: SHEET_HEIGHT, maxHeight: windowH - insets.top - keyboardH - 20 }, sheetAnimStyle]}
+          >
               {/* Handle */}
               <View style={s.handle} />
 
@@ -364,6 +372,8 @@ export default function ActivitiesScreen() {
                   <View key={n} style={[s.dot, n <= step && s.dotOn]} />
                 ))}
               </View>
+
+              <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
               {/* ── Step 1: Category ── */}
               {step === 1 && (
@@ -584,6 +594,8 @@ export default function ActivitiesScreen() {
                 </View>
               )}
 
+              </ScrollView>
+
               {/* Footer */}
               <View style={s.footer}>
                 {step !== 1 && (
@@ -610,8 +622,7 @@ export default function ActivitiesScreen() {
                   {step !== 3 && <Ionicons name="chevron-forward" size={16} color={Colors.light.onPrimary} />}
                 </TouchableOpacity>
               </View>
-            </Animated.View>
-          </KeyboardAvoidingView>
+          </Animated.View>
         </View>
       </Modal>
     </SafeAreaView>
