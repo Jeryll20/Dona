@@ -375,6 +375,9 @@ export default function TodayScreen() {
     transform: [{ translateX: slideX.value }],
   }));
 
+  // Always start in day view (guard against stale persisted state)
+  useEffect(() => { setViewMode('day'); }, []);
+
   // Reset slideX when entering day view from week/month (stop any in-flight animation)
   useEffect(() => {
     if (viewMode === 'day') {
