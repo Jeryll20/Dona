@@ -28,7 +28,7 @@ interface ActivityBlockProps {
 }
 
 const CHOICES: { key: ActivityStatus; label: string; icon: string }[] = [
-  { key: 'yes',        label: 'Oui, j\'en fais',  icon: '✓' },
+  { key: 'yes',        label: 'Oui, c\'est le cas', icon: '✓' },
   { key: 'no',         label: 'Non',               icon: '✗' },
   { key: 'interested', label: 'J\'aimerais bien',  icon: '◯' },
 ];
