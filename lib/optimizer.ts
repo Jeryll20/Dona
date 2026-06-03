@@ -1,4 +1,4 @@
-import type { TimelineEvent, Suggestion, SuggestionCat, CyclePhase, MealEntry } from '@/types';
+import type { TimelineEvent, Suggestion, SuggestionCat, CyclePhase, MealEntry, WeekDay } from '@/types';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -191,7 +191,7 @@ export function buildSuggestions(input: OptimizerInput): Suggestion[] {
   return suggestions;
 }
 
-// ── Build default day events from user profile ────────────────────────────────
+// ── Build day events from user profile (day-aware) ───────────────────────────
 
 function toH(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number);
@@ -204,20 +204,23 @@ function mealLabel(startH: number): string {
   return 'Dîner';
 }
 
-export function buildDefaultDay(
+type WorkLike        = { employed?: boolean; role?: string; days?: WeekDay[]; startTime?: string; endTime?: string };
+type SportLike       = { active?: boolean; activity?: string; days?: WeekDay[]; startTime?: string; endTime?: string };
+type OtherLike       = { active?: boolean; title?: string; days?: WeekDay[]; startTime?: string; endTime?: string };
+
+function buildBase(
   sleep: { bedtime: string; waketime: string; prepMinutes: number },
   meals?: { entries?: MealEntry[]; times?: string[] },
-): TimelineEvent[] {
+): { events: TimelineEvent[]; wake: number; bed: number; prepEnd: number } {
   const wake    = toH(sleep.waketime);
   const bed     = toH(sleep.bedtime);
   const prep    = sleep.prepMinutes / 60;
   const prepEnd = wake + prep;
   const events: TimelineEvent[] = [];
 
-  if (wake > 0) events.push({ cat: 'sommeil', title: 'Sommeil',      start: 0,    end: wake    });
+  if (wake > 0) events.push({ cat: 'sommeil', title: 'Sommeil',     start: 0,    end: wake    });
   events.push(              { cat: 'prep',    title: 'Préparation', start: wake, end: prepEnd });
 
-  // Prefer named entries, fall back to legacy times array
   const mealList: MealEntry[] = meals?.entries
     ?? meals?.times?.map((t) => ({ time: t, label: mealLabel(toH(t)) }))
     ?? [];
@@ -230,7 +233,46 @@ export function buildDefaultDay(
     }
   }
 
-  if (bed > 0)  events.push({ cat: 'sommeil', title: 'Sommeil',      start: bed,  end: 24      });
+  if (bed > 0) events.push({ cat: 'sommeil', title: 'Sommeil', start: bed, end: 24 });
+  return { events, wake, bed, prepEnd };
+}
+
+// Day-aware build — includes work/sport/other only on their scheduled weekdays
+export function buildDayEvents(
+  weekDay: WeekDay,
+  sleep: { bedtime: string; waketime: string; prepMinutes: number },
+  meals?: { entries?: MealEntry[]; times?: string[] },
+  work?: WorkLike,
+  sport?: SportLike,
+  otherActivity?: OtherLike,
+): TimelineEvent[] {
+  const { events } = buildBase(sleep, meals);
+
+  if (work?.employed && work.startTime && work.endTime && work.days?.includes(weekDay)) {
+    const s = toH(work.startTime);
+    const e = toH(work.endTime);
+    if (e > s) events.push({ cat: 'travail', title: work.role || 'Travail', start: s, end: e, profileKey: 'work' });
+  }
+
+  if (sport?.active && sport.startTime && sport.endTime && sport.days?.includes(weekDay)) {
+    const s = toH(sport.startTime);
+    const e = toH(sport.endTime);
+    if (e > s) events.push({ cat: 'activite', title: sport.activity || 'Sport', start: s, end: e, profileKey: 'sport' });
+  }
+
+  if (otherActivity?.active && otherActivity.startTime && otherActivity.endTime && otherActivity.days?.includes(weekDay)) {
+    const s = toH(otherActivity.startTime);
+    const e = toH(otherActivity.endTime);
+    if (e > s) events.push({ cat: 'activite', title: otherActivity.title || 'Activité', start: s, end: e, profileKey: 'other' });
+  }
 
   return events.sort((a, b) => a.start - b.start);
+}
+
+// Day-agnostic build — sleep/prep/meals only (used by notifications & sleep.tsx)
+export function buildDefaultDay(
+  sleep: { bedtime: string; waketime: string; prepMinutes: number },
+  meals?: { entries?: MealEntry[]; times?: string[] },
+): TimelineEvent[] {
+  return buildBase(sleep, meals).events.sort((a, b) => a.start - b.start);
 }

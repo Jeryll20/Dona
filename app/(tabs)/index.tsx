@@ -22,7 +22,7 @@ import { SuggestionCard } from '@/components/suggestions/SuggestionCard';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useSuggestionsStore } from '@/store/useSuggestionsStore';
-import { buildSuggestions, buildDefaultDay } from '@/lib/optimizer';
+import { buildSuggestions, buildDayEvents } from '@/lib/optimizer';
 import { getCyclePhase } from '@/lib/cycle';
 import type { TimelineEvent, WeekDay, UserActivity, Suggestion } from '@/types';
 import type { ViewMode } from '@/store/useScheduleStore';
@@ -55,11 +55,11 @@ function getEventPress(
   ev: TimelineEvent & { activityId?: string },
 ): (() => void) | undefined {
   if (ev.activityId) {
-    return () => router.navigate({
-      pathname: '/(tabs)/activities',
-      params: { editId: ev.activityId },
-    } as any);
+    return () => router.navigate({ pathname: '/(tabs)/activities', params: { editId: ev.activityId } } as any);
   }
+  if (ev.profileKey === 'work')  return () => router.push('/profile/work'  as any);
+  if (ev.profileKey === 'sport') return () => router.push('/profile/sport' as any);
+  if (ev.profileKey === 'other') return () => router.push('/profile/other' as any);
   const path = PROFILE_TARGET[ev.cat];
   return path ? () => router.push(path as any) : undefined;
 }
@@ -76,7 +76,11 @@ const LEFT_OFFSET = 52;
 
 interface DayPanelProps {
   absOffset: number;
-  baseEvents: TimelineEvent[];
+  sleep: ReturnType<typeof useUserStore.getState>['sleep'];
+  meals: ReturnType<typeof useUserStore.getState>['meals'];
+  work: ReturnType<typeof useUserStore.getState>['work'];
+  sport: ReturnType<typeof useUserStore.getState>['sport'];
+  otherActivity: ReturnType<typeof useUserStore.getState>['otherActivity'];
   activities: UserActivity[];
   visibleSuggestions: Suggestion[];
   onAccept: (id: string) => void;
@@ -86,12 +90,22 @@ interface DayPanelProps {
 }
 
 function DayPanel({
-  absOffset, baseEvents, activities, visibleSuggestions, onAccept, onDismiss, nowHour, panelWidth,
+  absOffset, sleep, meals, work, sport, otherActivity,
+  activities, visibleSuggestions, onAccept, onDismiss, nowHour, panelWidth,
 }: DayPanelProps) {
   const d = new Date();
   d.setDate(d.getDate() + absOffset);
   const weekDay = DAY_MAP[d.getDay()];
   const isToday = absOffset === 0;
+
+  const profileEvents = useMemo<TimelineEvent[]>(() => {
+    if (!sleep.waketime || !sleep.bedtime || sleep.prepMinutes == null) return [];
+    return buildDayEvents(
+      weekDay,
+      { bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes },
+      meals, work, sport, otherActivity,
+    );
+  }, [weekDay, sleep, meals, work, sport, otherActivity]);
 
   const activityEvents = useMemo<(TimelineEvent & { activityId: string })[]>(() => (
     activities
@@ -106,8 +120,8 @@ function DayPanel({
   ), [activities, weekDay]);
 
   const events = useMemo<TimelineEvent[]>(
-    () => [...baseEvents, ...activityEvents].sort((a, b) => a.start - b.start),
-    [baseEvents, activityEvents],
+    () => [...profileEvents, ...activityEvents].sort((a, b) => a.start - b.start),
+    [profileEvents, activityEvents],
   );
 
   return (
@@ -173,7 +187,7 @@ export default function TodayScreen() {
   const slideX      = useSharedValue(-width);
   const slideStartX = useRef(-width);
 
-  const { sleep, meals, work, cycle } = useUserStore();
+  const { sleep, meals, work, sport, otherActivity, cycle, profile } = useUserStore();
   const activities   = useScheduleStore((s) => s.activities);
   const viewMode     = useScheduleStore((s) => s.viewMode);
   const setViewMode  = useScheduleStore((s) => s.setViewMode);
@@ -242,32 +256,25 @@ export default function TodayScreen() {
     }
   };
 
-  // Base day events derived directly from user profile
-  const baseEvents = useMemo<TimelineEvent[]>(() => {
+  // Today's events for suggestion generation (profile + user activities, day-aware)
+  const todayProfileEvents = useMemo<TimelineEvent[]>(() => {
     if (!sleep.waketime || !sleep.bedtime || sleep.prepMinutes == null) return [];
-    return buildDefaultDay(
+    return buildDayEvents(
+      selectedWeekDay,
       { bedtime: sleep.bedtime, waketime: sleep.waketime, prepMinutes: sleep.prepMinutes },
-      meals,
+      meals, work, sport, otherActivity,
     );
-  }, [sleep.waketime, sleep.bedtime, sleep.prepMinutes, meals]);
+  }, [selectedWeekDay, sleep, meals, work, sport, otherActivity]);
 
-  // User-added activities scheduled for today (keep activityId for navigation)
-  const activityEvents = useMemo<(TimelineEvent & { activityId: string })[]>(() => (
+  const todayActivityEvents = useMemo(() => (
     activities
       .filter((a) => a.days.includes(selectedWeekDay))
-      .map((a) => ({
-        cat:        a.cat,
-        title:      a.title,
-        start:      parseTime(a.startTime),
-        end:        parseTime(a.endTime),
-        activityId: a.id,
-      }))
+      .map((a) => ({ cat: a.cat, title: a.title, start: parseTime(a.startTime), end: parseTime(a.endTime) }))
   ), [activities, selectedWeekDay]);
 
-  // Merge and sort all events
-  const events = useMemo<TimelineEvent[]>(
-    () => [...baseEvents, ...activityEvents].sort((a, b) => a.start - b.start),
-    [baseEvents, activityEvents],
+  const todayEvents = useMemo<TimelineEvent[]>(
+    () => [...todayProfileEvents, ...todayActivityEvents].sort((a, b) => a.start - b.start),
+    [todayProfileEvents, todayActivityEvents],
   );
 
   const cyclePhase = useMemo(() => {
@@ -282,9 +289,9 @@ export default function TodayScreen() {
       ? new Date(lastGeneratedAt).toDateString() === today
       : false;
     if (!alreadyToday) {
-      setSuggestions(buildSuggestions({ events, goal: work.role ?? undefined, cyclePhase }));
+      setSuggestions(buildSuggestions({ events: todayEvents, goal: profile.goal ?? undefined, cyclePhase }));
     }
-  }, [events, work.role, cyclePhase]);
+  }, [todayEvents, profile.goal, cyclePhase]);
 
   const visibleSuggestions = suggestions.filter((s) => !s.accepted && !s.dismissed);
 
@@ -332,7 +339,7 @@ export default function TodayScreen() {
           <View style={styles.badge}>
             <Icon name="clock" size={14} stroke={Colors.light.ink2} />
             <Text style={styles.badgeText}>
-              {Math.round(scheduledHours(events))}h planifiées
+              {Math.round(scheduledHours(todayEvents))}h planifiées
             </Text>
           </View>
           <TouchableOpacity
@@ -385,7 +392,11 @@ export default function TodayScreen() {
               <DayPanel
                 key={off}
                 absOffset={off}
-                baseEvents={baseEvents}
+                sleep={sleep}
+                meals={meals}
+                work={work}
+                sport={sport}
+                otherActivity={otherActivity}
                 activities={activities}
                 visibleSuggestions={visibleSuggestions}
                 onAccept={acceptSuggestion}

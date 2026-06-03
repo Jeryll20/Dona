@@ -59,7 +59,7 @@ const row = StyleSheet.create({
 });
 
 export default function ProfileScreen() {
-  const { profile, sleep, meals, sport, work, cycle } = useUserStore();
+  const { profile, sleep, meals, sport, work, otherActivity, cycle } = useUserStore();
   const signOut = useAuthStore((s) => s.signOut);
 
   const firstName = profile.firstName ?? '';
@@ -67,7 +67,7 @@ export default function ProfileScreen() {
   const fullName  = [firstName, lastName].filter(Boolean).join(' ') || null;
   const avatarLetter = (firstName || 'D')[0].toUpperCase();
 
-  const goalKey = work.role ?? null;
+  const goalKey = profile.goal ?? null;
   const goalLabel = goalKey ? GOAL_LABELS[goalKey] : null;
 
   const sleepValue = sleep.bedtime && sleep.waketime
@@ -83,11 +83,17 @@ export default function ProfileScreen() {
     ? `Cycle ${cycle.cycleDays ?? 28} jours`
     : 'Non activé';
 
-  const activitiesRaw = sport.activity ?? '';
-  const activityTags = activitiesRaw
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
+  const workValue = work.employed
+    ? `${work.role ? work.role + ' · ' : ''}${work.startTime} → ${work.endTime}`
+    : work.interested ? 'J\'aimerais bien' : undefined;
+
+  const sportValue = sport.active
+    ? `${sport.activity ? sport.activity + ' · ' : ''}${sport.startTime} → ${sport.endTime}`
+    : sport.interested ? 'J\'aimerais bien' : undefined;
+
+  const otherValue = otherActivity.active
+    ? `${otherActivity.title ? otherActivity.title + ' · ' : ''}${otherActivity.startTime} → ${otherActivity.endTime}`
+    : otherActivity.interested ? 'J\'aimerais bien' : undefined;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -144,6 +150,30 @@ export default function ProfileScreen() {
             onPress={() => router.push('/profile/meals')}
           />
           <SettingsRow
+            icon="briefcase-outline"
+            iconBg={Colors.light.workBg}
+            iconInk={Colors.light.workInk}
+            label="Emploi"
+            value={workValue}
+            onPress={() => router.push('/profile/work')}
+          />
+          <SettingsRow
+            icon="walk-outline"
+            iconBg={Colors.light.activityBg}
+            iconInk={Colors.light.activityInk}
+            label="Sport & Activité"
+            value={sportValue}
+            onPress={() => router.push('/profile/sport')}
+          />
+          <SettingsRow
+            icon="sparkles-outline"
+            iconBg={Colors.light.primaryTint}
+            iconInk={Colors.light.primaryStrong}
+            label="Autre activité"
+            value={otherValue}
+            onPress={() => router.push('/profile/other')}
+          />
+          <SettingsRow
             icon="flower-outline"
             iconBg={Colors.light.activityBg}
             iconInk={Colors.light.activityInk}
@@ -152,20 +182,6 @@ export default function ProfileScreen() {
             onPress={() => router.push('/profile/cycle')}
           />
         </View>
-
-        {/* Rhythm */}
-        {activityTags.length > 0 && (
-          <>
-            <Text style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Mon rythme</Text>
-            <View style={styles.tagsWrap}>
-              {activityTags.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
 
         {/* Integrations */}
         <Text style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Intégrations</Text>

@@ -9,6 +9,7 @@ export interface TimelineEvent {
   end: number;
   thin?: boolean;   // thin stripe style for short commute blocks
   dur?: string;     // display string for thin blocks (e.g. "20 min")
+  profileKey?: 'work' | 'sport' | 'other'; // source for tap-to-edit routing
 }
 
 export type Recurrence = 'none' | 'daily' | 'weekly' | 'biweekly' | 'custom';

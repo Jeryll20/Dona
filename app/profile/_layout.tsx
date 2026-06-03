@@ -8,6 +8,9 @@ export default function ProfileLayout() {
       <Stack.Screen name="cycle" />
       <Stack.Screen name="meals" />
       <Stack.Screen name="calendar" />
+      <Stack.Screen name="work" />
+      <Stack.Screen name="sport" />
+      <Stack.Screen name="other" />
     </Stack>
   );
 }
