@@ -26,7 +26,7 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
   const handleSearch = useCallback((text: string) => {
     setQuery(text);
     if (debounce.current) clearTimeout(debounce.current);
-    if (text.length < 3) { setResults([]); return; }
+    if (text.length < 2) { setResults([]); return; }
     debounce.current = setTimeout(async () => {
       setLoading(true);
       const found = await searchAddresses(text);

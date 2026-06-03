@@ -2,11 +2,19 @@ import type { ActivityLocation } from '@/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
+interface PhotonProperties {
+  osm_id:      number;
+  name?:       string;
+  street?:     string;
+  housenumber?: string;
+  postcode?:   string;
+  city?:       string;
+  country?:    string;
+}
+
+interface PhotonFeature {
+  geometry:   { coordinates: [number, number] };
+  properties: PhotonProperties;
 }
 
 export interface AddressResult {
@@ -21,24 +29,32 @@ export interface DistanceResult {
   distanceKm:      number;
 }
 
-// ── Address search — Nominatim (OpenStreetMap) ────────────────────────────────
+function formatPhotonAddress(p: PhotonProperties): string {
+  const parts: string[] = [];
+  const street = [p.housenumber, p.street ?? p.name].filter(Boolean).join(' ');
+  if (street) parts.push(street);
+  const city = [p.postcode, p.city].filter(Boolean).join(' ');
+  if (city) parts.push(city);
+  if (p.country) parts.push(p.country);
+  return parts.join(', ') || p.name || '';
+}
+
+// ── Address search — Photon (komoot, OSM-based, designed for autocomplete) ────
 
 export async function searchAddresses(query: string): Promise<AddressResult[]> {
-  if (query.length < 3) return [];
+  if (query.length < 2) return [];
   try {
     const url =
-      `https://nominatim.openstreetmap.org/search` +
+      `https://photon.komoot.io/api/` +
       `?q=${encodeURIComponent(query)}` +
-      `&format=json&limit=5&accept-language=fr`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'DonaApp/1.0 contact@dona.app' },
-    });
-    const data: NominatimResult[] = await res.json();
-    return data.map((r) => ({
-      id:      String(r.place_id),
-      address: r.display_name,
-      lat:     parseFloat(r.lat),
-      lng:     parseFloat(r.lon),
+      `&limit=5&lang=fr`;
+    const res = await fetch(url);
+    const data: { features: PhotonFeature[] } = await res.json();
+    return (data.features ?? []).map((f) => ({
+      id:      String(f.properties.osm_id),
+      address: formatPhotonAddress(f.properties),
+      lat:     f.geometry.coordinates[1],
+      lng:     f.geometry.coordinates[0],
     }));
   } catch {
     return [];
