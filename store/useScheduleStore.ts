@@ -16,7 +16,7 @@ interface ScheduleState {
   removeActivity:  (id: string)                            => void;
   updateActivity:  (id: string, patch: Partial<UserActivity>) => void;
   setViewMode:     (mode: ViewMode)                        => void;
-  setDayOffset:    (offset: number)                        => void;
+  setDayOffset:    (offset: number | ((prev: number) => number)) => void;
 }
 
 export const useScheduleStore = create<ScheduleState>()(
@@ -29,7 +29,9 @@ export const useScheduleStore = create<ScheduleState>()(
 
       setTodayEvents: (events)  => set({ todayEvents: events }),
       setViewMode:    (mode)    => set({ viewMode: mode }),
-      setDayOffset:   (offset)  => set({ dayOffset: offset }),
+      setDayOffset:   (offset)  => set((s) => ({
+        dayOffset: typeof offset === 'function' ? offset(s.dayOffset) : offset,
+      })),
 
       addActivity: (activity) =>
         set((s) => ({ activities: [activity, ...s.activities] })),
