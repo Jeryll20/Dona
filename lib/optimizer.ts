@@ -158,6 +158,7 @@ export function buildSuggestions(input: OptimizerInput): Suggestion[] {
   const { events, goal, cyclePhase } = input;
   const slots = detectFreeSlots(events);
   const suggestions: Suggestion[] = [];
+  const usedTitles = new Set<string>();
   let idCounter = 0;
 
   for (const slot of slots) {
@@ -171,12 +172,13 @@ export function buildSuggestions(input: OptimizerInput): Suggestion[] {
       .flatMap((cat) =>
         POOL[cat].map((t) => ({ t, score: scoreCat(cat, timeOrder, goalOrder, cycleOrder) }))
       )
-      .filter(({ t }) => t.minSlotHours <= slot.duration)
+      .filter(({ t }) => t.minSlotHours <= slot.duration && !usedTitles.has(t.title))
       .sort((a, b) => b.score - a.score);
 
     if (candidates.length === 0) continue;
 
     const { t } = candidates[0];
+    usedTitles.add(t.title);
     suggestions.push({
       id:              String(++idCounter),
       title:           t.title,
