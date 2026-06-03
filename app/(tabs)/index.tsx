@@ -278,13 +278,14 @@ export default function TodayScreen() {
   // Regenerate suggestions once per calendar day or when inputs change
   useEffect(() => {
     const today = new Date().toDateString();
-    const alreadyToday = lastGeneratedAt
-      ? new Date(lastGeneratedAt).toDateString() === today
+    const freshLast = useSuggestionsStore.getState().lastGeneratedAt;
+    const alreadyToday = freshLast
+      ? new Date(freshLast).toDateString() === today
       : false;
     if (!alreadyToday) {
       setSuggestions(buildSuggestions({ events: todayEvents, goal: profile.goal ?? undefined, cyclePhase }));
     }
-  }, [todayEvents, profile.goal, cyclePhase]);
+  }, [todayEvents, profile.goal, cyclePhase, setSuggestions]);
 
   const visibleSuggestions = suggestions.filter((s) => !s.accepted && !s.dismissed);
 

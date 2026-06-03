@@ -157,38 +157,42 @@ export interface OptimizerInput {
 export function buildSuggestions(input: OptimizerInput): Suggestion[] {
   const { events, goal, cyclePhase } = input;
   const slots = detectFreeSlots(events);
-  const suggestions: Suggestion[] = [];
-  const usedTitles = new Set<string>();
-  let idCounter = 0;
+
+  if (slots.length === 0) return [];
+
+  const goalOrder  = goalBoost(goal);
+  const cycleOrder = cycleBoost(cyclePhase);
+
+  // Collect best score + matching slot for each unique template title
+  const byTitle = new Map<string, { t: SuggestionTemplate; score: number; slot: FreeSlot }>();
 
   for (const slot of slots) {
-    if (suggestions.length >= 3) break;
-
-    const timeOrder  = timeOfDayCategories(slot.start);
-    const goalOrder  = goalBoost(goal);
-    const cycleOrder = cycleBoost(cyclePhase);
-
-    const candidates = (Object.keys(POOL) as SuggestionCat[])
-      .flatMap((cat) =>
-        POOL[cat].map((t) => ({ t, score: scoreCat(cat, timeOrder, goalOrder, cycleOrder) }))
-      )
-      .filter(({ t }) => t.minSlotHours <= slot.duration && !usedTitles.has(t.title))
-      .sort((a, b) => b.score - a.score);
-
-    if (candidates.length === 0) continue;
-
-    const { t } = candidates[0];
-    usedTitles.add(t.title);
-    suggestions.push({
-      id:              String(++idCounter),
-      title:           t.title,
-      cat:             t.cat,
-      durationMinutes: t.durationMinutes,
-      startHour:       slot.start,
-    });
+    const timeOrder = timeOfDayCategories(slot.start);
+    for (const cat of Object.keys(POOL) as SuggestionCat[]) {
+      for (const t of POOL[cat]) {
+        if (t.minSlotHours > slot.duration) continue;
+        const score = scoreCat(cat, timeOrder, goalOrder, cycleOrder);
+        const prev  = byTitle.get(t.title);
+        if (!prev || prev.score < score) {
+          byTitle.set(t.title, { t, score, slot });
+        }
+      }
+    }
   }
 
-  return suggestions;
+  // Sort by score desc; shuffle within same-score tiers for variety
+  const sorted = [...byTitle.values()].sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return Math.random() - 0.5;
+  });
+
+  return sorted.slice(0, 3).map((c, i) => ({
+    id:              String(i + 1),
+    title:           c.t.title,
+    cat:             c.t.cat,
+    durationMinutes: c.t.durationMinutes,
+    startHour:       c.slot.start,
+  }));
 }
 
 // ── Build day events from user profile (day-aware) ───────────────────────────
