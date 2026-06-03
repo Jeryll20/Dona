@@ -109,6 +109,7 @@ function DayPanel({
         start:      parseTime(a.startTime),
         end:        parseTime(a.endTime),
         activityId: a.id,
+        color:      a.color,
       }))
   ), [activities, weekDay]);
 

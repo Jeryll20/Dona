@@ -10,6 +10,7 @@ export interface TimelineEvent {
   thin?: boolean;   // thin stripe style for short commute blocks
   dur?: string;     // display string for thin blocks (e.g. "20 min")
   profileKey?: 'work' | 'sport' | 'other'; // source for tap-to-edit routing
+  color?: { bg: string; ink: string };     // user-chosen color override
 }
 
 export type Recurrence = 'none' | 'daily' | 'weekly' | 'biweekly' | 'custom';
@@ -26,6 +27,7 @@ export interface UserActivity {
   endTime: string;     // "HH:MM"
   days: WeekDay[];
   recurrence: Recurrence;
+  color?: { bg: string; ink: string };
 }
 
 // ── Suggestion ────────────────────────────────────────────────────────────────

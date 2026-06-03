@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TimeField } from '@/components/ui/TimeField';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useUserStore } from '@/store/useUserStore';
-import { Colors } from '@/constants/Colors';
+import { Colors, COLOR_PALETTE } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import type { CatKey, UserActivity, WeekDay, Recurrence } from '@/types';
@@ -87,7 +87,7 @@ const tpS = StyleSheet.create({
 
 // ── ActivityCard ──────────────────────────────────────────────────
 
-type ActivityCardData = Pick<UserActivity, 'id' | 'title' | 'cat' | 'startTime' | 'endTime' | 'days'>;
+type ActivityCardData = Pick<UserActivity, 'id' | 'title' | 'cat' | 'startTime' | 'endTime' | 'days' | 'color'>;
 
 function ActivityCard({ activity, onEdit, onDelete }: {
   activity: ActivityCardData;
@@ -95,6 +95,8 @@ function ActivityCard({ activity, onEdit, onDelete }: {
   onDelete?: () => void;
 }) {
   const cat = CATEGORIES.find((c) => c.key === activity.cat) ?? CATEGORIES[1];
+  const bg  = activity.color?.bg  ?? cat.bg;
+  const ink = activity.color?.ink ?? cat.ink;
   return (
     <TouchableOpacity
       style={cS.wrap}
@@ -103,15 +105,15 @@ function ActivityCard({ activity, onEdit, onDelete }: {
       accessibilityLabel={activity.title}
       accessibilityRole="button"
     >
-      <View style={[cS.icon, { backgroundColor: cat.bg }]}>
-        <Ionicons name={cat.icon} size={20} color={cat.ink} />
+      <View style={[cS.icon, { backgroundColor: bg }]}>
+        <Ionicons name={cat.icon} size={20} color={ink} />
       </View>
       <View style={cS.content}>
         <Text style={cS.title}>{activity.title}</Text>
         <Text style={cS.sub}>{activity.startTime} – {activity.endTime} · {formatDays(activity.days)}</Text>
       </View>
-      <View style={[cS.pill, { backgroundColor: cat.bg }]}>
-        <Text style={[cS.pillText, { color: cat.ink }]}>{cat.label}</Text>
+      <View style={[cS.pill, { backgroundColor: bg }]}>
+        <Text style={[cS.pillText, { color: ink }]}>{cat.label}</Text>
       </View>
       {onDelete ? (
         <TouchableOpacity
@@ -162,6 +164,7 @@ export default function ActivitiesScreen() {
   const [endTime,     setEndTime]     = useState('10:00');
   const [days,        setDays]        = useState<Set<WeekDay>>(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
   const [recurrence,  setRecurrence]  = useState<Recurrence>('weekly');
+  const [color,       setColor]       = useState<{ bg: string; ink: string } | undefined>(undefined);
   const slideAnim    = useSharedValue(SHEET_HEIGHT);
   const sheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: slideAnim.value }],
@@ -184,6 +187,7 @@ export default function ActivitiesScreen() {
       setEndTime(activity.endTime);
       setDays(new Set(activity.days));
       setRecurrence(activity.recurrence);
+      setColor(activity.color);
       setStep(2); // Skip category step when editing
     } else {
       setEditingId(null);
@@ -191,6 +195,7 @@ export default function ActivitiesScreen() {
       setStartTime('09:00'); setEndTime('10:00');
       setDays(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
       setRecurrence('weekly');
+      setColor(undefined);
       setStep(1);
     }
     slideAnim.value = SHEET_HEIGHT;
@@ -221,6 +226,7 @@ export default function ActivitiesScreen() {
       endTime,
       days: [...days] as WeekDay[],
       recurrence,
+      color,
     };
     if (editingId) {
       updateActivity(editingId, data);
@@ -380,6 +386,32 @@ export default function ActivitiesScreen() {
                       <View style={s.timeSep} />
                       <TimePickerRow label="Fin"   value={endTime}   onChange={setEndTime} />
                     </View>
+                  </View>
+                  <View style={s.fg}>
+                    <Text style={s.fieldLabel}>Couleur</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.colorRow}>
+                      {/* Default = category color */}
+                      <TouchableOpacity
+                        style={[s.swatch, s.swatchDefault, !color && s.swatchSelected]}
+                        onPress={() => setColor(undefined)}
+                        accessibilityLabel="Couleur par défaut"
+                      >
+                        <Ionicons name="color-palette-outline" size={15} color={Colors.light.ink3} />
+                      </TouchableOpacity>
+                      {COLOR_PALETTE.map((c, i) => {
+                        const on = color?.bg === c.bg;
+                        return (
+                          <TouchableOpacity
+                            key={i}
+                            style={[s.swatch, { backgroundColor: c.bg }, on && s.swatchSelected]}
+                            onPress={() => setColor({ bg: c.bg, ink: c.ink })}
+                            accessibilityLabel={c.label}
+                          >
+                            {on && <Ionicons name="checkmark" size={14} color={c.ink} />}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
                   </View>
                 </View>
               )}
@@ -578,6 +610,16 @@ const s = StyleSheet.create({
   recLabel:   { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink },
   recLabelOn: { color: Colors.light.primaryStrong },
   recSub:     { fontSize: FontSize.xs, color: Colors.light.ink3, marginTop: 2 },
+
+  // Color picker
+  colorRow:      { flexDirection: 'row', gap: 10, paddingVertical: 4 },
+  swatch: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: 'transparent',
+  },
+  swatchDefault: { backgroundColor: Colors.light.surfaceSunk },
+  swatchSelected: { borderColor: Colors.light.ink2 },
 
   // Footer
   footer: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },

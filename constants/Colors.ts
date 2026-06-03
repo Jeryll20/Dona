@@ -73,3 +73,15 @@ export const Colors = {
 } as const;
 
 export type ColorScheme = 'light' | 'dark';
+
+export const COLOR_PALETTE: { bg: string; ink: string; label: string }[] = [
+  { bg: '#DBD9F5', ink: '#524FB5', label: 'Violet'  },
+  { bg: '#F5E0DA', ink: '#C0533A', label: 'Corail'  },
+  { bg: '#DCF2E3', ink: '#3A8A50', label: 'Vert'    },
+  { bg: '#DDD9F2', ink: '#5A52A0', label: 'Lavande' },
+  { bg: '#EAE7F2', ink: '#7A7290', label: 'Gris'    },
+  { bg: '#FEF3C7', ink: '#92400E', label: 'Ambre'   },
+  { bg: '#CCFBF1', ink: '#0F766E', label: 'Teal'    },
+  { bg: '#FCE7F3', ink: '#9D174D', label: 'Rose'    },
+  { bg: '#DBEAFE', ink: '#1D4ED8', label: 'Bleu'    },
+];

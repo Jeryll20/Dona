@@ -18,7 +18,7 @@ function fmtHour(h: number) {
 }
 
 export function TimelineBlock({ event, hourHeight, leftOffset, onPress }: TimelineBlockProps) {
-  const c = CAT[event.cat];
+  const c = event.color ?? CAT[event.cat];
   const top    = event.start * hourHeight;
   const height = Math.max((event.end - event.start) * hourHeight, 16);
 
