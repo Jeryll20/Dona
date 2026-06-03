@@ -1,8 +1,9 @@
 import {
-  StyleSheet, View, Text, TouchableOpacity, TextInput, Platform,
+  StyleSheet, View, Text, TouchableOpacity, TextInput,
 } from 'react-native';
 import { useState } from 'react';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { Sheet } from '@/components/ui/Sheet';
+import { TimeField } from '@/components/ui/TimeField';
 import { DayPicker } from './DayPicker';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
@@ -26,17 +27,6 @@ interface ActivityBlockProps {
   onEndTimeChange: (t: string) => void;
 }
 
-function timeToDate(t: string): Date {
-  const [h, m] = t.split(':').map(Number);
-  const d = new Date();
-  d.setHours(h || 0, m || 0, 0, 0);
-  return d;
-}
-
-function dateToTime(d: Date): string {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
 const CHOICES: { key: ActivityStatus; label: string; icon: string }[] = [
   { key: 'yes',        label: 'Oui, j\'en fais',  icon: '✓' },
   { key: 'no',         label: 'Non',               icon: '✗' },
@@ -50,8 +40,20 @@ export function ActivityBlock({
   startTime, onStartTimeChange,
   endTime, onEndTimeChange,
 }: ActivityBlockProps) {
-  const [activePicker, setActivePicker] = useState<'start' | 'end' | null>(null);
+  const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
+  const [tempTime, setTempTime] = useState('');
   const [nameFocused, setNameFocused] = useState(false);
+
+  function openPicker(target: 'start' | 'end') {
+    setTempTime(target === 'start' ? startTime : endTime);
+    setPickerTarget(target);
+  }
+
+  function confirmTime() {
+    if (pickerTarget === 'start') onStartTimeChange(tempTime);
+    else if (pickerTarget === 'end') onEndTimeChange(tempTime);
+    setPickerTarget(null);
+  }
 
   return (
     <View style={styles.container}>
@@ -100,40 +102,39 @@ export function ActivityBlock({
           <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>De quelle heure à quelle heure ?</Text>
           <View style={styles.timeRow}>
             <TouchableOpacity
-              style={[styles.timeBtn, activePicker === 'start' && styles.timeBtnActive]}
-              onPress={() => setActivePicker(activePicker === 'start' ? null : 'start')}
+              style={[styles.timeBtn, pickerTarget === 'start' && styles.timeBtnActive]}
+              onPress={() => openPicker('start')}
               accessibilityLabel="Heure de début"
             >
               <Text style={styles.timeBtnText}>{startTime}</Text>
             </TouchableOpacity>
             <Text style={styles.timeSep}>→</Text>
             <TouchableOpacity
-              style={[styles.timeBtn, activePicker === 'end' && styles.timeBtnActive]}
-              onPress={() => setActivePicker(activePicker === 'end' ? null : 'end')}
+              style={[styles.timeBtn, pickerTarget === 'end' && styles.timeBtnActive]}
+              onPress={() => openPicker('end')}
               accessibilityLabel="Heure de fin"
             >
               <Text style={styles.timeBtnText}>{endTime}</Text>
             </TouchableOpacity>
           </View>
-
-          {activePicker && (
-            <DateTimePicker
-              value={timeToDate(activePicker === 'start' ? startTime : endTime)}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              minuteInterval={5}
-              onChange={(_, date) => {
-                if (date) {
-                  const t = dateToTime(date);
-                  if (activePicker === 'start') onStartTimeChange(t);
-                  else onEndTimeChange(t);
-                }
-                if (Platform.OS === 'android') setActivePicker(null);
-              }}
-            />
-          )}
         </View>
       )}
+
+      <Sheet
+        open={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        title={pickerTarget === 'start' ? 'Heure de début' : 'Heure de fin'}
+      >
+        <TimeField value={tempTime} onChange={setTempTime} />
+        <TouchableOpacity
+          style={styles.confirmBtn}
+          onPress={confirmTime}
+          accessibilityLabel="Valider l'heure"
+          accessibilityRole="button"
+        >
+          <Text style={styles.confirmText}>Valider</Text>
+        </TouchableOpacity>
+      </Sheet>
     </View>
   );
 }
@@ -215,5 +216,19 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     color: Colors.light.ink3,
     fontWeight: '600',
+  },
+
+  confirmBtn: {
+    marginTop: Spacing.md,
+    backgroundColor: Colors.light.primary,
+    borderRadius: Radius.pill,
+    paddingVertical: Spacing.base + 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmText: {
+    fontSize: FontSize.base,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

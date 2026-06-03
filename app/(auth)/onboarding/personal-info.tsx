@@ -1,10 +1,11 @@
 import {
-  StyleSheet, View, Text, TextInput, TouchableOpacity, Platform,
+  StyleSheet, View, Text, TextInput, TouchableOpacity,
 } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import OnboardingShell from '@/components/onboarding/OnboardingShell';
+import { Sheet } from '@/components/ui/Sheet';
 import { useUserStore } from '@/store/useUserStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
@@ -28,8 +29,19 @@ export default function PersonalInfo() {
     stored.dateOfBirth ? new Date(stored.dateOfBirth) : null,
   );
   const [showPicker, setShowPicker] = useState(false);
+  const [tempDob, setTempDob] = useState<Date>(new Date(1995, 0, 1));
 
   const canContinue = firstName.trim().length > 0;
+
+  function openDatePicker() {
+    setTempDob(dob ?? new Date(1995, 0, 1));
+    setShowPicker(true);
+  }
+
+  function confirmDate() {
+    setDob(tempDob);
+    setShowPicker(false);
+  }
 
   function handleNext() {
     setProfile({
@@ -86,7 +98,7 @@ export default function PersonalInfo() {
           <Text style={styles.label}>Date de naissance</Text>
           <TouchableOpacity
             style={styles.datePill}
-            onPress={() => setShowPicker(!showPicker)}
+            onPress={openDatePicker}
             accessibilityLabel="Sélectionner la date de naissance"
             accessibilityRole="button"
           >
@@ -94,34 +106,32 @@ export default function PersonalInfo() {
               {dob ? formatDate(dob) : 'Optionnel — touche pour choisir'}
             </Text>
           </TouchableOpacity>
-
-          {showPicker && (
-            <View style={styles.pickerWrap}>
-              <DateTimePicker
-                value={dob ?? new Date(1995, 0, 1)}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                maximumDate={new Date()}
-                minimumDate={new Date(1920, 0, 1)}
-                onChange={(_, date) => {
-                  if (date) setDob(date);
-                  if (Platform.OS === 'android') setShowPicker(false);
-                }}
-              />
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity
-                  style={styles.confirmBtn}
-                  onPress={() => setShowPicker(false)}
-                  accessibilityLabel="Confirmer la date"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.confirmText}>Confirmer</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
         </View>
       </View>
+
+      <Sheet
+        open={showPicker}
+        onClose={() => setShowPicker(false)}
+        title="Date de naissance"
+      >
+        <DateTimePicker
+          value={tempDob}
+          mode="date"
+          display="spinner"
+          maximumDate={new Date()}
+          minimumDate={new Date(1920, 0, 1)}
+          onChange={(_, date) => { if (date) setTempDob(date); }}
+          style={styles.datePicker}
+        />
+        <TouchableOpacity
+          style={styles.confirmBtn}
+          onPress={confirmDate}
+          accessibilityLabel="Confirmer la date"
+          accessibilityRole="button"
+        >
+          <Text style={styles.confirmText}>Confirmer</Text>
+        </TouchableOpacity>
+      </Sheet>
     </OnboardingShell>
   );
 }
@@ -172,22 +182,19 @@ const styles = StyleSheet.create({
   },
   datePillPlaceholder: { color: Colors.light.ink3 },
 
-  pickerWrap: {
-    marginTop: Spacing.sm,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.block,
-    overflow: 'hidden',
-    ...Shadow.sm,
-  },
+  datePicker: { width: '100%' as any },
+
   confirmBtn: {
-    padding: Spacing.base,
+    marginTop: Spacing.md,
+    backgroundColor: Colors.light.primary,
+    borderRadius: Radius.pill,
+    paddingVertical: Spacing.base + 2,
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.hairline,
+    justifyContent: 'center',
   },
   confirmText: {
     fontSize: FontSize.base,
     fontWeight: '700',
-    color: Colors.light.primary,
+    color: '#fff',
   },
 });

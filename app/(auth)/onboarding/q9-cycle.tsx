@@ -1,10 +1,11 @@
 import {
-  StyleSheet, View, Text, TouchableOpacity, Platform,
+  StyleSheet, View, Text, TouchableOpacity,
 } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import OnboardingShell from '@/components/onboarding/OnboardingShell';
+import { Sheet } from '@/components/ui/Sheet';
 import { Stepper } from '@/components/ui/Stepper';
 import { useUserStore } from '@/store/useUserStore';
 import { Colors } from '@/constants/Colors';
@@ -29,6 +30,17 @@ export default function Q9Cycle() {
   );
   const [cycleDays, setCycleDays] = useState(stored.cycleDays ?? 28);
   const [showPicker, setShowPicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date>(new Date());
+
+  function openDatePicker() {
+    setTempDate(lastDate ?? new Date());
+    setShowPicker(true);
+  }
+
+  function confirmDate() {
+    setLastDate(tempDate);
+    setShowPicker(false);
+  }
 
   function handleNext() {
     if (noMenstruation) {
@@ -78,7 +90,7 @@ export default function Q9Cycle() {
               <Text style={styles.fieldLabel}>Date de tes dernières règles</Text>
               <TouchableOpacity
                 style={styles.datePill}
-                onPress={() => setShowPicker(!showPicker)}
+                onPress={openDatePicker}
                 accessibilityLabel="Sélectionner la date des dernières règles"
                 accessibilityRole="button"
               >
@@ -86,31 +98,6 @@ export default function Q9Cycle() {
                   {lastDate ? formatDate(lastDate) : 'Touche pour choisir'}
                 </Text>
               </TouchableOpacity>
-
-              {showPicker && (
-                <View style={styles.pickerWrap}>
-                  <DateTimePicker
-                    value={lastDate ?? new Date()}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    maximumDate={new Date()}
-                    onChange={(_, date) => {
-                      if (date) setLastDate(date);
-                      if (Platform.OS === 'android') setShowPicker(false);
-                    }}
-                  />
-                  {Platform.OS === 'ios' && (
-                    <TouchableOpacity
-                      style={styles.confirmBtn}
-                      onPress={() => setShowPicker(false)}
-                      accessibilityLabel="Valider la date"
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.confirmText}>Valider</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
             </View>
 
             {/* Cycle duration */}
@@ -127,6 +114,29 @@ export default function Q9Cycle() {
           </>
         )}
       </View>
+
+      <Sheet
+        open={showPicker}
+        onClose={() => setShowPicker(false)}
+        title="Dernières règles"
+      >
+        <DateTimePicker
+          value={tempDate}
+          mode="date"
+          display="spinner"
+          maximumDate={new Date()}
+          onChange={(_, date) => { if (date) setTempDate(date); }}
+          style={styles.datePicker}
+        />
+        <TouchableOpacity
+          style={styles.confirmBtn}
+          onPress={confirmDate}
+          accessibilityLabel="Valider la date"
+          accessibilityRole="button"
+        >
+          <Text style={styles.confirmText}>Valider</Text>
+        </TouchableOpacity>
+      </Sheet>
     </OnboardingShell>
   );
 }
@@ -188,18 +198,19 @@ const styles = StyleSheet.create({
   datePillText:        { fontSize: FontSize.base, fontWeight: '500', color: Colors.light.ink },
   datePillPlaceholder: { color: Colors.light.ink3 },
 
-  pickerWrap: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.block,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.light.hairline,
-  },
+  datePicker: { width: '100%' as any },
+
   confirmBtn: {
-    padding: Spacing.base,
+    marginTop: Spacing.md,
+    backgroundColor: Colors.light.primary,
+    borderRadius: Radius.pill,
+    paddingVertical: Spacing.base + 2,
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.hairline,
+    justifyContent: 'center',
   },
-  confirmText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primary },
+  confirmText: {
+    fontSize: FontSize.base,
+    fontWeight: '700',
+    color: '#fff',
+  },
 });

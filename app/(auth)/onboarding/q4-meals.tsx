@@ -1,10 +1,11 @@
 import {
-  StyleSheet, View, Text, TouchableOpacity, Platform,
+  StyleSheet, View, Text, TouchableOpacity,
 } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import OnboardingShell from '@/components/onboarding/OnboardingShell';
+import { Sheet } from '@/components/ui/Sheet';
+import { TimeField } from '@/components/ui/TimeField';
 import { useUserStore } from '@/store/useUserStore';
 import { Colors } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
@@ -14,17 +15,6 @@ import type { MealEntry } from '@/types';
 const DEFAULT_LABELS = [
   'Petit-déjeuner', 'Déjeuner', 'Dîner', 'Collation', 'Souper',
 ];
-
-function timeToDate(t: string): Date {
-  const [h, m] = t.split(':').map(Number);
-  const d = new Date();
-  d.setHours(h || 0, m || 0, 0, 0);
-  return d;
-}
-
-function dateToTime(d: Date): string {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 export default function Q4Meals() {
   const setMeals = useUserStore((s) => s.setMeals);
@@ -38,6 +28,17 @@ export default function Q4Meals() {
     ],
   );
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [tempTime, setTempTime] = useState('');
+
+  function openEditor(i: number) {
+    setTempTime(entries[i].time);
+    setEditingIndex(i);
+  }
+
+  function confirmEdit() {
+    if (editingIndex !== null) updateTime(editingIndex, tempTime);
+    setEditingIndex(null);
+  }
 
   function updateTime(i: number, time: string) {
     setEntries((prev) => prev.map((e, idx) => idx === i ? { ...e, time } : e));
@@ -77,7 +78,7 @@ export default function Q4Meals() {
               <Text style={styles.mealLabel}>{entry.label}</Text>
               <TouchableOpacity
                 style={[styles.timePill, editingIndex === i && styles.timePillActive]}
-                onPress={() => setEditingIndex(editingIndex === i ? null : i)}
+                onPress={() => openEditor(i)}
                 accessibilityLabel={`Modifier l'heure de ${entry.label}`}
                 accessibilityRole="button"
               >
@@ -97,31 +98,6 @@ export default function Q4Meals() {
           </View>
         ))}
 
-        {editingIndex !== null && (
-          <View style={styles.pickerWrap}>
-            <DateTimePicker
-              value={timeToDate(entries[editingIndex]?.time ?? '12:00')}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              minuteInterval={5}
-              onChange={(_, date) => {
-                if (date && editingIndex !== null) updateTime(editingIndex, dateToTime(date));
-                if (Platform.OS === 'android') setEditingIndex(null);
-              }}
-            />
-            {Platform.OS === 'ios' && (
-              <TouchableOpacity
-                style={styles.confirmBtn}
-                onPress={() => setEditingIndex(null)}
-                accessibilityLabel="Valider l'heure"
-                accessibilityRole="button"
-              >
-                <Text style={styles.confirmText}>Valider</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
         {entries.length < 5 && (
           <TouchableOpacity
             style={styles.addBtn}
@@ -134,6 +110,22 @@ export default function Q4Meals() {
           </TouchableOpacity>
         )}
       </View>
+
+      <Sheet
+        open={editingIndex !== null}
+        onClose={() => setEditingIndex(null)}
+        title={editingIndex !== null ? entries[editingIndex]?.label : undefined}
+      >
+        <TimeField value={tempTime} onChange={setTempTime} />
+        <TouchableOpacity
+          style={styles.confirmBtn}
+          onPress={confirmEdit}
+          accessibilityLabel="Valider l'heure"
+          accessibilityRole="button"
+        >
+          <Text style={styles.confirmText}>Valider</Text>
+        </TouchableOpacity>
+      </Sheet>
     </OnboardingShell>
   );
 }
@@ -186,20 +178,19 @@ const styles = StyleSheet.create({
   },
   removeBtnText: { fontSize: 12, color: Colors.light.ink3, fontWeight: '600' },
 
-  pickerWrap: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.block,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.light.hairline,
-  },
   confirmBtn: {
-    padding: Spacing.base,
+    marginTop: Spacing.md,
+    backgroundColor: Colors.light.primary,
+    borderRadius: Radius.pill,
+    paddingVertical: Spacing.base + 2,
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.hairline,
+    justifyContent: 'center',
   },
-  confirmText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primary },
+  confirmText: {
+    fontSize: FontSize.base,
+    fontWeight: '700',
+    color: '#fff',
+  },
 
   addBtn: {
     flexDirection: 'row',
