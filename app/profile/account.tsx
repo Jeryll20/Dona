@@ -15,9 +15,20 @@ import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import type { ActivityLocation } from '@/types';
 
+function parseLocalDate(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d); // local time — avoids UTC timezone shift
+}
+
+function toLocalISODate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  return parseLocalDate(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export default function AccountScreen() {
@@ -27,7 +38,7 @@ export default function AccountScreen() {
   const [firstName,   setFirstName]   = useState(profile.firstName   ?? '');
   const [lastName,    setLastName]    = useState(profile.lastName     ?? '');
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(
-    profile.dateOfBirth ? new Date(profile.dateOfBirth) : null,
+    profile.dateOfBirth ? parseLocalDate(profile.dateOfBirth) : null,
   );
   const [showPicker,  setShowPicker]  = useState(false);
   const [homeLocation, setHomeLocation] = useState<ActivityLocation | undefined>(
@@ -66,7 +77,7 @@ export default function AccountScreen() {
     setProfile({
       firstName:    firstName.trim(),
       lastName:     lastName.trim() || undefined,
-      dateOfBirth:  dateOfBirth ? dateOfBirth.toISOString().split('T')[0] : undefined,
+      dateOfBirth:  dateOfBirth ? toLocalISODate(dateOfBirth) : undefined,
       gender,
       homeLocation: homeLocation ?? undefined,
     });
