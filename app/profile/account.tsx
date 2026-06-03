@@ -1,9 +1,9 @@
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  TextInput, Platform,
+  TextInput, Platform, Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -33,6 +33,17 @@ export default function AccountScreen() {
   const [homeLocation, setHomeLocation] = useState<ActivityLocation | undefined>(
     profile.homeLocation,
   );
+  const [keyboardH, setKeyboardH] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', (e) => {
+      setKeyboardH(e.endCoordinates.height);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    });
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKeyboardH(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const storedGender = profile.gender;
   const [genderKey,   setGenderKey]   = useState<'homme' | 'femme' | 'autre' | null>(
@@ -79,9 +90,11 @@ export default function AccountScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: keyboardH > 0 ? keyboardH + 40 : 120 }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Avatar preview */}
         <View style={styles.avatarWrap}>
