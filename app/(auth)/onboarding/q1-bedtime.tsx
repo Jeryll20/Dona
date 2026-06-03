@@ -30,6 +30,7 @@ export default function Q1Bedtime() {
       footer="Tu pourras modifier ça depuis ton profil à tout moment."
       onBack={() => router.push('/(auth)/onboarding/personal-info')}
       onNext={handleNext}
+      scrollable
     >
       <View style={styles.container}>
         <View style={styles.block}>

@@ -78,7 +78,7 @@ export default function OnboardingShell({
           showsVerticalScrollIndicator={false}
           bounces={false}
           overScrollMode="never"
-          scrollEnabled={scrollable && isSmallScreen}
+          scrollEnabled={scrollable}
         >
           {/* Eyebrow pill */}
           <View style={styles.eyebrow}>
