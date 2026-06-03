@@ -185,10 +185,11 @@ function DayPanel({
       <View style={[styles.grid, { minHeight: 24 * HH }]}>
         <HourGrid hourHeight={HH} />
         {isToday && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
-        {events.map((ev, i) =>
-          ev.thin
-            ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getPressHandler(ev as any)} />
-            : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getPressHandler(ev as any)} />
+        {events.filter((ev) => !ev.thin).map((ev, i) =>
+          <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getPressHandler(ev as any)} />
+        )}
+        {events.filter((ev) => ev.thin).map((ev, i) =>
+          <ThinBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getPressHandler(ev as any)} />
         )}
       </View>
     </ScrollView>
