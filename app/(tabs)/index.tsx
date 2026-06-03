@@ -275,16 +275,9 @@ export default function TodayScreen() {
     return getCyclePhase(cycle.lastPeriodDate, cycle.cycleDays ?? 28);
   }, [cycle.tracking, cycle.lastPeriodDate, cycle.cycleDays]);
 
-  // Regenerate suggestions once per calendar day or when inputs change
+  // Regenerate suggestions on mount and whenever inputs change
   useEffect(() => {
-    const today = new Date().toDateString();
-    const freshLast = useSuggestionsStore.getState().lastGeneratedAt;
-    const alreadyToday = freshLast
-      ? new Date(freshLast).toDateString() === today
-      : false;
-    if (!alreadyToday) {
-      setSuggestions(buildSuggestions({ events: todayEvents, goal: profile.goal ?? undefined, cyclePhase }));
-    }
+    setSuggestions(buildSuggestions({ events: todayEvents, goal: profile.goal ?? undefined, cyclePhase }));
   }, [todayEvents, profile.goal, cyclePhase, setSuggestions]);
 
   const visibleSuggestions = suggestions.filter((s) => !s.accepted && !s.dismissed);

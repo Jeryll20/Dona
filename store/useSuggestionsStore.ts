@@ -5,7 +5,6 @@ import type { Suggestion } from '../types';
 
 interface SuggestionsState {
   suggestions: Suggestion[];
-  lastGeneratedAt?: string;
 
   setSuggestions: (suggestions: Suggestion[]) => void;
   acceptSuggestion: (id: string) => void;
@@ -16,10 +15,9 @@ export const useSuggestionsStore = create<SuggestionsState>()(
   persist(
     (set) => ({
       suggestions: [],
-      lastGeneratedAt: undefined,
 
       setSuggestions: (suggestions) =>
-        set({ suggestions, lastGeneratedAt: new Date().toISOString() }),
+        set({ suggestions }),
 
       acceptSuggestion: (id) =>
         set((s) => ({
