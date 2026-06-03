@@ -9,9 +9,9 @@ const INITIAL_STATE = {
   profile:       {} as Partial<UserProfile>,
   sleep:         { bedtime: '23:00', waketime: '07:00', prepMinutes: 40 } as Partial<SleepSchedule>,
   meals:         { entries: [{ time: '08:00', label: 'Petit-déjeuner' }, { time: '13:00', label: 'Déjeuner' }, { time: '19:30', label: 'Dîner' }] } as Partial<MealSchedule>,
-  sport:         { active: false, interested: false } as Partial<SportInfo>,
-  work:          { employed: false, interested: false } as Partial<WorkInfo>,
-  otherActivity: { active: false, interested: false } as Partial<OtherActivityInfo>,
+  sport:         {} as Partial<SportInfo>,
+  work:          {} as Partial<WorkInfo>,
+  otherActivity: {} as Partial<OtherActivityInfo>,
   cycle:         { tracking: false, cycleDays: 28 } as Partial<CycleInfo>,
 };
 

@@ -48,6 +48,7 @@ export interface UserProfile {
   firstName:    string;
   lastName?:    string;
   dateOfBirth?: string;   // ISO date "YYYY-MM-DD"
+  goal?:        string;   // onboarding goal key: 'organise' | 'activite' | 'routine'
 }
 
 export interface SleepSchedule {

@@ -13,12 +13,12 @@ const OPTIONS = [
 ];
 
 export default function Q6Goal() {
-  const setWork = useUserStore((s) => s.setWork);
-  const stored  = useUserStore((s) => s.work);
-  const [selected, setSelected] = useState<string>(stored.role ?? '');
+  const setProfile = useUserStore((s) => s.setProfile);
+  const stored     = useUserStore((s) => s.profile);
+  const [selected, setSelected] = useState<string>(stored.goal ?? '');
 
   function handleNext() {
-    setWork({ role: selected });
+    setProfile({ goal: selected });
     router.push('/(auth)/onboarding/creation');
   }
 
