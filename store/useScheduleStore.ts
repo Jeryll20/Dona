@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { TimelineEvent, UserActivity } from '../types';
+import type { TimelineEvent, UserActivity, ActivityOverride } from '../types';
 
 export type ViewMode = 'day' | 'week' | 'month';
 
 interface ScheduleState {
   todayEvents: TimelineEvent[];
   activities:  UserActivity[];
+  overrides:   ActivityOverride[];
   viewMode:    ViewMode;
   dayOffset:   number;
 
@@ -15,6 +16,8 @@ interface ScheduleState {
   addActivity:     (activity: UserActivity)                 => void;
   removeActivity:  (id: string)                            => void;
   updateActivity:  (id: string, patch: Partial<UserActivity>) => void;
+  setOverride:     (override: ActivityOverride)             => void;
+  removeOverride:  (activityId: string, date: string)       => void;
   setViewMode:     (mode: ViewMode)                        => void;
   setDayOffset:    (offset: number | ((prev: number) => number)) => void;
 }
@@ -24,6 +27,7 @@ export const useScheduleStore = create<ScheduleState>()(
     (set) => ({
       todayEvents: [],
       activities:  [],
+      overrides:   [],
       viewMode:    'day',
       dayOffset:   0,
 
@@ -43,12 +47,29 @@ export const useScheduleStore = create<ScheduleState>()(
         set((s) => ({
           activities: s.activities.map((a) => (a.id === id ? { ...a, ...patch } : a)),
         })),
+
+      setOverride: (override) =>
+        set((s) => ({
+          overrides: [
+            ...s.overrides.filter(
+              (o) => !(o.activityId === override.activityId && o.date === override.date)
+            ),
+            override,
+          ],
+        })),
+
+      removeOverride: (activityId, date) =>
+        set((s) => ({
+          overrides: s.overrides.filter(
+            (o) => !(o.activityId === activityId && o.date === date)
+          ),
+        })),
     }),
     {
       name:    'dona-schedule',
       storage: createJSONStorage(() => AsyncStorage),
       // todayEvents sont recalculés à chaque ouverture — pas besoin de les persister
-      partialize: (s) => ({ activities: s.activities }),
+      partialize: (s) => ({ activities: s.activities, overrides: s.overrides }),
     }
   )
 );

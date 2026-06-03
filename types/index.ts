@@ -31,6 +31,18 @@ export interface UserActivity {
   notifyWeekEnd?: boolean;
 }
 
+// ── Single-occurrence override ────────────────────────────────────────────────
+
+export interface ActivityOverride {
+  activityId: string;
+  date: string;          // "YYYY-MM-DD"
+  title?: string;
+  startTime?: string;    // "HH:MM"
+  endTime?: string;      // "HH:MM"
+  color?: { bg: string; ink: string };
+  cancelled?: boolean;
+}
+
 // ── Suggestion ────────────────────────────────────────────────────────────────
 
 export type SuggestionCat = 'sport' | 'goal' | 'rest' | 'social' | 'admin' | 'learning';

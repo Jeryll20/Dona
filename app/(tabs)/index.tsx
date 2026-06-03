@@ -1,17 +1,20 @@
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
-  PanResponder, useWindowDimensions,
+  PanResponder, useWindowDimensions, TextInput,
 } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, cancelAnimation,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { router } from 'expo-router';
-import { Colors } from '@/constants/Colors';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, COLOR_PALETTE } from '@/constants/Colors';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { Icon } from '@/components/ui/Icon';
+import { Sheet } from '@/components/ui/Sheet';
+import { TimeField } from '@/components/ui/TimeField';
 import { HourGrid } from '@/components/timeline/HourGrid';
 import { NowIndicator } from '@/components/timeline/NowIndicator';
 import { TimelineBlock } from '@/components/timeline/TimelineBlock';
@@ -24,7 +27,7 @@ import { useScheduleStore } from '@/store/useScheduleStore';
 import { useSuggestionsStore } from '@/store/useSuggestionsStore';
 import { buildSuggestions, buildDayEvents } from '@/lib/optimizer';
 import { getCyclePhase } from '@/lib/cycle';
-import type { TimelineEvent, WeekDay, UserActivity, Suggestion } from '@/types';
+import type { TimelineEvent, WeekDay, UserActivity, Suggestion, ActivityOverride } from '@/types';
 import type { ViewMode } from '@/store/useScheduleStore';
 
 const DAY_MAP: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -51,14 +54,15 @@ const PROFILE_TARGET: Partial<Record<string, string>> = {
   repas:   '/profile/meals',
 };
 
-function getEventPress(
-  ev: TimelineEvent & { activityId?: string },
-): (() => void) | undefined {
-  if (ev.activityId) {
-    return () => router.navigate({ pathname: '/(tabs)/activities', params: { editId: ev.activityId } } as any);
-  }
+function profileEventPress(ev: TimelineEvent): (() => void) | undefined {
   const path = PROFILE_TARGET[ev.cat];
   return path ? () => router.push(path as any) : undefined;
+}
+
+function offsetToDateStr(offset: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.toISOString().split('T')[0];
 }
 
 function parseTime(hhmm: string): number {
@@ -76,6 +80,8 @@ interface DayPanelProps {
   sleep: ReturnType<typeof useUserStore.getState>['sleep'];
   meals: ReturnType<typeof useUserStore.getState>['meals'];
   activities: UserActivity[];
+  overrides: ActivityOverride[];
+  onActivityPress: (activityId: string, date: string, isRecurring: boolean) => void;
   visibleSuggestions: Suggestion[];
   onAccept: (id: string) => void;
   onDismiss: (id: string) => void;
@@ -85,11 +91,13 @@ interface DayPanelProps {
 
 function DayPanel({
   absOffset, sleep, meals,
-  activities, visibleSuggestions, onAccept, onDismiss, nowHour, panelWidth,
+  activities, overrides, onActivityPress,
+  visibleSuggestions, onAccept, onDismiss, nowHour, panelWidth,
 }: DayPanelProps) {
   const d = new Date();
   d.setDate(d.getDate() + absOffset);
   const weekDay = DAY_MAP[d.getDay()];
+  const dateStr = d.toISOString().split('T')[0];
   const isToday = absOffset === 0;
 
   const profileEvents = useMemo<TimelineEvent[]>(() => {
@@ -100,23 +108,38 @@ function DayPanel({
     );
   }, [sleep, meals]);
 
-  const activityEvents = useMemo<(TimelineEvent & { activityId: string })[]>(() => (
-    activities
+  const activityEvents = useMemo<(TimelineEvent & { activityId: string })[]>(() => {
+    const getOverride = (id: string) =>
+      overrides.find((o) => o.activityId === id && o.date === dateStr);
+    return activities
       .filter((a) => a.days.includes(weekDay))
-      .map((a) => ({
-        cat:        a.cat,
-        title:      a.title,
-        start:      parseTime(a.startTime),
-        end:        parseTime(a.endTime),
-        activityId: a.id,
-        color:      a.color,
-      }))
-  ), [activities, weekDay]);
+      .filter((a) => !getOverride(a.id)?.cancelled)
+      .map((a) => {
+        const ov = getOverride(a.id);
+        return {
+          cat:        a.cat,
+          title:      ov?.title      ?? a.title,
+          start:      parseTime(ov?.startTime ?? a.startTime),
+          end:        parseTime(ov?.endTime   ?? a.endTime),
+          activityId: a.id,
+          color:      ov?.color ?? a.color,
+        };
+      });
+  }, [activities, overrides, weekDay, dateStr]);
 
   const events = useMemo<TimelineEvent[]>(
     () => [...profileEvents, ...activityEvents].sort((a, b) => a.start - b.start),
     [profileEvents, activityEvents],
   );
+
+  function getPressHandler(ev: TimelineEvent & { activityId?: string }) {
+    if (ev.activityId) {
+      const activity = activities.find((a) => a.id === ev.activityId);
+      const isRecurring = activity ? activity.recurrence !== 'none' : false;
+      return () => onActivityPress(ev.activityId!, dateStr, isRecurring);
+    }
+    return profileEventPress(ev);
+  }
 
   return (
     <ScrollView
@@ -143,8 +166,8 @@ function DayPanel({
         {isToday && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
         {events.map((ev, i) =>
           ev.thin
-            ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
-            : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getEventPress(ev as any)} />
+            ? <ThinBlock     key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getPressHandler(ev as any)} />
+            : <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getPressHandler(ev as any)} />
         )}
       </View>
     </ScrollView>
@@ -183,12 +206,79 @@ export default function TodayScreen() {
 
   const { sleep, meals, cycle, profile } = useUserStore();
   const activities   = useScheduleStore((s) => s.activities);
+  const overrides    = useScheduleStore((s) => s.overrides);
+  const setOverride  = useScheduleStore((s) => s.setOverride);
+  const removeOverride = useScheduleStore((s) => s.removeOverride);
   const viewMode     = useScheduleStore((s) => s.viewMode);
   const setViewMode  = useScheduleStore((s) => s.setViewMode);
   const dayOffset    = useScheduleStore((s) => s.dayOffset);
   const setDayOffset = useScheduleStore((s) => s.setDayOffset);
-  const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion, lastGeneratedAt } =
+  const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion } =
     useSuggestionsStore();
+
+  // ── Single-occurrence edit state ─────────────────────────────────────────────
+  const [choiceTarget, setChoiceTarget] = useState<{
+    activityId: string;
+    date: string;
+  } | null>(null);
+
+  const [singleEdit, setSingleEdit] = useState<{
+    activityId: string;
+    date: string;
+    title: string;
+    startTime: string;
+    endTime: string;
+    color?: { bg: string; ink: string };
+  } | null>(null);
+
+  const handleActivityPress = useCallback((activityId: string, date: string, isRecurring: boolean) => {
+    if (!isRecurring) {
+      router.navigate({ pathname: '/(tabs)/activities', params: { editId: activityId } } as any);
+      return;
+    }
+    setChoiceTarget({ activityId, date });
+  }, []);
+
+  function openSingleEdit() {
+    if (!choiceTarget) return;
+    const activity = activities.find((a) => a.id === choiceTarget.activityId);
+    if (!activity) return;
+    const existing = overrides.find(
+      (o) => o.activityId === choiceTarget.activityId && o.date === choiceTarget.date,
+    );
+    setSingleEdit({
+      activityId: choiceTarget.activityId,
+      date:       choiceTarget.date,
+      title:      existing?.title      ?? activity.title,
+      startTime:  existing?.startTime  ?? activity.startTime,
+      endTime:    existing?.endTime    ?? activity.endTime,
+      color:      existing?.color      ?? activity.color,
+    });
+    setChoiceTarget(null);
+  }
+
+  function cancelOccurrence() {
+    if (!choiceTarget) return;
+    setOverride({ activityId: choiceTarget.activityId, date: choiceTarget.date, cancelled: true });
+    setChoiceTarget(null);
+  }
+
+  function saveSingleEdit() {
+    if (!singleEdit) return;
+    setOverride({
+      activityId: singleEdit.activityId,
+      date:       singleEdit.date,
+      title:      singleEdit.title,
+      startTime:  singleEdit.startTime,
+      endTime:    singleEdit.endTime,
+      color:      singleEdit.color,
+    });
+    setSingleEdit(null);
+  }
+
+  const choiceActivity = choiceTarget
+    ? activities.find((a) => a.id === choiceTarget.activityId)
+    : null;
 
   const selectedDate    = useMemo(() => {
     const d = new Date();
@@ -382,6 +472,8 @@ export default function TodayScreen() {
                 sleep={sleep}
                 meals={meals}
                 activities={activities}
+                overrides={overrides}
+                onActivityPress={handleActivityPress}
                 visibleSuggestions={visibleSuggestions}
                 onAccept={acceptSuggestion}
                 onDismiss={dismissSuggestion}
@@ -393,6 +485,146 @@ export default function TodayScreen() {
         </View>
       )}
       </View>
+
+      {/* ── Choice sheet: modifier ce jour vs. toujours ─────────────────────── */}
+      <Sheet
+        open={!!choiceTarget}
+        onClose={() => setChoiceTarget(null)}
+        title={choiceActivity?.title ?? ''}
+      >
+        <TouchableOpacity style={sheet.option} onPress={openSingleEdit} accessibilityRole="button">
+          <View style={[sheet.optionIcon, { backgroundColor: Colors.light.primaryTint }]}>
+            <Ionicons name="calendar-outline" size={20} color={Colors.light.primary} />
+          </View>
+          <View style={sheet.optionText}>
+            <Text style={sheet.optionLabel}>Modifier ce jour uniquement</Text>
+            <Text style={sheet.optionSub}>Changer l'horaire ou le titre pour cette occurrence</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={sheet.option}
+          onPress={() => {
+            if (choiceTarget) {
+              router.navigate({ pathname: '/(tabs)/activities', params: { editId: choiceTarget.activityId } } as any);
+              setChoiceTarget(null);
+            }
+          }}
+          accessibilityRole="button"
+        >
+          <View style={[sheet.optionIcon, { backgroundColor: Colors.light.surfaceSunk }]}>
+            <Ionicons name="repeat-outline" size={20} color={Colors.light.ink2} />
+          </View>
+          <View style={sheet.optionText}>
+            <Text style={sheet.optionLabel}>Modifier tous les jours</Text>
+            <Text style={sheet.optionSub}>Changer la récurrence ou les jours</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={sheet.option} onPress={cancelOccurrence} accessibilityRole="button">
+          <View style={[sheet.optionIcon, { backgroundColor: '#FEE2E2' }]}>
+            <Ionicons name="trash-outline" size={20} color="#DC2626" />
+          </View>
+          <View style={sheet.optionText}>
+            <Text style={[sheet.optionLabel, { color: '#DC2626' }]}>Supprimer ce jour</Text>
+            <Text style={sheet.optionSub}>Masquer l'activité uniquement pour cette date</Text>
+          </View>
+        </TouchableOpacity>
+
+        {overrides.some(
+          (o) => o.activityId === choiceTarget?.activityId && o.date === choiceTarget?.date,
+        ) && (
+          <TouchableOpacity
+            style={sheet.option}
+            onPress={() => {
+              if (choiceTarget) {
+                removeOverride(choiceTarget.activityId, choiceTarget.date);
+                setChoiceTarget(null);
+              }
+            }}
+            accessibilityRole="button"
+          >
+            <View style={[sheet.optionIcon, { backgroundColor: Colors.light.primaryTint }]}>
+              <Ionicons name="refresh-outline" size={20} color={Colors.light.primary} />
+            </View>
+            <View style={sheet.optionText}>
+              <Text style={sheet.optionLabel}>Réinitialiser ce jour</Text>
+              <Text style={sheet.optionSub}>Revenir à l'activité d'origine</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      </Sheet>
+
+      {/* ── Single-occurrence edit sheet ──────────────────────────────────────── */}
+      <Sheet
+        open={!!singleEdit}
+        onClose={() => setSingleEdit(null)}
+        title="Modifier ce jour"
+      >
+        {singleEdit && (
+          <>
+            <View style={sheet.field}>
+              <Text style={sheet.fieldLabel}>Titre</Text>
+              <TextInput
+                style={sheet.input}
+                value={singleEdit.title}
+                onChangeText={(v) => setSingleEdit((s) => s ? { ...s, title: v } : s)}
+                placeholderTextColor={Colors.light.ink3}
+                returnKeyType="done"
+                accessibilityLabel="Titre de l'activité"
+              />
+            </View>
+
+            <View style={sheet.timeRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={sheet.fieldLabel}>Début</Text>
+                <View style={sheet.timeCard}>
+                  <TimeField
+                    value={singleEdit.startTime}
+                    onChange={(v) => setSingleEdit((s) => s ? { ...s, startTime: v } : s)}
+                  />
+                </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={sheet.fieldLabel}>Fin</Text>
+                <View style={sheet.timeCard}>
+                  <TimeField
+                    value={singleEdit.endTime}
+                    onChange={(v) => setSingleEdit((s) => s ? { ...s, endTime: v } : s)}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={sheet.field}>
+              <Text style={sheet.fieldLabel}>Couleur</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={sheet.colorRow}>
+                <TouchableOpacity
+                  style={[sheet.swatch, !singleEdit.color && sheet.swatchSelected,
+                    { backgroundColor: Colors.light.surfaceSunk }]}
+                  onPress={() => setSingleEdit((s) => s ? { ...s, color: undefined } : s)}
+                  accessibilityLabel="Couleur par défaut"
+                />
+                {COLOR_PALETTE.map((p) => {
+                  const on = singleEdit.color?.bg === p.bg;
+                  return (
+                    <TouchableOpacity
+                      key={p.bg}
+                      style={[sheet.swatch, { backgroundColor: p.bg }, on && sheet.swatchSelected]}
+                      onPress={() => setSingleEdit((s) => s ? { ...s, color: { bg: p.bg, ink: p.ink } } : s)}
+                      accessibilityLabel={p.label}
+                    />
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <TouchableOpacity style={sheet.saveBtn} onPress={saveSingleEdit} accessibilityRole="button">
+              <Text style={sheet.saveBtnText}>Enregistrer</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </Sheet>
     </SafeAreaView>
   );
 }
@@ -518,4 +750,60 @@ const styles = StyleSheet.create({
   },
 
   grid: { position: 'relative', paddingLeft: 50 },
+});
+
+const sheet = StyleSheet.create({
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.hairline,
+  },
+  optionIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  optionText:  { flex: 1 },
+  optionLabel: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink },
+  optionSub:   { fontSize: FontSize.sm, fontWeight: '500', color: Colors.light.ink3, marginTop: 2 },
+
+  field:      { gap: Spacing.xs, marginTop: Spacing.md },
+  fieldLabel: {
+    fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
+    textTransform: 'uppercase', letterSpacing: 0.5,
+  },
+  input: {
+    backgroundColor: Colors.light.surfaceSunk,
+    borderRadius: Radius.input,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.base,
+    fontSize: FontSize.base,
+    fontWeight: '500',
+    color: Colors.light.ink,
+  },
+  timeRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
+  timeCard: {
+    backgroundColor: Colors.light.surfaceSunk,
+    borderRadius: Radius.input,
+    paddingHorizontal: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  colorRow:      { marginTop: Spacing.xs },
+  swatch: {
+    width: 32, height: 32, borderRadius: 16,
+    marginRight: Spacing.sm,
+    borderWidth: 2, borderColor: 'transparent',
+  },
+  swatchSelected: { borderColor: Colors.light.primary },
+
+  saveBtn: {
+    marginTop: Spacing.lg,
+    backgroundColor: Colors.light.primary,
+    borderRadius: Radius.pill,
+    paddingVertical: Spacing.base,
+    alignItems: 'center',
+  },
+  saveBtnText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.onPrimary },
 });
