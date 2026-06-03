@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, Animated,
   NativeSyntheticEvent, NativeScrollEvent,
@@ -31,6 +31,17 @@ function Wheel({ items, initial, onChange }: WheelProps) {
   const committedRef   = useRef(initial);
   const isProgrammatic = useRef(false);
   const dragTimer      = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // contentOffset is unreliable on first render — force scroll after mount
+  useEffect(() => {
+    const t = setTimeout(() => {
+      isProgrammatic.current = true;
+      ref.current?.scrollTo({ y: initial * ITEM_H, animated: false });
+      isProgrammatic.current = false;
+    }, 0);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Opacity for each item derived continuously from raw scroll position —
   // symmetric interpolation gives a smooth fade without rounding artifacts
