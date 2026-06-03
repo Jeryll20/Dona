@@ -121,6 +121,7 @@ export default function PersonalInfo() {
           maximumDate={new Date()}
           minimumDate={new Date(1920, 0, 1)}
           onChange={(_, date) => { if (date) setTempDob(date); }}
+          themeVariant="light"
           style={styles.datePicker}
         />
         <TouchableOpacity

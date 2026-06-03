@@ -126,6 +126,7 @@ export default function Q9Cycle() {
           display="spinner"
           maximumDate={new Date()}
           onChange={(_, date) => { if (date) setTempDate(date); }}
+          themeVariant="light"
           style={styles.datePicker}
         />
         <TouchableOpacity
