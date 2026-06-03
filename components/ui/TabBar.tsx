@@ -30,75 +30,93 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom || Spacing.sm }]}>
-      {state.routes.map((route, index) => {
-        const focused = state.index === index;
-        const tab     = TABS.find((t) => t.name === route.name) ?? TABS[0];
-        const isToday = tab.name === 'index';
 
-        return (
-          <TouchableOpacity
-            key={route.key}
-            style={[styles.tab, isToday && todayFocused && styles.tabTodayActive]}
-            onPress={() => { if (!focused) navigation.navigate(route.name); }}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: focused }}
-            accessibilityLabel={tab.label}
-            activeOpacity={0.7}
-          >
-            <Icon
-              name={tab.icon}
-              size={22}
-              stroke={focused ? Colors.light.primaryStrong : Colors.light.ink3}
-              sw={focused ? 2.2 : 1.6}
-            />
-            <Text style={[styles.label, focused && styles.labelActive]}>
-              {tab.label}
-            </Text>
+      {/* Tab icons + labels */}
+      <View style={styles.tabRow}>
+        {state.routes.map((route, index) => {
+          const focused = state.index === index;
+          const tab     = TABS.find((t) => t.name === route.name) ?? TABS[0];
 
-            {/* View mode selector — only on focused today tab */}
-            {isToday && todayFocused && (
-              <View style={styles.viewPills}>
-                {VIEW_MODES.map((v) => (
-                  <TouchableOpacity
-                    key={v.key}
-                    style={[styles.pill, viewMode === v.key && styles.pillActive]}
-                    onPress={(e) => { (e as any).stopPropagation?.(); setViewMode(v.key); }}
-                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                    accessibilityRole="button"
-                    accessibilityLabel={v.label}
-                    accessibilityState={{ selected: viewMode === v.key }}
-                  >
-                    <Text style={[styles.pillText, viewMode === v.key && styles.pillTextActive]}>
-                      {v.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+          return (
+            <TouchableOpacity
+              key={route.key}
+              style={styles.tab}
+              onPress={() => { if (!focused) navigation.navigate(route.name); }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: focused }}
+              accessibilityLabel={tab.label}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+                <Icon
+                  name={tab.icon}
+                  size={22}
+                  stroke={focused ? Colors.light.primaryStrong : Colors.light.ink3}
+                  sw={focused ? 2.2 : 1.6}
+                />
               </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
+              <Text style={[styles.label, focused && styles.labelActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* View mode pills — inside the bar, below all tabs, only when today is active */}
+      {todayFocused && (
+        <View style={styles.pillsRow}>
+          {VIEW_MODES.map((v) => (
+            <TouchableOpacity
+              key={v.key}
+              style={[styles.pill, viewMode === v.key && styles.pillActive]}
+              onPress={() => setViewMode(v.key)}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel={v.label}
+              accessibilityState={{ selected: viewMode === v.key }}
+            >
+              <Text style={[styles.pillText, viewMode === v.key && styles.pillTextActive]}>
+                {v.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
     backgroundColor: Colors.light.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.light.hairline,
     paddingTop: Spacing.sm,
   },
+
+  tabRow: {
+    flexDirection: 'row',
+  },
+
   tab: {
     flex: 1,
     alignItems: 'center',
     gap: 3,
-    paddingVertical: 2,
-  },
-  tabTodayActive: {
     paddingBottom: Spacing.xs,
   },
+
+  iconWrap: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrapActive: {
+    backgroundColor: Colors.light.primaryTint,
+  },
+
   label: {
     fontSize: FontSize.xs,
     fontWeight: '600',
@@ -109,28 +127,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  viewPills: {
+  // Pills row — below all three tabs, centered in the bar
+  pillsRow: {
     flexDirection: 'row',
+    alignSelf: 'center',
     backgroundColor: Colors.light.surfaceSunk,
     borderRadius: Radius.pill,
     padding: 2,
-    marginTop: 3,
+    marginBottom: Spacing.xs,
     gap: 0,
   },
   pill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderRadius: Radius.pill,
   },
   pillActive: {
     backgroundColor: Colors.light.primary,
   },
   pillText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: Colors.light.ink3,
   },
   pillTextActive: {
     color: Colors.light.onPrimary,
+    fontWeight: '700',
   },
 });
