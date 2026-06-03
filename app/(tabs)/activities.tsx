@@ -87,7 +87,13 @@ const tpS = StyleSheet.create({
 
 // ── ActivityCard ──────────────────────────────────────────────────
 
-function ActivityCard({ activity, onEdit, onDelete }: { activity: UserActivity; onEdit: () => void; onDelete: () => void }) {
+type ActivityCardData = Pick<UserActivity, 'id' | 'title' | 'cat' | 'startTime' | 'endTime' | 'days'>;
+
+function ActivityCard({ activity, onEdit, onDelete }: {
+  activity: ActivityCardData;
+  onEdit: () => void;
+  onDelete?: () => void;
+}) {
   const cat = CATEGORIES.find((c) => c.key === activity.cat) ?? CATEGORIES[1];
   return (
     <TouchableOpacity
@@ -107,14 +113,18 @@ function ActivityCard({ activity, onEdit, onDelete }: { activity: UserActivity; 
       <View style={[cS.pill, { backgroundColor: cat.bg }]}>
         <Text style={[cS.pillText, { color: cat.ink }]}>{cat.label}</Text>
       </View>
-      <TouchableOpacity
-        onPress={(e) => { e.stopPropagation(); onDelete(); }}
-        style={cS.action}
-        accessibilityLabel={`Supprimer ${activity.title}`}
-        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-      >
-        <Ionicons name="trash-outline" size={15} color={Colors.light.ink3} />
-      </TouchableOpacity>
+      {onDelete ? (
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation(); onDelete(); }}
+          style={cS.action}
+          accessibilityLabel={`Supprimer ${activity.title}`}
+          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+        >
+          <Ionicons name="trash-outline" size={15} color={Colors.light.ink3} />
+        </TouchableOpacity>
+      ) : (
+        <Ionicons name="chevron-forward" size={16} color={Colors.light.ink3} />
+      )}
     </TouchableOpacity>
   );
 }
@@ -141,17 +151,17 @@ export default function ActivitiesScreen() {
   const { work, sport, otherActivity } = useUserStore();
   const insets = useSafeAreaInsets();
 
-  const workValue = work.employed
-    ? `${work.role ? work.role + ' · ' : ''}${work.startTime} → ${work.endTime}`
-    : work.interested ? "J'aimerais bien" : undefined;
+  const profileCards: (ActivityCardData & { route: string })[] = [];
+  if (work.employed && work.startTime && work.endTime) {
+    profileCards.push({ id: '__work__', title: work.role || 'Emploi', cat: 'travail', startTime: work.startTime, endTime: work.endTime, days: work.days ?? [], route: '/profile/work' });
+  }
+  if (sport.active && sport.startTime && sport.endTime) {
+    profileCards.push({ id: '__sport__', title: sport.activity || 'Sport & Activité', cat: 'activite', startTime: sport.startTime, endTime: sport.endTime, days: sport.days ?? [], route: '/profile/sport' });
+  }
+  if (otherActivity.active && otherActivity.startTime && otherActivity.endTime) {
+    profileCards.push({ id: '__other__', title: otherActivity.title || 'Autre activité', cat: 'activite', startTime: otherActivity.startTime, endTime: otherActivity.endTime, days: otherActivity.days ?? [], route: '/profile/other' });
+  }
 
-  const sportValue = sport.active
-    ? `${sport.activity ? sport.activity + ' · ' : ''}${sport.startTime} → ${sport.endTime}`
-    : sport.interested ? "J'aimerais bien" : undefined;
-
-  const otherValue = otherActivity.active
-    ? `${otherActivity.title ? otherActivity.title + ' · ' : ''}${otherActivity.startTime} → ${otherActivity.endTime}`
-    : otherActivity.interested ? "J'aimerais bien" : undefined;
   const { editId } = useLocalSearchParams<{ editId?: string }>();
 
   const [sheetOpen,   setSheetOpen]   = useState(false);
@@ -263,38 +273,43 @@ export default function ActivitiesScreen() {
         contentContainerStyle={[s.listContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile activity rows */}
-        <Text style={s.sectionLabel}>Profil</Text>
-        <View style={s.profileGroup}>
-          {(
-            [
-              { icon: 'briefcase-outline' as const, iconBg: Colors.light.workBg,     iconInk: Colors.light.workInk,     label: 'Emploi',          value: workValue,  route: '/profile/work'  },
-              { icon: 'walk-outline'      as const, iconBg: Colors.light.activityBg, iconInk: Colors.light.activityInk, label: 'Sport & Activité', value: sportValue, route: '/profile/sport' },
-              { icon: 'sparkles-outline'  as const, iconBg: Colors.light.primaryTint, iconInk: Colors.light.primaryStrong, label: 'Autre activité', value: otherValue, route: '/profile/other' },
-            ] as const
-          ).map((row) => (
-            <TouchableOpacity
-              key={row.label}
-              style={s.profileRow}
-              onPress={() => router.push(row.route as any)}
-              activeOpacity={0.7}
-              accessibilityLabel={row.label}
-              accessibilityRole="button"
-            >
-              <View style={[s.profileIcon, { backgroundColor: row.iconBg }]}>
-                <Ionicons name={row.icon} size={18} color={row.iconInk} />
-              </View>
-              <View style={s.profileContent}>
-                <Text style={s.profileRowLabel}>{row.label}</Text>
-                {row.value ? <Text style={s.profileRowValue}>{row.value}</Text> : null}
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.light.ink3} />
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Profile-sourced cards */}
+        {profileCards.length > 0 && (
+          <>
+            <Text style={s.sectionLabel}>Profil</Text>
+            <View style={s.list}>
+              {profileCards.map((card) => (
+                <ActivityCard
+                  key={card.id}
+                  activity={card}
+                  onEdit={() => router.push(card.route as any)}
+                />
+              ))}
+            </View>
+          </>
+        )}
 
-        <Text style={[s.sectionLabel, { marginTop: Spacing.xl }]}>Mes activités</Text>
-        {activities.length === 0 ? (
+        {/* User-added activities */}
+        {activities.length > 0 && (
+          <>
+            <Text style={[s.sectionLabel, { marginTop: profileCards.length > 0 ? Spacing.xl : 0 }]}>
+              Mes activités
+            </Text>
+            <View style={s.list}>
+              {activities.map((act) => (
+                <ActivityCard
+                  key={act.id}
+                  activity={act}
+                  onEdit={() => openSheet(act)}
+                  onDelete={() => removeActivity(act.id)}
+                />
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* Empty state — no profile cards and no user activities */}
+        {profileCards.length === 0 && activities.length === 0 && (
           <View style={s.empty}>
             <View style={s.emptyIcon}>
               <Ionicons name="calendar-outline" size={34} color={Colors.light.ink3} />
@@ -303,17 +318,6 @@ export default function ActivitiesScreen() {
             <Text style={s.emptySub}>
               Ajoute tes activités récurrentes pour les voir apparaître dans ton planning.
             </Text>
-          </View>
-        ) : (
-          <View style={s.list}>
-            {activities.map((act) => (
-              <ActivityCard
-                key={act.id}
-                activity={act}
-                onEdit={() => openSheet(act)}
-                onDelete={() => removeActivity(act.id)}
-              />
-            ))}
           </View>
         )}
       </ScrollView>
@@ -516,16 +520,6 @@ const s = StyleSheet.create({
     fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
     textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: Spacing.md,
   },
-  profileGroup: { gap: Spacing.md },
-  profileRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.light.surface, borderRadius: Radius.block,
-    padding: Spacing.base, ...Shadow.sm,
-  },
-  profileIcon:     { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  profileContent:  { flex: 1 },
-  profileRowLabel: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink, letterSpacing: -0.2 },
-  profileRowValue: { fontSize: FontSize.sm, color: Colors.light.ink3, marginTop: 2 },
 
   empty: { alignItems: 'center', marginTop: 72, paddingHorizontal: Spacing.xl, gap: Spacing.md },
   emptyIcon: {
