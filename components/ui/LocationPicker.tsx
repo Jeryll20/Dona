@@ -42,6 +42,15 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
     onChange({ address: r.address, lat: r.lat, lng: r.lng });
   }
 
+  function confirmManual() {
+    if (!query.trim()) return;
+    setResults([]);
+    setEditing(false);
+    // No lat/lng — address saved as text only (travel time won't be computed)
+    onChange({ address: query.trim(), lat: 0, lng: 0 });
+    setQuery('');
+  }
+
   function clear() {
     setQuery('');
     setResults([]);
@@ -81,9 +90,10 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
           value={query}
           onChangeText={handleSearch}
           onFocus={() => setEditing(true)}
+          onSubmitEditing={confirmManual}
           placeholder={placeholder}
           placeholderTextColor={Colors.light.ink3}
-          returnKeyType="search"
+          returnKeyType="done"
           autoCorrect={false}
           accessibilityLabel="Rechercher une adresse"
         />
@@ -98,7 +108,7 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
         }
       </View>
 
-      {results.length > 0 && (
+      {results.length > 0 ? (
         <View style={s.dropdown}>
           {results.map((r, i) => (
             <TouchableOpacity
@@ -112,7 +122,11 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
             </TouchableOpacity>
           ))}
         </View>
-      )}
+      ) : query.length >= 3 && !loading ? (
+        <Text style={s.noResult}>
+          Adresse introuvable — appuie sur "OK" pour la saisir manuellement.
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -171,4 +185,5 @@ const s = StyleSheet.create({
   predBorder: { borderBottomWidth: 1, borderBottomColor: Colors.light.hairline },
   predIcon:   { marginTop: 2, flexShrink: 0 },
   predText:   { flex: 1, fontSize: FontSize.sm, fontWeight: '500', color: Colors.light.ink, lineHeight: 18 },
+  noResult:   { fontSize: FontSize.xs, color: Colors.light.ink3, fontStyle: 'italic', marginTop: 6, paddingHorizontal: 2 },
 });

@@ -2,19 +2,9 @@ import type { ActivityLocation } from '@/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface PhotonProperties {
-  osm_id:      number;
-  name?:       string;
-  street?:     string;
-  housenumber?: string;
-  postcode?:   string;
-  city?:       string;
-  country?:    string;
-}
-
-interface PhotonFeature {
+interface BanFeature {
   geometry:   { coordinates: [number, number] };
-  properties: PhotonProperties;
+  properties: { label: string; score: number };
 }
 
 export interface AddressResult {
@@ -29,30 +19,20 @@ export interface DistanceResult {
   distanceKm:      number;
 }
 
-function formatPhotonAddress(p: PhotonProperties): string {
-  const parts: string[] = [];
-  const street = [p.housenumber, p.street ?? p.name].filter(Boolean).join(' ');
-  if (street) parts.push(street);
-  const city = [p.postcode, p.city].filter(Boolean).join(' ');
-  if (city) parts.push(city);
-  if (p.country) parts.push(p.country);
-  return parts.join(', ') || p.name || '';
-}
-
-// ── Address search — Photon (komoot, OSM-based, designed for autocomplete) ────
+// ── Address search — Base Adresse Nationale (gouvernement français) ───────────
+// Couverture exhaustive France, gratuit, sans clé API
 
 export async function searchAddresses(query: string): Promise<AddressResult[]> {
   if (query.length < 2) return [];
   try {
     const url =
-      `https://photon.komoot.io/api/` +
-      `?q=${encodeURIComponent(query)}` +
-      `&limit=5&lang=fr`;
+      `https://api-adresse.data.gouv.fr/search/` +
+      `?q=${encodeURIComponent(query)}&limit=5`;
     const res = await fetch(url);
-    const data: { features: PhotonFeature[] } = await res.json();
-    return (data.features ?? []).map((f) => ({
-      id:      String(f.properties.osm_id),
-      address: formatPhotonAddress(f.properties),
+    const data: { features: BanFeature[] } = await res.json();
+    return (data.features ?? []).map((f, i) => ({
+      id:      String(i),
+      address: f.properties.label,
       lat:     f.geometry.coordinates[1],
       lng:     f.geometry.coordinates[0],
     }));
