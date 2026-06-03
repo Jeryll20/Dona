@@ -3,6 +3,7 @@ import {
   View,
   Text,
   ScrollView,
+  Switch,
   TouchableOpacity,
   Modal,
   TextInput,
@@ -51,12 +52,14 @@ const FR_DAY: Record<WeekDay, string> = {
 };
 
 const RECURRENCES: { key: Recurrence; label: string; sub: string }[] = [
-  { key: 'weekly',   label: 'Chaque semaine',       sub: 'Se répète toutes les semaines' },
-  { key: 'biweekly', label: 'Toutes les deux semaines', sub: 'Une semaine sur deux' },
-  { key: 'none',     label: 'Ponctuel',              sub: 'Ne se répète pas' },
+  { key: 'weekly',     label: 'Chaque semaine',         sub: 'Se répète toutes les semaines'   },
+  { key: 'biweekly',   label: 'Une semaine sur deux',   sub: 'Toutes les deux semaines'        },
+  { key: 'triweekly',  label: 'Une semaine sur trois',  sub: 'Toutes les trois semaines'       },
+  { key: 'quadweekly', label: 'Une semaine sur quatre', sub: 'Toutes les quatre semaines'      },
+  { key: 'none',       label: 'Ponctuel',               sub: 'Ne se répète pas'                },
 ];
 
-const SHEET_HEIGHT = 650;
+const SHEET_HEIGHT = 720;
 
 // ── Helpers ───────────────────────────────────────────────────────
 
@@ -164,7 +167,8 @@ export default function ActivitiesScreen() {
   const [endTime,     setEndTime]     = useState('10:00');
   const [days,        setDays]        = useState<Set<WeekDay>>(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
   const [recurrence,  setRecurrence]  = useState<Recurrence>('weekly');
-  const [color,       setColor]       = useState<{ bg: string; ink: string } | undefined>(undefined);
+  const [color,          setColor]          = useState<{ bg: string; ink: string } | undefined>(undefined);
+  const [notifyWeekEnd,  setNotifyWeekEnd]  = useState(false);
   const slideAnim    = useSharedValue(SHEET_HEIGHT);
   const sheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: slideAnim.value }],
@@ -188,6 +192,7 @@ export default function ActivitiesScreen() {
       setDays(new Set(activity.days));
       setRecurrence(activity.recurrence);
       setColor(activity.color);
+      setNotifyWeekEnd(activity.notifyWeekEnd ?? false);
       setStep(2); // Skip category step when editing
     } else {
       setEditingId(null);
@@ -196,6 +201,7 @@ export default function ActivitiesScreen() {
       setDays(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
       setRecurrence('weekly');
       setColor(undefined);
+      setNotifyWeekEnd(false);
       setStep(1);
     }
     slideAnim.value = SHEET_HEIGHT;
@@ -227,6 +233,7 @@ export default function ActivitiesScreen() {
       days: [...days] as WeekDay[],
       recurrence,
       color,
+      notifyWeekEnd: recurrence === 'none' ? notifyWeekEnd : undefined,
     };
     if (editingId) {
       updateActivity(editingId, data);
@@ -463,6 +470,30 @@ export default function ActivitiesScreen() {
                       })}
                     </View>
                   </View>
+                  {recurrence === 'none' && (
+                    <TouchableOpacity
+                      style={s.notifyRow}
+                      onPress={() => setNotifyWeekEnd((v) => !v)}
+                      activeOpacity={0.8}
+                      accessibilityLabel="Rappel fin de semaine"
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: notifyWeekEnd }}
+                    >
+                      <View style={s.notifyIcon}>
+                        <Ionicons name="notifications-outline" size={18} color={Colors.light.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.notifyLabel}>Rappel dimanche soir</Text>
+                        <Text style={s.notifySub}>Notification pour reconfigurer la semaine suivante</Text>
+                      </View>
+                      <Switch
+                        value={notifyWeekEnd}
+                        onValueChange={setNotifyWeekEnd}
+                        trackColor={{ false: Colors.light.hairline, true: Colors.light.primaryTint2 }}
+                        thumbColor={notifyWeekEnd ? Colors.light.primary : Colors.light.surface}
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 
@@ -610,6 +641,20 @@ const s = StyleSheet.create({
   recLabel:   { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink },
   recLabelOn: { color: Colors.light.primaryStrong },
   recSub:     { fontSize: FontSize.xs, color: Colors.light.ink3, marginTop: 2 },
+
+  // Notify week-end toggle
+  notifyRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+    backgroundColor: Colors.light.primaryTint,
+    borderRadius: Radius.input, padding: Spacing.md,
+  },
+  notifyIcon: {
+    width: 36, height: 36, borderRadius: 11,
+    backgroundColor: Colors.light.primaryTint2,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  notifyLabel: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primaryStrong },
+  notifySub:   { fontSize: FontSize.xs,   fontWeight: '500', color: Colors.light.primary, marginTop: 2 },
 
   // Color picker
   colorRow:      { flexDirection: 'row', gap: 10, paddingVertical: 4 },

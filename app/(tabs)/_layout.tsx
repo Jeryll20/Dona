@@ -54,11 +54,16 @@ export default function TabLayout() {
       end:   parseTime(a.endTime),
     }));
 
+    const punctualActivities = activities
+      .filter((a) => a.recurrence === 'none' && a.notifyWeekEnd)
+      .map((a) => ({ id: a.id, title: a.title }));
+
     scheduleAllNotifications({
-      events:         [...baseEvents, ...activityEvents],
-      cycleTracking:  cycle.tracking ?? false,
-      lastPeriodDate: cycle.lastPeriodDate,
-      cycleDays:      cycle.cycleDays,
+      events:              [...baseEvents, ...activityEvents],
+      cycleTracking:       cycle.tracking ?? false,
+      lastPeriodDate:      cycle.lastPeriodDate,
+      cycleDays:           cycle.cycleDays,
+      punctualActivities,
     });
   }, [sleep, meals, cycle, activities]);
 

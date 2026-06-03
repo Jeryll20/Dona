@@ -182,13 +182,47 @@ export async function cancelPhaseChangeNotification(): Promise<void> {
   await Notif.cancelScheduledNotificationAsync(ID_PHASE).catch(() => null);
 }
 
+// ── 5. Rappel dimanche soir pour activités ponctuelles ───────────────────────
+
+const ID_PUNCTUAL_PFX = 'dona-punctual-';
+
+export async function schedulePunctualWeekEndReminders(
+  activities: { id: string; title: string }[],
+): Promise<void> {
+  const scheduled = await Notif.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    scheduled
+      .filter((n) => n.identifier.startsWith(ID_PUNCTUAL_PFX))
+      .map((n) => Notif.cancelScheduledNotificationAsync(n.identifier)),
+  );
+
+  await Promise.all(
+    activities.map((act) =>
+      Notif.scheduleNotificationAsync({
+        identifier: `${ID_PUNCTUAL_PFX}${act.id}`,
+        content: {
+          title: `Planifier "${act.title}" 📅`,
+          body:  'Pense à le reconfigurer pour la semaine prochaine si besoin !',
+        },
+        trigger: {
+          type:    Notif.SchedulableTriggerInputTypes.WEEKLY,
+          weekday: 1,
+          hour:    20,
+          minute:  30,
+        },
+      }),
+    ),
+  );
+}
+
 // ── API principale ────────────────────────────────────────────────────────────
 
 export interface NotifConfig {
-  events:          TimelineEvent[];
-  cycleTracking:   boolean;
-  lastPeriodDate?: string;
-  cycleDays?:      number;
+  events:             TimelineEvent[];
+  cycleTracking:      boolean;
+  lastPeriodDate?:    string;
+  cycleDays?:         number;
+  punctualActivities?: { id: string; title: string }[];
 }
 
 export async function scheduleAllNotifications({
@@ -196,6 +230,7 @@ export async function scheduleAllNotifications({
   cycleTracking,
   lastPeriodDate,
   cycleDays,
+  punctualActivities = [],
 }: NotifConfig): Promise<void> {
   const granted = await requestPermissions();
   if (!granted) return;
@@ -207,6 +242,7 @@ export async function scheduleAllNotifications({
       : cancelPhaseChangeNotification(),
     scheduleActivityReminders(events),
     scheduleWeeklyRecap(),
+    schedulePunctualWeekEndReminders(punctualActivities),
   ]);
 }
 

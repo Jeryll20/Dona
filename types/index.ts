@@ -13,7 +13,7 @@ export interface TimelineEvent {
   color?: { bg: string; ink: string };     // user-chosen color override
 }
 
-export type Recurrence = 'none' | 'daily' | 'weekly' | 'biweekly' | 'custom';
+export type Recurrence = 'none' | 'daily' | 'weekly' | 'biweekly' | 'triweekly' | 'quadweekly' | 'custom';
 
 export type WeekDay = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
@@ -28,6 +28,7 @@ export interface UserActivity {
   days: WeekDay[];
   recurrence: Recurrence;
   color?: { bg: string; ink: string };
+  notifyWeekEnd?: boolean;
 }
 
 // ── Suggestion ────────────────────────────────────────────────────────────────
