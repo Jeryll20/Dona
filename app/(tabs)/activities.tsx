@@ -428,9 +428,9 @@ export default function ActivitiesScreen() {
                     else if (step === 2) setStep(3);
                     else handleSave();
                   }}
-                  accessibilityLabel={step === 3 ? 'Enregistrer' : 'Suivant'}
+                  accessibilityLabel={step === 3 ? 'Ajouter au planning' : 'Continuer'}
                 >
-                  <Text style={s.nextText}>{step === 3 ? 'Enregistrer' : 'Suivant'}</Text>
+                  <Text style={s.nextText}>{step === 3 ? 'Ajouter au planning' : 'Continuer'}</Text>
                   {step !== 3 && <Ionicons name="chevron-forward" size={16} color={Colors.light.onPrimary} />}
                 </TouchableOpacity>
               </View>

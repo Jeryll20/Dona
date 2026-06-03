@@ -82,9 +82,9 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  overlay: { flex: 1, backgroundColor: 'rgba(46,32,72,0.32)' },
   sheet: {
-    backgroundColor: Colors.light.surface,
+    backgroundColor: Colors.light.background,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: Spacing.sm,

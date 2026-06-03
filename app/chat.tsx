@@ -49,7 +49,7 @@ function Bubble({ message }: { message: Message }) {
     >
       {isBot && (
         <View style={styles.avatar}>
-          <Logo size={28} />
+          <Icon name="spark" size={15} stroke={Colors.light.primary} />
         </View>
       )}
       <View style={[styles.bubble, isBot ? styles.bubbleBot : styles.bubbleUser]}>
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   headerName: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink },
-  headerSub:  { fontSize: FontSize.sm,   fontWeight: '500', color: Colors.light.ink3 },
+  headerSub:  { fontSize: 12.5,          fontWeight: '600', color: Colors.light.primaryStrong },
   closeBtn: {
     width: 36, height: 36, borderRadius: Radius.pill,
     backgroundColor: Colors.light.surfaceSunk,
@@ -437,6 +437,12 @@ const styles = StyleSheet.create({
   avatar: {
     marginTop: 2,
     flexShrink: 0,
+    width: 28,
+    height: 28,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.primaryTint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   bubble: {

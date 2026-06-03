@@ -22,8 +22,15 @@ import { useSuggestionsStore } from '@/store/useSuggestionsStore';
 import { buildSuggestions, buildDefaultDay } from '@/lib/optimizer';
 import { getCyclePhase } from '@/lib/cycle';
 import type { TimelineEvent, WeekDay, UserActivity, Suggestion } from '@/types';
+import type { ViewMode } from '@/store/useScheduleStore';
 
 const DAY_MAP: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const VIEW_MODES: { key: ViewMode; label: string }[] = [
+  { key: 'day',   label: 'Jour' },
+  { key: 'week',  label: 'Sem'  },
+  { key: 'month', label: 'Mois' },
+];
 
 function getDayTitle(offset: number): string {
   if (offset === 0) return "Aujourd'hui";
@@ -165,6 +172,7 @@ export default function TodayScreen() {
   const { sleep, meals, work, cycle } = useUserStore();
   const activities   = useScheduleStore((s) => s.activities);
   const viewMode     = useScheduleStore((s) => s.viewMode);
+  const setViewMode  = useScheduleStore((s) => s.setViewMode);
   const dayOffset    = useScheduleStore((s) => s.dayOffset);
   const setDayOffset = useScheduleStore((s) => s.setDayOffset);
   const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion, lastGeneratedAt } =
@@ -311,6 +319,7 @@ export default function TodayScreen() {
         </View>
         <View style={styles.headerRight}>
           <View style={styles.badge}>
+            <Icon name="clock" size={14} stroke={Colors.light.ink2} />
             <Text style={styles.badgeText}>
               {Math.round(scheduledHours(events))}h planifiées
             </Text>
@@ -321,9 +330,27 @@ export default function TodayScreen() {
             accessibilityLabel="Ouvrir le chat Dona"
             accessibilityRole="button"
           >
-            <Icon name="chat" size={20} stroke={Colors.light.primary} />
+            <Icon name="spark" size={20} stroke={Colors.light.primary} />
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* View mode pills */}
+      <View style={styles.modeRow}>
+        {VIEW_MODES.map((v) => (
+          <TouchableOpacity
+            key={v.key}
+            style={[styles.modePill, viewMode === v.key && styles.modePillActive]}
+            onPress={() => setViewMode(v.key)}
+            accessibilityRole="button"
+            accessibilityLabel={v.label}
+            accessibilityState={{ selected: viewMode === v.key }}
+          >
+            <Text style={[styles.modePillText, viewMode === v.key && styles.modePillTextActive]}>
+              {v.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Cycle phase mini-badge */}
@@ -370,8 +397,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingHorizontal: 22,
+    paddingBottom: 12,
   },
   dateLabel: {
     fontSize: FontSize.sm,
@@ -410,13 +437,42 @@ const styles = StyleSheet.create({
     ...Shadow.sm,
   },
   badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
     backgroundColor: Colors.light.surface,
     borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
     ...Shadow.sm,
   },
-  badgeText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink2 },
+  badgeText: { fontSize: 13.5, fontWeight: '600', color: Colors.light.ink2 },
+
+  modeRow: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    backgroundColor: Colors.light.surfaceSunk,
+    borderRadius: Radius.pill,
+    padding: 2,
+    marginBottom: Spacing.sm,
+  },
+  modePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: Radius.pill,
+  },
+  modePillActive: {
+    backgroundColor: Colors.light.primary,
+  },
+  modePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.light.ink3,
+  },
+  modePillTextActive: {
+    color: Colors.light.onPrimary,
+    fontWeight: '700',
+  },
 
   phaseBadge: {
     flexDirection: 'row',

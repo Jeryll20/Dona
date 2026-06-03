@@ -45,6 +45,10 @@ const palette = {
   error:   '#EF4444',
   success: '#10B981',
   warning: '#F59E0B',
+
+  // Danger (destructive actions — oklch(0.55 0.2 20) / oklch(0.95 0.04 20))
+  danger:     '#DC2626',
+  dangerTint: '#FEE2E2',
 } as const;
 
 export const Colors = {
