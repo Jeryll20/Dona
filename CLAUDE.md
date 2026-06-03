@@ -382,11 +382,14 @@ Dona's core differentiator. Detects free slots and generates contextual suggesti
 dona/
 ├── app/                          # Expo Router pages
 │   ├── (auth)/
+│   │   ├── login.tsx             # connexion Supabase
+│   │   ├── register.tsx          # inscription
+│   │   ├── verify-email.tsx      # attente confirmation email
 │   │   ├── welcome.tsx           # ob-intro
 │   │   └── onboarding/
 │   │       ├── q1-bedtime.tsx
-│   │       ├── q2-sleep-duration.tsx
-│   │       ├── q3-prep-time.tsx
+│   │       ├── q2-sleep-hours.tsx
+│   │       ├── q3-morning-prep.tsx
 │   │       ├── q4-meals.tsx
 │   │       ├── q5-activities.tsx
 │   │       ├── q6-goal.tsx
@@ -394,12 +397,15 @@ dona/
 │   │       ├── conversation.tsx  # chat bubbles follow-up
 │   │       └── recap.tsx         # day preview + CTA
 │   ├── (tabs)/
-│   │   ├── index.tsx             # home — today timeline
+│   │   ├── index.tsx             # home — timeline Jour/Semaine/Mois
 │   │   ├── activities.tsx        # my activities list
 │   │   └── profile.tsx           # profile + settings
 │   ├── profile/
 │   │   ├── sleep.tsx             # profile-sleep
-│   │   └── cycle.tsx             # profile-cycle
+│   │   ├── cycle.tsx             # profile-cycle
+│   │   ├── meals.tsx             # profile-meals
+│   │   └── account.tsx           # profile-account
+│   ├── chat.tsx                  # chat IA Mistral (modal)
 │   └── _layout.tsx
 ├── components/
 │   ├── ui/                       # Design system primitives
@@ -421,24 +427,30 @@ dona/
 │   │   ├── TimelineBlock.tsx     # colored event block
 │   │   ├── ThinBlock.tsx         # commute stripe block
 │   │   ├── NowIndicator.tsx      # current time line
-│   │   └── HourGrid.tsx          # background hour lines
+│   │   ├── HourGrid.tsx          # background hour lines
+│   │   ├── WeekView.tsx          # vue semaine (3 panneaux, swipe)
+│   │   └── MonthView.tsx         # vue mois (3 panneaux, swipe)
 │   ├── onboarding/
-│   │   └── QShell.tsx            # generic question wrapper
+│   │   └── OnboardingShell.tsx   # generic question wrapper
 │   ├── suggestions/
 │   │   └── SuggestionCard.tsx
-│   └── activities/
-│       └── ActivityRow.tsx
+│   └── cycle/
+│       └── PhaseCard.tsx
 ├── store/
 │   ├── useUserStore.ts           # onboarding answers + profile
-│   ├── useScheduleStore.ts       # timeline events
-│   └── useSuggestionsStore.ts
+│   ├── useScheduleStore.ts       # activities, viewMode, dayOffset
+│   ├── useSuggestionsStore.ts
+│   └── useAuthStore.ts           # Supabase session
 ├── lib/
 │   ├── supabase.ts
 │   ├── optimizer.ts              # free slot detection + scoring
 │   ├── cycle.ts                  # menstrual phase calculator
-│   └── notifications.ts
+│   ├── notifications.ts          # 4 types Expo Notifications
+│   ├── ai.ts                     # client Mistral (Supabase Edge Function)
+│   ├── chatTree.ts               # arbre de réponses pré-établies
+│   └── profileSync.ts            # sync profil Supabase ↔ store local
 ├── constants/
-│   ├── colors.ts                 # all CSS vars as RN hex values
+│   ├── Colors.ts                 # all CSS vars as RN hex values
 │   ├── typography.ts             # font sizes + weights
 │   ├── spacing.ts
 │   └── categories.ts             # CAT map
@@ -482,29 +494,31 @@ npx expo run:android
 
 ## 📌 Development Checklist
 
-### Étape 1 — MVP (priorité absolue)
+### Étape 1 — MVP ✅ COMPLET
 - [x] Project init (Expo + TypeScript)
 - [x] `constants/` — colors, typography, spacing, categories
 - [x] `components/ui/` — full design system (Icon, Button, Screen, etc.)
 - [x] Onboarding flow — all 9 screens (intro → recap)
-- [x] Home / Today timeline screen
+- [x] Home / Today timeline — vues Jour/Semaine/Mois, swipe 3 panneaux, tap pour naviguer
 - [x] Activities list + AddActivityFlow sheet
-- [x] Profile screen + Sleep/Cycle detail screens
-- [ ] Timeline components (TimelineBlock, ThinBlock, NowIndicator, HourGrid)
-- [ ] Time optimization engine (`lib/optimizer.ts`) — free slot detection
-- [ ] Suggestion cards UI (`SuggestionCard.tsx`, `useSuggestionsStore.ts`)
-- [ ] Local data persistence (AsyncStorage — **not** Supabase at MVP)
-- [ ] Basic chat screen (pre-written phrases only, no AI)
-- [ ] Basic notifications (Expo Notifications — 3 types: cycle, activity reminder, weekly recap)
+- [x] Profile screen + Sleep/Cycle/Meals/Account detail screens
+- [x] Timeline components (TimelineBlock, ThinBlock, NowIndicator, HourGrid, WeekView, MonthView)
+- [x] Time optimization engine (`lib/optimizer.ts`) — free slot detection + scoring
+- [x] Suggestion cards UI (`SuggestionCard.tsx`, `useSuggestionsStore.ts`)
+- [x] Local data persistence (AsyncStorage via Zustand persist)
+- [x] Chat screen (IA Mistral via Supabase Edge Function — avancé sur le planning initial)
+- [x] Notifications (Expo Notifications — 4 types : cycle, activité, recap hebdo, changement de phase)
 
-### Étape 2 — Cycle & Notifications avancées
-- [ ] Menstrual cycle module (`lib/cycle.ts`) — phase calculation
-- [ ] Dynamic suggestions per cycle phase
-- [ ] Smart notifications adapted to phases
+### Étape 2 — Cycle & Notifications avancées ✅ COMPLET
+- [x] Menstrual cycle module (`lib/cycle.ts`) — phase calculation
+- [x] Dynamic suggestions per cycle phase (in optimizer.ts)
+- [x] Smart notifications adapted to phases (`schedulePhaseChangeNotification`)
+- [x] Phase badge on home screen (color + label per phase)
+- [x] Notifications rescheduled reactively when data changes (activities, cycle, sleep)
 
-### Étape 3 — AI Chat & External integrations
-- [ ] Supabase auth & cloud sync
-- [ ] AI chat integration (Mistral — premium)
+### Étape 3 — AI Chat & External integrations (partiel)
+- [x] Supabase auth & cloud sync (`useAuthStore`, `lib/profileSync.ts`)
+- [x] AI chat integration (Mistral via Supabase Edge Function)
 - [ ] Apple Health / Google Fit / Calendar sync
 - [ ] Google Maps integration (react-native-maps + Places API)
 
@@ -516,7 +530,7 @@ npx expo run:android
 
 ---
 
-*Last updated: June 2026 — generated from Dona.html prototype*
+*Last updated: June 2026 — mis à jour pour refléter l'état réel du code*
 
 ---
 
