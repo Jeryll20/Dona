@@ -51,13 +51,15 @@ const FR_DAY: Record<WeekDay, string> = {
   Mon: 'Lun', Tue: 'Mar', Wed: 'Mer', Thu: 'Jeu', Fri: 'Ven', Sat: 'Sam', Sun: 'Dim',
 };
 
-const RECURRENCES: { key: Recurrence; label: string; sub: string }[] = [
-  { key: 'weekly',     label: 'Chaque semaine',         sub: 'Se répète toutes les semaines'   },
-  { key: 'biweekly',   label: 'Une semaine sur deux',   sub: 'Toutes les deux semaines'        },
-  { key: 'triweekly',  label: 'Une semaine sur trois',  sub: 'Toutes les trois semaines'       },
-  { key: 'quadweekly', label: 'Une semaine sur quatre', sub: 'Toutes les quatre semaines'      },
-  { key: 'none',       label: 'Ponctuel',               sub: 'Ne se répète pas'                },
+const N_WEEKLY_OPTS: { key: Recurrence; label: string }[] = [
+  { key: 'biweekly',   label: '2 semaines' },
+  { key: 'triweekly',  label: '3 semaines' },
+  { key: 'quadweekly', label: '4 semaines' },
 ];
+const N_WEEKLY_KEYS: Recurrence[] = ['biweekly', 'triweekly', 'quadweekly'];
+const N_WEEKLY_LABEL: Partial<Record<Recurrence, string>> = {
+  biweekly: '2', triweekly: '3', quadweekly: '4',
+};
 
 const SHEET_HEIGHT = 720;
 
@@ -449,25 +451,75 @@ export default function ActivitiesScreen() {
                   <View style={s.fg}>
                     <Text style={s.fieldLabel}>Récurrence</Text>
                     <View style={{ gap: Spacing.sm }}>
-                      {RECURRENCES.map((r) => {
-                        const on = recurrence === r.key;
-                        return (
-                          <TouchableOpacity
-                            key={r.key}
-                            style={[s.recRow, on && s.recRowOn]}
-                            onPress={() => setRecurrence(r.key)}
-                            accessibilityLabel={r.label}
-                            accessibilityRole="radio"
-                            accessibilityState={{ selected: on }}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text style={[s.recLabel, on && s.recLabelOn]}>{r.label}</Text>
-                              <Text style={s.recSub}>{r.sub}</Text>
-                            </View>
-                            {on && <Ionicons name="checkmark-circle" size={20} color={Colors.light.primary} />}
-                          </TouchableOpacity>
-                        );
-                      })}
+                      {/* Chaque semaine */}
+                      <TouchableOpacity
+                        style={[s.recRow, recurrence === 'weekly' && s.recRowOn]}
+                        onPress={() => setRecurrence('weekly')}
+                        accessibilityLabel="Chaque semaine"
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: recurrence === 'weekly' }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.recLabel, recurrence === 'weekly' && s.recLabelOn]}>Chaque semaine</Text>
+                          <Text style={s.recSub}>Se répète toutes les semaines</Text>
+                        </View>
+                        {recurrence === 'weekly' && <Ionicons name="checkmark-circle" size={20} color={Colors.light.primary} />}
+                      </TouchableOpacity>
+
+                      {/* Toutes les N semaines — bouton combiné */}
+                      <View style={{ gap: Spacing.sm }}>
+                        <TouchableOpacity
+                          style={[s.recRow, N_WEEKLY_KEYS.includes(recurrence) && s.recRowOn]}
+                          onPress={() => { if (!N_WEEKLY_KEYS.includes(recurrence)) setRecurrence('biweekly'); }}
+                          accessibilityLabel="Toutes les N semaines"
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: N_WEEKLY_KEYS.includes(recurrence) }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[s.recLabel, N_WEEKLY_KEYS.includes(recurrence) && s.recLabelOn]}>
+                              {N_WEEKLY_KEYS.includes(recurrence)
+                                ? `Toutes les ${N_WEEKLY_LABEL[recurrence]} semaines`
+                                : 'Toutes les N semaines'}
+                            </Text>
+                            <Text style={s.recSub}>Choisir l'intervalle ci-dessous</Text>
+                          </View>
+                          {N_WEEKLY_KEYS.includes(recurrence) && <Ionicons name="checkmark-circle" size={20} color={Colors.light.primary} />}
+                        </TouchableOpacity>
+                        {N_WEEKLY_KEYS.includes(recurrence) && (
+                          <View style={s.nWeekRow}>
+                            {N_WEEKLY_OPTS.map((opt) => {
+                              const active = recurrence === opt.key;
+                              return (
+                                <TouchableOpacity
+                                  key={opt.key}
+                                  style={[s.nWeekChip, active && s.nWeekChipOn]}
+                                  onPress={() => setRecurrence(opt.key)}
+                                  accessibilityLabel={opt.label}
+                                  accessibilityRole="radio"
+                                  accessibilityState={{ selected: active }}
+                                >
+                                  <Text style={[s.nWeekText, active && s.nWeekTextOn]}>{opt.label}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Ponctuel */}
+                      <TouchableOpacity
+                        style={[s.recRow, recurrence === 'none' && s.recRowOn]}
+                        onPress={() => setRecurrence('none')}
+                        accessibilityLabel="Ponctuel"
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: recurrence === 'none' }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.recLabel, recurrence === 'none' && s.recLabelOn]}>Ponctuel</Text>
+                          <Text style={s.recSub}>Ne se répète pas</Text>
+                        </View>
+                        {recurrence === 'none' && <Ionicons name="checkmark-circle" size={20} color={Colors.light.primary} />}
+                      </TouchableOpacity>
                     </View>
                   </View>
                   {recurrence === 'none' && (
@@ -641,6 +693,18 @@ const s = StyleSheet.create({
   recLabel:   { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink },
   recLabelOn: { color: Colors.light.primaryStrong },
   recSub:     { fontSize: FontSize.xs, color: Colors.light.ink3, marginTop: 2 },
+
+  // N-weekly sub-chips
+  nWeekRow:    { flexDirection: 'row', gap: Spacing.sm },
+  nWeekChip: {
+    flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.input,
+    backgroundColor: Colors.light.surfaceSunk,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'transparent',
+  },
+  nWeekChipOn: { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
+  nWeekText:   { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink3 },
+  nWeekTextOn: { color: Colors.light.primaryStrong },
 
   // Notify week-end toggle
   notifyRow: {
