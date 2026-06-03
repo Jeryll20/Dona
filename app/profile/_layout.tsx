@@ -7,6 +7,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="sleep" />
       <Stack.Screen name="cycle" />
       <Stack.Screen name="meals" />
+      <Stack.Screen name="calendar" />
     </Stack>
   );
 }

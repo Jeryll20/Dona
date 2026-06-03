@@ -167,6 +167,19 @@ export default function ProfileScreen() {
           </>
         )}
 
+        {/* Integrations */}
+        <Text style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Intégrations</Text>
+        <View style={styles.group}>
+          <SettingsRow
+            icon="calendar-outline"
+            iconBg={Colors.light.primaryTint}
+            iconInk={Colors.light.primary}
+            label="Calendrier & Santé"
+            value="Synchroniser avec ton appareil"
+            onPress={() => router.push('/profile/calendar')}
+          />
+        </View>
+
         {/* About */}
         <Text style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>À propos</Text>
         <View style={styles.group}>
