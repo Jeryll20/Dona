@@ -9,12 +9,12 @@ interface ThinBlockProps {
   onPress?: () => void;
 }
 
-const PILL_H = 20;
+const PILL_H  = 20;
+const OVERLAP = 10; // pill dips into activity block to fill rounded-corner gaps
 
 export function ThinBlock({ event, hourHeight, leftOffset, onPress }: ThinBlockProps) {
   const c = CAT[event.cat];
-  // Anchor bottom of pill flush to activity start (event.end) — no gap
-  const top = event.end * hourHeight - PILL_H;
+  const top = event.end * hourHeight - PILL_H + OVERLAP;
 
   return (
     <TouchableOpacity
@@ -42,8 +42,8 @@ const styles = StyleSheet.create({
     gap: 5,
     borderTopLeftRadius: 6,
     borderTopRightRadius: 6,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+    borderBottomLeftRadius: OVERLAP,
+    borderBottomRightRadius: OVERLAP,
     paddingHorizontal: 6,
     paddingLeft: 4,
   },
