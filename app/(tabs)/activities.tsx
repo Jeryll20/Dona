@@ -175,6 +175,8 @@ export default function ActivitiesScreen() {
   const [color,          setColor]          = useState<{ bg: string; ink: string } | undefined>(undefined);
   const [notifyWeekEnd,  setNotifyWeekEnd]  = useState(false);
   const [location,       setLocation]       = useState<ActivityLocation | undefined>(undefined);
+  const [useHomeAsStart, setUseHomeAsStart] = useState(true);
+  const [departure,      setDeparture]      = useState<ActivityLocation | undefined>(undefined);
   const [trajetMinutes,  setTrajetMinutes]  = useState<number | undefined>(undefined);
   const [trajetLoading,  setTrajetLoading]  = useState(false);
   const [trajetError,    setTrajetError]    = useState(false);
@@ -213,6 +215,8 @@ export default function ActivitiesScreen() {
       setColor(activity.color);
       setNotifyWeekEnd(activity.notifyWeekEnd ?? false);
       setLocation(activity.location);
+      setUseHomeAsStart(!activity.departureLocation);
+      setDeparture(activity.departureLocation);
       setTrajetMinutes(activity.trajetMinutesBefore);
       setTrajetLoading(false);
       setTrajetError(false);
@@ -226,6 +230,8 @@ export default function ActivitiesScreen() {
       setColor(undefined);
       setNotifyWeekEnd(false);
       setLocation(undefined);
+      setUseHomeAsStart(true);
+      setDeparture(undefined);
       setTrajetMinutes(undefined);
       setTrajetLoading(false);
       setTrajetError(false);
@@ -262,6 +268,7 @@ export default function ActivitiesScreen() {
       color,
       notifyWeekEnd: recurrence === 'none' ? notifyWeekEnd : undefined,
       location,
+      departureLocation: useHomeAsStart ? undefined : departure,
       trajetMinutesBefore: trajetMinutes,
     };
     if (editingId) {
@@ -275,24 +282,33 @@ export default function ActivitiesScreen() {
     closeSheet();
   }
 
-  async function handleLocationChange(loc: ActivityLocation | undefined) {
-    setLocation(loc);
+  async function computeTrajet(origin: ActivityLocation | undefined, dest: ActivityLocation | undefined) {
     setTrajetMinutes(undefined);
     setTrajetError(false);
-    if (!loc) return;
-    const home = profile.homeLocation;
-    // Guard: home missing or entered manually (no real coords)
-    if (!home || (home.lat === 0 && home.lng === 0)) return;
-    // Guard: activity location entered manually (no real coords)
-    if (loc.lat === 0 && loc.lng === 0) return;
+    if (!dest || (dest.lat === 0 && dest.lng === 0)) return;
+    const from = origin ?? profile.homeLocation;
+    if (!from || (from.lat === 0 && from.lng === 0)) return;
     setTrajetLoading(true);
-    const result = await getTravelTime(home, loc);
+    const result = await getTravelTime(from, dest);
     setTrajetLoading(false);
-    if (result) {
-      setTrajetMinutes(result.durationMinutes);
-    } else {
-      setTrajetError(true);
-    }
+    if (result) setTrajetMinutes(result.durationMinutes);
+    else setTrajetError(true);
+  }
+
+  async function handleLocationChange(loc: ActivityLocation | undefined) {
+    setLocation(loc);
+    await computeTrajet(useHomeAsStart ? undefined : departure, loc);
+  }
+
+  async function handleDepartureChange(loc: ActivityLocation | undefined) {
+    setDeparture(loc);
+    await computeTrajet(loc, location);
+  }
+
+  async function handleToggleDeparture(toHome: boolean) {
+    setUseHomeAsStart(toHome);
+    if (toHome) setDeparture(undefined);
+    await computeTrajet(toHome ? undefined : departure, location);
   }
 
   const stepTitles: Record<Step, string> = {
@@ -475,6 +491,44 @@ export default function ActivitiesScreen() {
                     <View style={s.fg}>
                       <Text style={s.fieldLabel}>Lieu (optionnel)</Text>
                       <LocationPicker value={location} onChange={handleLocationChange} />
+
+                      {location && (
+                        <View style={s.fg}>
+                          <Text style={s.fieldLabel}>Départ depuis</Text>
+                          <View style={s.depToggleRow}>
+                            {(['home', 'other'] as const).map((opt) => {
+                              const on = opt === 'home' ? useHomeAsStart : !useHomeAsStart;
+                              return (
+                                <TouchableOpacity
+                                  key={opt}
+                                  style={[s.depToggleBtn, on && s.depToggleBtnOn]}
+                                  onPress={() => handleToggleDeparture(opt === 'home')}
+                                  accessibilityRole="radio"
+                                  accessibilityState={{ selected: on }}
+                                  accessibilityLabel={opt === 'home' ? 'Domicile' : 'Autre lieu'}
+                                >
+                                  <Ionicons
+                                    name={opt === 'home' ? 'home-outline' : 'location-outline'}
+                                    size={13}
+                                    color={on ? Colors.light.primaryStrong : Colors.light.ink3}
+                                  />
+                                  <Text style={[s.depToggleText, on && s.depToggleTextOn]}>
+                                    {opt === 'home' ? 'Domicile' : 'Autre lieu'}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                          {!useHomeAsStart && (
+                            <LocationPicker
+                              value={departure}
+                              onChange={handleDepartureChange}
+                              placeholder="Adresse de départ…"
+                            />
+                          )}
+                        </View>
+                      )}
+
                       {trajetLoading && (
                         <View style={s.trajetChip}>
                           <ActivityIndicator size="small" color={Colors.light.transitInk} />
@@ -484,7 +538,11 @@ export default function ActivitiesScreen() {
                       {!trajetLoading && trajetMinutes !== undefined && (
                         <View style={s.trajetChip}>
                           <Ionicons name="car-outline" size={13} color={Colors.light.transitInk} />
-                          <Text style={s.trajetText}>{trajetMinutes} min de trajet calculés depuis ton domicile</Text>
+                          <Text style={s.trajetText}>
+                            {trajetMinutes} min depuis {useHomeAsStart
+                              ? 'ton domicile'
+                              : (departure?.address ?? 'ton lieu de départ')}
+                          </Text>
                         </View>
                       )}
                       {!trajetLoading && trajetError && (
@@ -492,10 +550,12 @@ export default function ActivitiesScreen() {
                       )}
                       {!trajetLoading && !trajetError && location && trajetMinutes === undefined && (
                         <Text style={s.trajetHint}>
-                          {!profile.homeLocation || (profile.homeLocation.lat === 0 && profile.homeLocation.lng === 0)
+                          {useHomeAsStart && (!profile.homeLocation || (profile.homeLocation.lat === 0 && profile.homeLocation.lng === 0))
                             ? 'Ajoute une adresse domicile géolocalisée dans Mon compte pour calculer le trajet.'
+                            : !useHomeAsStart && (!departure || (departure.lat === 0 && departure.lng === 0))
+                            ? 'Sélectionne une adresse de départ dans la liste pour calculer le trajet.'
                             : location.lat === 0 && location.lng === 0
-                            ? 'Adresse saisie manuellement — temps de trajet non calculable.'
+                            ? 'Adresse de destination saisie manuellement — temps de trajet non calculable.'
                             : null}
                         </Text>
                       )}
@@ -799,6 +859,18 @@ const s = StyleSheet.create({
   },
   notifyLabel: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primaryStrong },
   notifySub:   { fontSize: FontSize.xs,   fontWeight: '500', color: Colors.light.primary, marginTop: 2 },
+
+  // Departure toggle
+  depToggleRow: { flexDirection: 'row', gap: Spacing.sm },
+  depToggleBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: Spacing.xs, paddingVertical: Spacing.sm,
+    backgroundColor: Colors.light.surface, borderRadius: Radius.input,
+    borderWidth: 1.5, borderColor: Colors.light.hairline, ...Shadow.sm,
+  },
+  depToggleBtnOn:  { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
+  depToggleText:   { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink2 } as const,
+  depToggleTextOn: { color: Colors.light.primaryStrong, fontWeight: '700' } as const,
 
   // Trajet chip
   trajetChip: {
