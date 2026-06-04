@@ -532,7 +532,18 @@ npx expo run:android
 - [x] Géocodage & temps de trajet — BAN API (autocomplétion adresses FR) + OSRM (calcul itinéraire) ; pas de carte visuelle, suffisant pour le cas d'usage actuel
 
 ### Étape 4 — Expansion ⚠️ EN COURS
-- [x] Behavioral analysis & auto-adaptation — suivi des complétions (long-press "fait/sauté"), analyse de patterns (low_completion, day_skip, time_drift), rapport hebdomadaire avec insights Mistral (`lib/behaviorAnalysis.ts`, `lib/completionsSync.ts`, `store/useBehaviorStore.ts`, `app/weekly-report.tsx`), table Supabase `activity_completions`
+- [x] Behavioral analysis & auto-adaptation — suivi des complétions (long-press "fait/sauté"), reset vers état neutre, analyse de patterns (low_completion, day_skip, time_drift), rapport hebdomadaire avec insights Mistral (`lib/behaviorAnalysis.ts`, `lib/completionsSync.ts`, `store/useBehaviorStore.ts`, `app/weekly-report.tsx`), table Supabase `activity_completions`
+- [x] Catégories d'activités personnalisées — créer/supprimer avec couleur custom, sync Supabase (`lib/customCatsSync.ts`, table `custom_categories`)
+- [x] Séparation Sport / Activité — deux catégories built-in distinctes (coral vs bleu), icônes différentes
+- [x] Thème sombre — hook `useColors()` (`hooks/useColors.ts`), refactor 50 fichiers, toggle Auto/Clair/Sombre dans Profil → Mes paramètres
+- [ ] Rappels d'activité — notification X minutes avant chaque activité (infra Expo Notifications déjà en place)
+- [ ] Streak hebdo — afficher "N semaines consécutives à +80%" dans le bilan pour gamifier la régularité
+- [ ] Stats multi-semaines — graphe de tendance sur 4 semaines dans le bilan (au lieu d'une seule semaine)
+- [ ] Glisser-déposer sur la timeline — déplacer un bloc directement en le faisant glisser (crée un override startTime/endTime)
+- [ ] Objectifs quantifiables — "3 sessions de sport/semaine" avec barre de progression dans les activités
+- [ ] Widget iOS/Android — afficher les 3 prochains blocs du jour sur l'écran d'accueil
+- [ ] Export PDF/image — partager son planning de la semaine en capture propre
+- [ ] Templates de semaine — modèles pré-remplis pour un 2e utilisateur (sans onboarding from scratch)
 - [ ] Community features
 - [ ] PWA web version
 - [ ] Multilingual support
