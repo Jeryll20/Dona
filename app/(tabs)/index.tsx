@@ -28,8 +28,10 @@ import { useScheduleStore } from '@/store/useScheduleStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSuggestionsStore } from '@/store/useSuggestionsStore';
 import { upsertOverride, deleteOverrideRemote } from '@/lib/activitiesSync';
+import { upsertCompletion } from '@/lib/completionsSync';
 import { buildSuggestions, buildDayEvents } from '@/lib/optimizer';
 import { getCyclePhase } from '@/lib/cycle';
+import { useBehaviorStore } from '@/store/useBehaviorStore';
 import type { TimelineEvent, WeekDay, UserActivity, Suggestion, ActivityOverride } from '@/types';
 import type { ViewMode } from '@/store/useScheduleStore';
 
@@ -84,6 +86,7 @@ interface DayPanelProps {
   activities: UserActivity[];
   overrides: ActivityOverride[];
   onActivityPress: (activityId: string, date: string, isRecurring: boolean) => void;
+  onActivityLongPress: (activityId: string, date: string) => void;
   visibleSuggestions: Suggestion[];
   onAccept: (id: string) => void;
   onDismiss: (id: string) => void;
@@ -93,9 +96,10 @@ interface DayPanelProps {
 
 function DayPanel({
   absOffset, sleep, meals,
-  activities, overrides, onActivityPress,
+  activities, overrides, onActivityPress, onActivityLongPress,
   visibleSuggestions, onAccept, onDismiss, nowHour, panelWidth,
 }: DayPanelProps) {
+  const completions = useBehaviorStore((s) => s.completions);
   const d = new Date();
   d.setDate(d.getDate() + absOffset);
   const weekDay = DAY_MAP[d.getDay()];
@@ -198,12 +202,20 @@ function DayPanel({
             />
           );
         })}
-        {events.filter((ev) => !ev.thin).map((ev, i) => (
-          <TimelineBlock
-            key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
-            onPress={getPressHandler(ev as any)}
-          />
-        ))}
+        {events.filter((ev) => !ev.thin).map((ev, i) => {
+          const aev = ev as TimelineEvent & { activityId?: string };
+          const comp = aev.activityId
+            ? completions.find((c) => c.activityId === aev.activityId && c.date === dateStr)
+            : undefined;
+          return (
+            <TimelineBlock
+              key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
+              onPress={getPressHandler(aev)}
+              onLongPress={aev.activityId ? () => onActivityLongPress(aev.activityId!, dateStr) : undefined}
+              completion={comp ? (comp.completed ? 'done' : 'skipped') : null}
+            />
+          );
+        })}
       </View>
     </ScrollView>
   );
@@ -251,6 +263,29 @@ export default function TodayScreen() {
   const setDayOffset = useScheduleStore((s) => s.setDayOffset);
   const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion } =
     useSuggestionsStore();
+  const { completions, setCompletion } = useBehaviorStore();
+
+  // ── Completion state ──────────────────────────────────────────────────────────
+  const [completionTarget, setCompletionTarget] = useState<{
+    activityId: string;
+    date: string;
+  } | null>(null);
+
+  const handleActivityLongPress = useCallback((activityId: string, date: string) => {
+    setCompletionTarget({ activityId, date });
+  }, []);
+
+  function markCompletion(completed: boolean) {
+    if (!completionTarget) return;
+    const c = { activityId: completionTarget.activityId, date: completionTarget.date, completed };
+    setCompletion(c);
+    if (userId) upsertCompletion(userId, c);
+    setCompletionTarget(null);
+  }
+
+  const completionActivity = completionTarget
+    ? activities.find((a) => a.id === completionTarget.activityId)
+    : null;
 
   // ── Single-occurrence edit state ─────────────────────────────────────────────
   const [choiceTarget, setChoiceTarget] = useState<{
@@ -478,6 +513,14 @@ export default function TodayScreen() {
           </View>
           <TouchableOpacity
             style={styles.chatBtn}
+            onPress={() => router.push('/weekly-report' as any)}
+            accessibilityLabel="Voir le bilan de la semaine"
+            accessibilityRole="button"
+          >
+            <Icon name="calendar" size={20} stroke={Colors.light.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.chatBtn}
             onPress={() => router.push('/chat' as any)}
             accessibilityLabel="Ouvrir le chat Dona"
             accessibilityRole="button"
@@ -513,6 +556,7 @@ export default function TodayScreen() {
                 activities={activities}
                 overrides={overrides}
                 onActivityPress={handleActivityPress}
+                onActivityLongPress={handleActivityLongPress}
                 visibleSuggestions={visibleSuggestions}
                 onAccept={acceptSuggestion}
                 onDismiss={dismissSuggestion}
@@ -524,6 +568,32 @@ export default function TodayScreen() {
         </View>
       )}
       </View>
+
+      {/* ── Completion sheet: marquer fait / sauté ───────────────────────────── */}
+      <Sheet
+        open={!!completionTarget}
+        onClose={() => setCompletionTarget(null)}
+        title={completionActivity?.title ?? 'Activité'}
+      >
+        <TouchableOpacity style={sheet.option} onPress={() => markCompletion(true)} accessibilityRole="button">
+          <View style={[sheet.optionIcon, { backgroundColor: '#C8F0D4' }]}>
+            <Icon name="check" size={20} stroke={Colors.light.mealInk} sw={2.2} />
+          </View>
+          <View style={sheet.optionText}>
+            <Text style={sheet.optionLabel}>Activité réalisée</Text>
+            <Text style={sheet.optionSub}>Marquer comme complétée aujourd'hui</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity style={sheet.option} onPress={() => markCompletion(false)} accessibilityRole="button">
+          <View style={[sheet.optionIcon, { backgroundColor: Colors.light.surfaceSunk }]}>
+            <Icon name="x" size={20} stroke={Colors.light.ink2} sw={2.2} />
+          </View>
+          <View style={sheet.optionText}>
+            <Text style={sheet.optionLabel}>Activité sautée</Text>
+            <Text style={sheet.optionSub}>Indiquer que tu n'as pas pu la faire</Text>
+          </View>
+        </TouchableOpacity>
+      </Sheet>
 
       {/* ── Choice sheet: modifier ce jour vs. toujours ─────────────────────── */}
       <Sheet

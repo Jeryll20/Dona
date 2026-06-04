@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useUserStore } from '@/store/useUserStore';
 import { fetchAndHydrateProfile, pushProfile } from '@/lib/profileSync';
 import { fetchAndHydrateActivities } from '@/lib/activitiesSync';
+import { fetchAndHydrateCompletions } from '@/lib/completionsSync';
 
 export function useProfileSync() {
   const session    = useAuthStore((s) => s.session);
@@ -10,13 +11,14 @@ export function useProfileSync() {
   const hydrating  = useRef(false);
   const debounce   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // On login: fetch remote profile + activities and hydrate local stores
+  // On login: fetch remote profile + activities + completions
   useEffect(() => {
     if (!userId) return;
     hydrating.current = true;
     Promise.all([
       fetchAndHydrateProfile(userId),
       fetchAndHydrateActivities(userId),
+      fetchAndHydrateCompletions(userId),
     ]).finally(() => {
       hydrating.current = false;
     });

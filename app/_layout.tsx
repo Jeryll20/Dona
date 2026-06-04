@@ -1,6 +1,6 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   useFonts,
@@ -13,6 +13,7 @@ import {
 } from '@expo-google-fonts/hanken-grotesk';
 import 'react-native-reanimated';
 import * as Linking from 'expo-linking';
+import * as Notif from 'expo-notifications';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { supabase } from '@/lib/supabase';
@@ -108,8 +109,9 @@ function useProtectedRoute() {
       return;
     }
 
-    // Logged in + onboarded → home (profile/chat screens are also valid destinations)
-    if (!inTabs && !inProfile && !inChat) {
+    // Logged in + onboarded → home (profile/chat/report screens are also valid destinations)
+    const inReport = segments[0] === 'weekly-report';
+    if (!inTabs && !inProfile && !inChat && !inReport) {
       const { sleep, meals, cycle } = useUserStore.getState();
       const events = (sleep.waketime && sleep.bedtime && sleep.prepMinutes != null)
         ? buildDefaultDay(
@@ -141,6 +143,18 @@ export default function RootLayout() {
   useProtectedRoute();
   useProfileSync();
 
+  const router = useRouter();
+
+  // Navigate to weekly report when user taps the Sunday evening notification
+  useEffect(() => {
+    const sub = Notif.addNotificationResponseReceivedListener((response) => {
+      if (response.notification.request.identifier === 'dona-weekly-recap') {
+        router.push('/weekly-report' as any);
+      }
+    });
+    return () => sub.remove();
+  }, [router]);
+
   useEffect(() => {
     if (fontError) throw fontError;
   }, [fontError]);
@@ -159,6 +173,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="profile" />
         <Stack.Screen name="chat" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="weekly-report" options={{ animation: 'slide_from_right' }} />
       </Stack>
     </>
   );

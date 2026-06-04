@@ -115,6 +115,32 @@ export async function sendChatMessage(
   return { ...data, action } as AiResponse;
 }
 
+// ── Weekly behavioral insights ────────────────────────────────────────────────
+
+export interface InsightsPayload {
+  completionRate:  number;
+  patterns:        { title: string; detail: string; suggestion: string }[];
+  activitiesCount: number;
+  firstName?:      string;
+}
+
+export async function generateWeeklyInsights(payload: InsightsPayload): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('weekly-insights', {
+    body: payload,
+  });
+
+  if (error || !data?.message) {
+    // Fallback: build a local message without AI
+    const pct = Math.round(payload.completionRate * 100);
+    if (payload.patterns.length === 0) {
+      return `Super semaine${payload.firstName ? `, ${payload.firstName}` : ''} ! Tu as réalisé ${pct}% de tes activités prévues. Continue comme ça !`;
+    }
+    return `Cette semaine tu as réalisé ${pct}% de tes activités. Voici quelques pistes pour t'améliorer la semaine prochaine.`;
+  }
+
+  return data.message as string;
+}
+
 function toH(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number);
   return (h || 0) + (m || 0) / 60;

@@ -30,6 +30,7 @@ export interface UserActivity {
   color?: { bg: string; ink: string };
   notifyWeekEnd?: boolean;
   location?: ActivityLocation;
+  departureLocation?: ActivityLocation; // undefined = use homeLocation
   trajetMinutesBefore?: number;
 }
 
@@ -132,3 +133,38 @@ export interface CycleInfo {
 // ── Cycle phase ───────────────────────────────────────────────────────────────
 
 export type CyclePhase = 'menstrual' | 'follicular' | 'ovulation' | 'luteal';
+
+// ── Behavioral analysis ───────────────────────────────────────────────────────
+
+export interface ActivityCompletion {
+  activityId:  string;
+  date:        string;   // "YYYY-MM-DD"
+  completed:   boolean;
+  actualStart?: string;  // "HH:MM"
+  actualEnd?:   string;  // "HH:MM"
+  note?:        string;
+}
+
+export type PatternType = 'low_completion' | 'day_skip' | 'time_drift';
+
+export interface PatternInsight {
+  activityId:  string;
+  activityTitle: string;
+  type:        PatternType;
+  detail:      string;   // human-readable description of the pattern
+  suggestion:  string;   // proposed adaptation
+}
+
+export interface CategoryStat {
+  planned: number;  // hours scheduled
+  done:    number;  // hours actually completed
+}
+
+export interface WeeklyReport {
+  weekStart:       string;  // "YYYY-MM-DD" (Monday)
+  completionRate:  number;  // 0–1
+  categoryStats:   Partial<Record<CatKey, CategoryStat>>;
+  patterns:        PatternInsight[];
+  mistralInsights: string;  // AI-generated text
+  generatedAt:     string;  // ISO timestamp
+}

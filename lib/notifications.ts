@@ -118,6 +118,7 @@ export async function scheduleWeeklyRecap(): Promise<void> {
       hour:    20,
       minute:  0,
     },
+    // Navigate to /weekly-report when tapped (handled in _layout notification listener)
   });
 }
 

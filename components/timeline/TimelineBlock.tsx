@@ -1,15 +1,19 @@
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
+import { Colors } from '@/constants/colors';
 import { CAT } from '@/constants/categories';
+import { Icon } from '@/components/ui/Icon';
 import type { TimelineEvent } from '@/types';
 
 interface TimelineBlockProps {
-  event: TimelineEvent;
-  hourHeight: number;
-  leftOffset: number;
-  onPress?: () => void;
+  event:       TimelineEvent;
+  hourHeight:  number;
+  leftOffset:  number;
+  onPress?:    () => void;
+  onLongPress?: () => void;
+  completion?: 'done' | 'skipped' | null;
 }
 
 function fmtHour(h: number) {
@@ -28,7 +32,9 @@ function lighten(hex: string, factor: number): string {
   return `#${lr}${lg}${lb}`;
 }
 
-export function TimelineBlock({ event, hourHeight, leftOffset, onPress }: TimelineBlockProps) {
+export function TimelineBlock({
+  event, hourHeight, leftOffset, onPress, onLongPress, completion,
+}: TimelineBlockProps) {
   const c = event.color ?? CAT[event.cat];
   const top    = event.start * hourHeight;
   const height = Math.max((event.end - event.start) * hourHeight, 16);
@@ -39,14 +45,19 @@ export function TimelineBlock({ event, hourHeight, leftOffset, onPress }: Timeli
   const bgLight = lighten(c.bg, 0.5);
   const gradColors: [string, string] = [bgLight, c.bg];
 
+  const isSkipped = completion === 'skipped';
+
   return (
     <TouchableOpacity
       activeOpacity={onPress ? 0.75 : 1}
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={400}
       style={[
         styles.block,
         { top, height, left: leftOffset },
         isSmall && styles.blockSmall,
+        isSkipped && styles.blockSkipped,
       ]}
       accessibilityLabel={`${event.title}, ${fmtHour(event.start)} à ${fmtHour(event.end)}`}
       accessibilityRole={onPress ? 'button' : 'none'}
@@ -58,16 +69,28 @@ export function TimelineBlock({ event, hourHeight, leftOffset, onPress }: Timeli
         style={StyleSheet.absoluteFillObject}
       />
       <Text
-        style={[styles.title, { color: c.ink }, isSmall && styles.titleSmall]}
+        style={[styles.title, { color: c.ink }, isSmall && styles.titleSmall, isSkipped && styles.textSkipped]}
         numberOfLines={1}
         ellipsizeMode="tail"
       >
         {event.title}
       </Text>
       {!isMedium && (
-        <Text style={[styles.time, { color: c.ink }]}>
+        <Text style={[styles.time, { color: c.ink }, isSkipped && styles.textSkipped]}>
           {fmtHour(event.start)} – {fmtHour(event.end)}
         </Text>
+      )}
+
+      {/* Completion badge */}
+      {completion != null && !isSmall && (
+        <View style={[styles.badge, completion === 'done' ? styles.badgeDone : styles.badgeSkipped]}>
+          <Icon
+            name={completion === 'done' ? 'check' : 'x'}
+            size={10}
+            stroke={completion === 'done' ? Colors.light.mealInk : Colors.light.ink2}
+            sw={2.5}
+          />
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -75,19 +98,35 @@ export function TimelineBlock({ event, hourHeight, leftOffset, onPress }: Timeli
 
 const styles = StyleSheet.create({
   block: {
-    position: 'absolute',
-    right: 4,
-    borderRadius: 16,
+    position:        'absolute',
+    right:           4,
+    borderRadius:    16,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    overflow: 'hidden',
-    justifyContent: 'center',
+    overflow:        'hidden',
+    justifyContent:  'center',
   },
   blockSmall: {
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius:    10,
+  },
+  blockSkipped: {
+    opacity: 0.55,
   },
   title:      { fontSize: FontSize.base, fontWeight: '700', letterSpacing: -0.2 },
   titleSmall: { fontSize: FontSize.sm },
   time:       { fontSize: FontSize.sm, fontWeight: '600', opacity: 0.78, marginTop: 3 },
+  textSkipped: { textDecorationLine: 'line-through' },
+  badge: {
+    position:     'absolute',
+    top:          6,
+    right:        8,
+    width:        18,
+    height:       18,
+    borderRadius: 9,
+    alignItems:   'center',
+    justifyContent: 'center',
+  },
+  badgeDone:    { backgroundColor: '#C8F0D4' },
+  badgeSkipped: { backgroundColor: Colors.light.surfaceSunk },
 });
