@@ -8,7 +8,6 @@ interface TimelineBlockProps {
   event: TimelineEvent;
   hourHeight: number;
   leftOffset: number;
-  squareTop?: boolean;
   onPress?: () => void;
 }
 
@@ -18,14 +17,13 @@ function fmtHour(h: number) {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
-export function TimelineBlock({ event, hourHeight, leftOffset, squareTop, onPress }: TimelineBlockProps) {
+export function TimelineBlock({ event, hourHeight, leftOffset, onPress }: TimelineBlockProps) {
   const c = event.color ?? CAT[event.cat];
   const top    = event.start * hourHeight;
   const height = Math.max((event.end - event.start) * hourHeight, 16);
 
   const isSmall  = height < 32;
   const isMedium = height < 52;
-  const r = isSmall ? 10 : 16;
 
   return (
     <TouchableOpacity
@@ -33,13 +31,7 @@ export function TimelineBlock({ event, hourHeight, leftOffset, squareTop, onPres
       onPress={onPress}
       style={[
         styles.block,
-        {
-          top, height, left: leftOffset, backgroundColor: c.bg,
-          borderTopLeftRadius:     squareTop ? 0 : r,
-          borderTopRightRadius:    squareTop ? 0 : r,
-          borderBottomLeftRadius:  r,
-          borderBottomRightRadius: r,
-        },
+        { top, height, left: leftOffset, backgroundColor: c.bg },
         isSmall && styles.blockSmall,
       ]}
       accessibilityLabel={`${event.title}, ${fmtHour(event.start)} à ${fmtHour(event.end)}`}
@@ -65,6 +57,7 @@ const styles = StyleSheet.create({
   block: {
     position: 'absolute',
     right: 4,
+    borderRadius: 16,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     overflow: 'hidden',
@@ -72,6 +65,7 @@ const styles = StyleSheet.create({
   },
   blockSmall: {
     paddingVertical: 3,
+    borderRadius: 10,
   },
   title:      { fontSize: FontSize.base, fontWeight: '700', letterSpacing: -0.2 },
   titleSmall: { fontSize: FontSize.sm },
