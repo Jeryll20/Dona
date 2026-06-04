@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Colors } from '@/constants/colors';
+import { Colors } from '@/constants/Colors';
 import { FontSize } from '@/constants/typography';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
 import { CAT } from '@/constants/categories';

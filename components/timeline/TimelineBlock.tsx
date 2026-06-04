@@ -2,7 +2,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
-import { Colors } from '@/constants/colors';
+import { Colors } from '@/constants/Colors';
 import { CAT } from '@/constants/categories';
 import { Icon } from '@/components/ui/Icon';
 import type { TimelineEvent } from '@/types';
