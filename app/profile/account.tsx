@@ -45,6 +45,14 @@ export default function AccountScreen() {
     profile.homeLocation,
   );
   const [keyboardH, setKeyboardH] = useState(0);
+
+  // Re-sync if Zustand finishes hydrating from AsyncStorage after this component mounts
+  useEffect(() => {
+    if (homeLocation === undefined && profile.homeLocation !== undefined) {
+      setHomeLocation(profile.homeLocation);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.homeLocation]);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -79,7 +87,7 @@ export default function AccountScreen() {
       lastName:     lastName.trim() || undefined,
       dateOfBirth:  dateOfBirth ? toLocalISODate(dateOfBirth) : undefined,
       gender,
-      homeLocation: homeLocation ?? undefined,
+      homeLocation: homeLocation ?? profile.homeLocation,
     });
     router.back();
   }
