@@ -1,4 +1,5 @@
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { CAT } from '@/constants/categories';
 import type { TimelineEvent } from '@/types';
 
@@ -7,14 +8,16 @@ interface ThinBlockProps {
   hourHeight: number;
   leftOffset: number;
   onPress?: () => void;
+  targetInk?: string; // ink color of the activity block below, for gradient accent bar
 }
 
 const OVERLAP = 10; // pill dips into activity block to fill rounded-corner gaps
 const PILL_H  = OVERLAP + 22; // 22px visible above the activity block
 
-export function ThinBlock({ event, hourHeight, leftOffset, onPress }: ThinBlockProps) {
+export function ThinBlock({ event, hourHeight, leftOffset, onPress, targetInk }: ThinBlockProps) {
   const c = CAT[event.cat];
   const top = event.end * hourHeight - PILL_H + OVERLAP;
+  const barColors: [string, string] = [c.ink, targetInk ?? c.ink];
 
   return (
     <TouchableOpacity
@@ -24,7 +27,12 @@ export function ThinBlock({ event, hourHeight, leftOffset, onPress }: ThinBlockP
       accessibilityLabel={`${event.title}${event.dur ? ' · ' + event.dur : ''}`}
       accessibilityRole={onPress ? 'button' : 'none'}
     >
-      <View style={[styles.bar, { backgroundColor: c.ink }]} />
+      <LinearGradient
+        colors={barColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.bar}
+      />
       <Text style={[styles.label, { color: c.ink }]} numberOfLines={1}>
         {event.title}{event.dur ? `  ·  ${event.dur}` : ''}
       </Text>
@@ -47,6 +55,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingLeft: 4,
   },
-  bar:   { width: 3, height: 12, borderRadius: 999, opacity: 0.55 },
+  bar:   { width: 3, height: 12, borderRadius: 999, opacity: 0.6 },
   label: { fontSize: 11, fontWeight: '600', opacity: 0.85, flexShrink: 1 },
 });

@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, COLOR_PALETTE } from '@/constants/Colors';
+import { CAT } from '@/constants/categories';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { Icon } from '@/components/ui/Icon';
@@ -185,12 +186,26 @@ function DayPanel({
       <View style={[styles.grid, { minHeight: 24 * HH }]}>
         <HourGrid hourHeight={HH} />
         {isToday && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
-        {events.filter((ev) => ev.thin).map((ev, i) =>
-          <ThinBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getPressHandler(ev as any)} />
-        )}
-        {events.filter((ev) => !ev.thin).map((ev, i) =>
-          <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getPressHandler(ev as any)} />
-        )}
+        {events.filter((ev) => ev.thin).map((ev, i) => {
+          const nextActivity = events.find(e => !e.thin && e.start >= ev.end - 0.05);
+          const targetInk = nextActivity ? (nextActivity.color?.ink ?? CAT[nextActivity.cat].ink) : undefined;
+          return (
+            <ThinBlock
+              key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
+              onPress={getPressHandler(ev as any)} targetInk={targetInk}
+            />
+          );
+        })}
+        {events.filter((ev) => !ev.thin).map((ev, i) => {
+          const hasPrecedingThin = events.some(e => e.thin && Math.abs(e.end - ev.start) < 0.05);
+          return (
+            <TimelineBlock
+              key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
+              onPress={getPressHandler(ev as any)}
+              topBarColor={hasPrecedingThin ? Colors.light.transitInk : undefined}
+            />
+          );
+        })}
       </View>
     </ScrollView>
   );
