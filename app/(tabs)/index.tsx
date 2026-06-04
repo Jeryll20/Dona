@@ -28,7 +28,7 @@ import { useScheduleStore } from '@/store/useScheduleStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSuggestionsStore } from '@/store/useSuggestionsStore';
 import { upsertOverride, deleteOverrideRemote } from '@/lib/activitiesSync';
-import { upsertCompletion } from '@/lib/completionsSync';
+import { upsertCompletion, deleteCompletionRemote } from '@/lib/completionsSync';
 import { buildSuggestions, buildDayEvents } from '@/lib/optimizer';
 import { getCyclePhase } from '@/lib/cycle';
 import { useBehaviorStore } from '@/store/useBehaviorStore';
@@ -266,7 +266,7 @@ export default function TodayScreen() {
   const setDayOffset = useScheduleStore((s) => s.setDayOffset);
   const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion } =
     useSuggestionsStore();
-  const { completions, setCompletion, clearReport } = useBehaviorStore();
+  const { completions, setCompletion, removeCompletion, clearReport } = useBehaviorStore();
 
   // ── Completion state ──────────────────────────────────────────────────────────
   const [completionTarget, setCompletionTarget] = useState<{
@@ -282,14 +282,26 @@ export default function TodayScreen() {
     if (!completionTarget) return;
     const c = { activityId: completionTarget.activityId, date: completionTarget.date, completed };
     setCompletion(c);
-    clearReport(); // invalidate cached report so it regenerates on next open
+    clearReport();
     if (userId) upsertCompletion(userId, c);
+    setCompletionTarget(null);
+  }
+
+  function resetCompletion() {
+    if (!completionTarget) return;
+    removeCompletion(completionTarget.activityId, completionTarget.date);
+    clearReport();
+    if (userId) deleteCompletionRemote(userId, completionTarget.activityId, completionTarget.date);
     setCompletionTarget(null);
   }
 
   const completionActivity = completionTarget
     ? activities.find((a) => a.id === completionTarget.activityId)
     : null;
+
+  const existingCompletion = completionTarget
+    ? completions.find((c) => c.activityId === completionTarget.activityId && c.date === completionTarget.date)
+    : undefined;
 
   // ── Single-occurrence edit state ─────────────────────────────────────────────
   const [choiceTarget, setChoiceTarget] = useState<{
@@ -589,6 +601,17 @@ export default function TodayScreen() {
             <Text style={sheet.optionSub}>Indiquer que tu n'as pas pu la faire</Text>
           </View>
         </TouchableOpacity>
+        {existingCompletion && (
+          <TouchableOpacity style={sheet.option} onPress={resetCompletion} accessibilityRole="button">
+            <View style={[sheet.optionIcon, { backgroundColor: Colors.light.primaryTint }]}>
+              <Ionicons name="refresh-outline" size={20} color={Colors.light.primary} />
+            </View>
+            <View style={sheet.optionText}>
+              <Text style={sheet.optionLabel}>Remettre à zéro</Text>
+              <Text style={sheet.optionSub}>Annuler le statut et repasser en neutre</Text>
+            </View>
+          </TouchableOpacity>
+        )}
       </Sheet>
 
       {/* ── Choice sheet: modifier ce jour vs. toujours ─────────────────────── */}
