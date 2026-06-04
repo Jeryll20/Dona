@@ -9,8 +9,8 @@ interface ThinBlockProps {
   onPress?: () => void;
 }
 
-const PILL_H  = 20;
 const OVERLAP = 10; // pill dips into activity block to fill rounded-corner gaps
+const PILL_H  = OVERLAP + 22; // 22px visible above the activity block
 
 export function ThinBlock({ event, hourHeight, leftOffset, onPress }: ThinBlockProps) {
   const c = CAT[event.cat];
