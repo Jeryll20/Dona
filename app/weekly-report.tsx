@@ -21,6 +21,7 @@ const CAT_LABELS: Record<CatKey, string> = {
   sommeil:  'Sommeil',
   prep:     'Préparation',
   travail:  'Travail',
+  sport:    'Sport',
   activite: 'Activité',
   trajet:   'Trajet',
   repas:    'Repas',
@@ -72,24 +73,27 @@ function PatternCard({ insight, onAccept }: { insight: PatternInsight; onAccept:
 }
 
 export default function WeeklyReportScreen() {
-  const { activities, overrides } = useScheduleStore();
+  const { activities, overrides, customCategories } = useScheduleStore();
   const { completions, weeklyReport, setWeeklyReport } = useBehaviorStore();
   const { profile } = useUserStore();
 
-  const [loading, setLoading]   = useState(false);
-  const [report, setReport]     = useState<WeeklyReport | null>(weeklyReport);
+  const [loading, setLoading] = useState(false);
+  const [report, setReport]   = useState<WeeklyReport | null>(weeklyReport);
 
+  // Regenerate whenever the store cache is cleared (e.g. after marking a completion)
   useEffect(() => {
-    if (report) return;
-    generateReport();
+    if (weeklyReport === null && !loading) {
+      setReport(null);
+      generateReport();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [weeklyReport]);
 
   async function generateReport() {
     setLoading(true);
     try {
       const weekStart = getLastMondayISO();
-      const { completionRate, categoryStats } = computeWeekStats(activities, completions, weekStart);
+      const { completionRate, categoryStats, customCatStats } = computeWeekStats(activities, completions, weekStart, customCategories);
       const patterns  = analyzePatterns(activities, completions, overrides);
 
       const mistralInsights = await generateWeeklyInsights({
@@ -107,6 +111,7 @@ export default function WeeklyReportScreen() {
         weekStart,
         completionRate,
         categoryStats,
+        customCatStats,
         patterns,
         mistralInsights,
         generatedAt: new Date().toISOString(),
@@ -146,8 +151,8 @@ export default function WeeklyReportScreen() {
           <Icon name="back" size={22} stroke={Colors.light.ink} sw={1.8} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Bilan de la semaine</Text>
-        <TouchableOpacity onPress={generateReport} style={styles.refreshBtn} accessibilityLabel="Actualiser">
-          <Icon name="spark" size={20} stroke={Colors.light.primary} sw={1.8} />
+        <TouchableOpacity onPress={generateReport} accessibilityLabel="Actualiser le bilan">
+          <Text style={styles.refreshText}>Actualiser</Text>
         </TouchableOpacity>
       </View>
 
@@ -187,7 +192,7 @@ export default function WeeklyReportScreen() {
           ) : null}
 
           {/* Category stats */}
-          {Object.entries(report.categoryStats).length > 0 && (
+          {(Object.entries(report.categoryStats).length > 0 || Object.entries(report.customCatStats ?? {}).length > 0) && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Par catégorie</Text>
               {(Object.entries(report.categoryStats) as [CatKey, { planned: number; done: number }][]).map(
@@ -208,6 +213,21 @@ export default function WeeklyReportScreen() {
                   );
                 },
               )}
+              {Object.entries(report.customCatStats ?? {}).map(([id, stat]) => {
+                const pct = stat.planned > 0 ? stat.done / stat.planned : 0;
+                return (
+                  <View key={id} style={styles.catRow}>
+                    <View style={[styles.catDot, { backgroundColor: stat.color.bg }]}>
+                      <View style={[styles.customCatDot, { backgroundColor: stat.color.ink }]} />
+                    </View>
+                    <Text style={styles.catLabel}>{stat.label}</Text>
+                    <View style={styles.catBar}>
+                      <View style={[styles.catBarFill, { width: `${Math.round(pct * 100)}%` as never, backgroundColor: stat.color.ink }]} />
+                    </View>
+                    <Text style={styles.catHours}>{fmtH(stat.done)}<Text style={styles.catHoursPlanned}>/{fmtH(stat.planned)}</Text></Text>
+                  </View>
+                );
+              })}
             </View>
           )}
 
@@ -254,7 +274,7 @@ const styles = StyleSheet.create({
     paddingVertical:   Spacing.md,
   },
   backBtn:     { padding: Spacing.xs, marginRight: Spacing.sm },
-  refreshBtn:  { padding: Spacing.xs, marginLeft: 'auto' },
+  refreshText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.primary },
   headerTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.light.ink, flex: 1 },
 
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.md },
@@ -321,6 +341,7 @@ const styles = StyleSheet.create({
     width: 26, height: 26, borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
   },
+  customCatDot: { width: 10, height: 10, borderRadius: 5 },
   catLabel:   { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink, width: 80 },
   catBar:     { flex: 1, height: 6, backgroundColor: Colors.light.hairline, borderRadius: 3, overflow: 'hidden' },
   catBarFill: { height: 6, borderRadius: 3 },

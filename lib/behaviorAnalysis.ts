@@ -2,8 +2,10 @@ import type {
   ActivityCompletion,
   ActivityOverride,
   UserActivity,
+  CustomCategory,
   PatternInsight,
   CategoryStat,
+  CustomCatStat,
   CatKey,
   WeekDay,
 } from '@/types';
@@ -153,12 +155,14 @@ export function analyzePatterns(
 // ── Weekly stats computation ──────────────────────────────────────────────────
 
 export function computeWeekStats(
-  activities:  UserActivity[],
-  completions: ActivityCompletion[],
-  weekStart:   string,  // "YYYY-MM-DD" Monday
+  activities:       UserActivity[],
+  completions:      ActivityCompletion[],
+  weekStart:        string,  // "YYYY-MM-DD" Monday
+  customCategories: CustomCategory[] = [],
 ): {
-  completionRate: number;
-  categoryStats:  Partial<Record<CatKey, CategoryStat>>;
+  completionRate:  number;
+  categoryStats:   Partial<Record<CatKey, CategoryStat>>;
+  customCatStats:  Record<string, CustomCatStat>;
 } {
   // Build the 7 dates of the week
   const dates: string[] = [];
@@ -174,30 +178,40 @@ export function computeWeekStats(
   let totalScheduled = 0;
   let totalDone      = 0;
   const catStats: Partial<Record<CatKey, CategoryStat>> = {};
+  const customCatStats: Record<string, CustomCatStat>   = {};
 
   for (const date of dates) {
     const wd  = JS_TO_WEEKDAY[new Date(date).getDay()];
     const dayActivities = activities.filter((a) => a.days.includes(wd));
 
     for (const act of dayActivities) {
-      const dur   = durationHours(act.startTime, act.endTime);
-      const cat   = act.cat;
-      const entry = catStats[cat] ?? { planned: 0, done: 0 };
-
-      entry.planned += dur;
-      catStats[cat]  = entry;
-      totalScheduled++;
-
+      const dur  = durationHours(act.startTime, act.endTime);
       const comp = completions.find((c) => c.activityId === act.id && c.date === date);
-      if (comp?.completed) {
-        entry.done += dur;
-        totalDone++;
+      const done = comp?.completed ? dur : 0;
+      totalScheduled++;
+      if (comp?.completed) totalDone++;
+
+      if (act.customCatId) {
+        // Bucket into custom category stats
+        const cc = customCategories.find((c) => c.id === act.customCatId);
+        if (cc) {
+          const entry = customCatStats[act.customCatId] ?? { label: cc.label, color: cc.color, planned: 0, done: 0 };
+          entry.planned += dur;
+          entry.done    += done;
+          customCatStats[act.customCatId] = entry;
+        }
+      } else {
+        // Bucket into built-in category stats
+        const entry = catStats[act.cat] ?? { planned: 0, done: 0 };
+        entry.planned += dur;
+        entry.done    += done;
+        catStats[act.cat] = entry;
       }
     }
   }
 
   const completionRate = totalScheduled > 0 ? totalDone / totalScheduled : 0;
-  return { completionRate, categoryStats: catStats };
+  return { completionRate, categoryStats: catStats, customCatStats };
 }
 
 // ── Week start helper ─────────────────────────────────────────────────────────

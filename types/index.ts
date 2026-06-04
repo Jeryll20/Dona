@@ -1,6 +1,6 @@
 // ── Timeline types — matches CLAUDE.md § Timeline data model ─────────────────
 
-export type CatKey = 'sommeil' | 'prep' | 'travail' | 'activite' | 'trajet' | 'repas';
+export type CatKey = 'sommeil' | 'prep' | 'travail' | 'sport' | 'activite' | 'trajet' | 'repas';
 
 export interface TimelineEvent {
   cat: CatKey;
@@ -169,10 +169,16 @@ export interface CategoryStat {
   done:    number;  // hours actually completed
 }
 
+export interface CustomCatStat extends CategoryStat {
+  label: string;
+  color: { bg: string; ink: string };
+}
+
 export interface WeeklyReport {
   weekStart:       string;  // "YYYY-MM-DD" (Monday)
   completionRate:  number;  // 0–1
   categoryStats:   Partial<Record<CatKey, CategoryStat>>;
+  customCatStats:  Record<string, CustomCatStat>;  // keyed by customCatId
   patterns:        PatternInsight[];
   mistralInsights: string;  // AI-generated text
   generatedAt:     string;  // ISO timestamp

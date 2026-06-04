@@ -29,9 +29,13 @@ const palette = {
   workBg:  '#DBD9F5',
   workInk: '#524FB5',
 
-  // Category tints — activité
-  activityBg:  '#F5E0DA',
-  activityInk: '#C0533A',
+  // Category tints — sport
+  sportBg:  '#F5E0DA',
+  sportInk: '#C0533A',
+
+  // Category tints — activité (générique : culture, loisirs…)
+  activityBg:  '#DBEAFE',
+  activityInk: '#1D4ED8',
 
   // Category tints — trajet
   transitBg:  '#EAE7F2',

@@ -38,10 +38,11 @@ type Step = 1 | 2 | 3;
 // ── Data ──────────────────────────────────────────────────────────
 
 const CATEGORIES: { key: CatKey; label: string; icon: IoniconsName; bg: string; ink: string }[] = [
-  { key: 'travail',  label: 'Travail',        icon: 'briefcase-outline',     bg: Colors.light.workBg,     ink: Colors.light.workInk },
-  { key: 'activite', label: 'Sport / Activité', icon: 'walk-outline',         bg: Colors.light.activityBg, ink: Colors.light.activityInk },
-  { key: 'repas',    label: 'Repas',          icon: 'restaurant-outline',    bg: Colors.light.mealBg,     ink: Colors.light.mealInk },
-  { key: 'trajet',   label: 'Trajet',         icon: 'car-outline',           bg: Colors.light.transitBg,  ink: Colors.light.transitInk },
+  { key: 'travail',  label: 'Travail',   icon: 'briefcase-outline',  bg: Colors.light.workBg,     ink: Colors.light.workInk     },
+  { key: 'sport',    label: 'Sport',     icon: 'barbell-outline',    bg: Colors.light.sportBg,    ink: Colors.light.sportInk    },
+  { key: 'activite', label: 'Activité',  icon: 'star-outline',       bg: Colors.light.activityBg, ink: Colors.light.activityInk },
+  { key: 'repas',    label: 'Repas',     icon: 'restaurant-outline', bg: Colors.light.mealBg,     ink: Colors.light.mealInk     },
+  { key: 'trajet',   label: 'Trajet',    icon: 'car-outline',        bg: Colors.light.transitBg,  ink: Colors.light.transitInk  },
 ];
 
 const WEEK_DAYS: { key: WeekDay; label: string }[] = [
@@ -643,7 +644,7 @@ export default function ActivitiesScreen() {
                     </ScrollView>
                   </View>
 
-                  {(catKey === 'travail' || catKey === 'activite') && (
+                  {(catKey === 'travail' || catKey === 'sport' || catKey === 'activite') && (
                     <View style={s.fg}>
                       <Text style={s.fieldLabel}>Lieu (optionnel)</Text>
                       <LocationPicker value={location} onChange={handleLocationChange} />
