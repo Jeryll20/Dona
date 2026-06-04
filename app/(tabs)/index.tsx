@@ -99,7 +99,8 @@ function DayPanel({
   activities, overrides, onActivityPress, onActivityLongPress,
   visibleSuggestions, onAccept, onDismiss, nowHour, panelWidth,
 }: DayPanelProps) {
-  const completions = useBehaviorStore((s) => s.completions);
+  const completions      = useBehaviorStore((s) => s.completions);
+  const customCategories = useScheduleStore((s) => s.customCategories);
   const d = new Date();
   d.setDate(d.getDate() + absOffset);
   const weekDay = DAY_MAP[d.getDay()];
@@ -148,7 +149,9 @@ function DayPanel({
         start,
         end,
         activityId: a.id,
-        color:      ov?.color ?? a.color,
+        color:      ov?.color ?? a.color ?? (a.customCatId
+          ? customCategories.find((c) => c.id === a.customCatId)?.color
+          : undefined),
       });
     }
 
@@ -263,7 +266,7 @@ export default function TodayScreen() {
   const setDayOffset = useScheduleStore((s) => s.setDayOffset);
   const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion } =
     useSuggestionsStore();
-  const { completions, setCompletion } = useBehaviorStore();
+  const { completions, setCompletion, clearReport } = useBehaviorStore();
 
   // ── Completion state ──────────────────────────────────────────────────────────
   const [completionTarget, setCompletionTarget] = useState<{
@@ -279,6 +282,7 @@ export default function TodayScreen() {
     if (!completionTarget) return;
     const c = { activityId: completionTarget.activityId, date: completionTarget.date, completed };
     setCompletion(c);
+    clearReport(); // invalidate cached report so it regenerates on next open
     if (userId) upsertCompletion(userId, c);
     setCompletionTarget(null);
   }
@@ -511,14 +515,6 @@ export default function TodayScreen() {
               {Math.round(scheduledHours(todayEvents))}h planifiées
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.chatBtn}
-            onPress={() => router.push('/weekly-report' as any)}
-            accessibilityLabel="Voir le bilan de la semaine"
-            accessibilityRole="button"
-          >
-            <Icon name="calendar" size={20} stroke={Colors.light.primary} />
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.chatBtn}
             onPress={() => router.push('/chat' as any)}

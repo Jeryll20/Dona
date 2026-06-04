@@ -4,6 +4,7 @@ import { useUserStore } from '@/store/useUserStore';
 import { fetchAndHydrateProfile, pushProfile } from '@/lib/profileSync';
 import { fetchAndHydrateActivities } from '@/lib/activitiesSync';
 import { fetchAndHydrateCompletions } from '@/lib/completionsSync';
+import { fetchAndHydrateCustomCats } from '@/lib/customCatsSync';
 
 export function useProfileSync() {
   const session    = useAuthStore((s) => s.session);
@@ -19,6 +20,7 @@ export function useProfileSync() {
       fetchAndHydrateProfile(userId),
       fetchAndHydrateActivities(userId),
       fetchAndHydrateCompletions(userId),
+      fetchAndHydrateCustomCats(userId),
     ]).finally(() => {
       hydrating.current = false;
     });

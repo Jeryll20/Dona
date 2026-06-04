@@ -23,12 +23,14 @@ import { LocationPicker } from '@/components/ui/LocationPicker';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { Icon } from '@/components/ui/Icon';
 import { getTravelTime } from '@/lib/maps';
 import { upsertActivity, deleteActivityRemote } from '@/lib/activitiesSync';
+import { upsertCustomCat, deleteCustomCatRemote } from '@/lib/customCatsSync';
 import { Colors, COLOR_PALETTE } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
-import type { CatKey, UserActivity, WeekDay, Recurrence, ActivityLocation } from '@/types';
+import type { CatKey, UserActivity, WeekDay, Recurrence, ActivityLocation, CustomCategory } from '@/types';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 type Step = 1 | 2 | 3;
@@ -100,13 +102,18 @@ const tpS = StyleSheet.create({
 type ActivityCardData = Pick<UserActivity, 'id' | 'title' | 'cat' | 'startTime' | 'endTime' | 'days' | 'color'>;
 
 function ActivityCard({ activity, onEdit, onDelete }: {
-  activity: ActivityCardData;
+  activity: ActivityCardData & { customCatId?: string };
   onEdit: () => void;
   onDelete?: () => void;
 }) {
-  const cat = CATEGORIES.find((c) => c.key === activity.cat) ?? CATEGORIES[1];
-  const bg  = activity.color?.bg  ?? cat.bg;
-  const ink = activity.color?.ink ?? cat.ink;
+  const customCategories = useScheduleStore((s) => s.customCategories);
+  const customCat = activity.customCatId
+    ? customCategories.find((c) => c.id === activity.customCatId)
+    : undefined;
+  const cat    = CATEGORIES.find((c) => c.key === activity.cat) ?? CATEGORIES[1];
+  const bg     = activity.color?.bg  ?? customCat?.color.bg  ?? cat.bg;
+  const ink    = activity.color?.ink ?? customCat?.color.ink ?? cat.ink;
+  const label  = customCat?.label ?? cat.label;
   return (
     <TouchableOpacity
       style={cS.wrap}
@@ -123,7 +130,7 @@ function ActivityCard({ activity, onEdit, onDelete }: {
         <Text style={cS.sub}>{activity.startTime} – {activity.endTime} · {formatDays(activity.days)}</Text>
       </View>
       <View style={[cS.pill, { backgroundColor: bg }]}>
-        <Text style={[cS.pillText, { color: ink }]}>{cat.label}</Text>
+        <Text style={[cS.pillText, { color: ink }]}>{label}</Text>
       </View>
       {onDelete ? (
         <TouchableOpacity
@@ -159,7 +166,8 @@ const cS = StyleSheet.create({
 // ── Main Screen ───────────────────────────────────────────────────
 
 export default function ActivitiesScreen() {
-  const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
+  const { activities, addActivity, updateActivity, removeActivity,
+          customCategories, addCustomCategory, removeCustomCategory } = useScheduleStore();
   const { setWork, setSport, setOtherActivity, profile } = useUserStore();
   const userId = useAuthStore((s) => s.session?.user?.id);
   const insets = useSafeAreaInsets();
@@ -170,6 +178,12 @@ export default function ActivitiesScreen() {
   const [editingId,   setEditingId]   = useState<string | null>(null);
   const [step,        setStep]        = useState<Step>(1);
   const [catKey,      setCatKey]      = useState<CatKey | null>(null);
+  const [customCatId, setCustomCatId] = useState<string | null>(null);
+
+  // Create-category inline form state
+  const [showCreateCat,  setShowCreateCat]  = useState(false);
+  const [newCatLabel,    setNewCatLabel]    = useState('');
+  const [newCatColor,    setNewCatColor]    = useState<{ bg: string; ink: string }>(COLOR_PALETTE[0]);
   const [name,        setName]        = useState('');
   const [startTime,   setStartTime]   = useState('09:00');
   const [endTime,     setEndTime]     = useState('10:00');
@@ -207,9 +221,13 @@ export default function ActivitiesScreen() {
   }, [editId]);
 
   function openSheet(activity?: UserActivity) {
+    setShowCreateCat(false);
+    setNewCatLabel('');
+    setNewCatColor(COLOR_PALETTE[0]);
     if (activity) {
       setEditingId(activity.id);
       setCatKey(activity.cat);
+      setCustomCatId(activity.customCatId ?? null);
       setName(activity.title);
       setStartTime(activity.startTime);
       setEndTime(activity.endTime);
@@ -226,7 +244,7 @@ export default function ActivitiesScreen() {
       setStep(2); // Skip category step when editing
     } else {
       setEditingId(null);
-      setCatKey(null); setName('');
+      setCatKey(null); setCustomCatId(null); setName('');
       setStartTime('09:00'); setEndTime('10:00');
       setDays(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
       setRecurrence('weekly');
@@ -260,10 +278,12 @@ export default function ActivitiesScreen() {
   }
 
   function handleSave() {
-    const cat = CATEGORIES.find((c) => c.key === catKey) ?? CATEGORIES[1];
+    const customCat = customCatId ? customCategories.find((c) => c.id === customCatId) : undefined;
+    const builtinCat = CATEGORIES.find((c) => c.key === catKey) ?? CATEGORIES[1];
     const data = {
-      title: name.trim() || cat.label,
-      cat: catKey ?? 'activite',
+      title: name.trim() || customCat?.label || builtinCat.label,
+      cat: catKey ?? 'activite' as CatKey,
+      customCatId: customCatId ?? undefined,
       startTime,
       endTime,
       days: [...days] as WeekDay[],
@@ -322,7 +342,7 @@ export default function ActivitiesScreen() {
     2: editingId ? 'Modifier l\'activité' : 'Détails',
     3: 'Planning',
   };
-  const canNext = step === 1 ? catKey !== null : step === 2 ? true : days.size > 0;
+  const canNext = step === 1 ? (catKey !== null || customCatId !== null) : step === 2 ? true : days.size > 0;
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -342,6 +362,20 @@ export default function ActivitiesScreen() {
           <Text style={s.addBtnText}>Ajouter</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Weekly report banner */}
+      <TouchableOpacity
+        style={s.bilanBanner}
+        onPress={() => router.push('/weekly-report' as any)}
+        accessibilityLabel="Voir le bilan de la semaine"
+        accessibilityRole="button"
+      >
+        <View style={s.bilanLeft}>
+          <Icon name="calendar" size={18} stroke={Colors.light.primary} sw={2} />
+          <Text style={s.bilanText}>Bilan de la semaine</Text>
+        </View>
+        <Icon name="chevright" size={16} stroke={Colors.light.ink3} sw={1.8} />
+      </TouchableOpacity>
 
       {/* List */}
       <ScrollView
@@ -420,13 +454,14 @@ export default function ActivitiesScreen() {
               {/* ── Step 1: Category ── */}
               {step === 1 && (
                 <View style={s.body}>
+                  {/* Built-in categories */}
                   {CATEGORIES.map((cat) => {
-                    const on = catKey === cat.key;
+                    const on = catKey === cat.key && !customCatId;
                     return (
                       <TouchableOpacity
                         key={cat.key}
                         style={[s.catRow, on && s.catRowOn]}
-                        onPress={() => setCatKey(cat.key)}
+                        onPress={() => { setCatKey(cat.key); setCustomCatId(null); }}
                         accessibilityLabel={cat.label}
                         accessibilityRole="radio"
                         accessibilityState={{ selected: on }}
@@ -441,6 +476,120 @@ export default function ActivitiesScreen() {
                       </TouchableOpacity>
                     );
                   })}
+
+                  {/* Custom categories */}
+                  {customCategories.length > 0 && (
+                    <>
+                      <View style={s.catSeparator}>
+                        <View style={s.catSepLine} />
+                        <Text style={s.catSepLabel}>Mes catégories</Text>
+                        <View style={s.catSepLine} />
+                      </View>
+                      {customCategories.map((cc) => {
+                        const on = customCatId === cc.id;
+                        return (
+                          <TouchableOpacity
+                            key={cc.id}
+                            style={[s.catRow, on && s.catRowOn]}
+                            onPress={() => { setCustomCatId(cc.id); setCatKey('activite'); }}
+                            accessibilityLabel={cc.label}
+                            accessibilityRole="radio"
+                            accessibilityState={{ selected: on }}
+                          >
+                            <View style={[s.catIcon, { backgroundColor: on ? cc.color.bg : Colors.light.surfaceSunk }]}>
+                              <View style={[s.colorDot, { backgroundColor: on ? cc.color.ink : Colors.light.ink3 }]} />
+                            </View>
+                            <Text style={[s.catLabel, on && s.catLabelOn]}>{cc.label}</Text>
+                            <TouchableOpacity
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                removeCustomCategory(cc.id);
+                                if (userId) deleteCustomCatRemote(userId, cc.id);
+                                if (customCatId === cc.id) setCustomCatId(null);
+                              }}
+                              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                              accessibilityLabel={`Supprimer ${cc.label}`}
+                            >
+                              <Ionicons name="trash-outline" size={15} color={Colors.light.ink3} />
+                            </TouchableOpacity>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {/* Create custom category */}
+                  {!showCreateCat ? (
+                    <TouchableOpacity
+                      style={s.createCatBtn}
+                      onPress={() => setShowCreateCat(true)}
+                      accessibilityLabel="Créer une catégorie"
+                    >
+                      <Ionicons name="add-circle-outline" size={18} color={Colors.light.primary} />
+                      <Text style={s.createCatBtnText}>Créer une catégorie</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={s.createCatForm}>
+                      <Text style={s.fieldLabel}>Nom</Text>
+                      <TextInput
+                        style={s.input}
+                        value={newCatLabel}
+                        onChangeText={setNewCatLabel}
+                        placeholder="Ex : Bien-être, Famille…"
+                        placeholderTextColor={Colors.light.ink3}
+                        returnKeyType="done"
+                        autoFocus
+                        accessibilityLabel="Nom de la catégorie"
+                      />
+                      <Text style={[s.fieldLabel, { marginTop: Spacing.sm }]}>Couleur</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.colorRow}>
+                        {COLOR_PALETTE.map((p, i) => {
+                          const on = newCatColor.bg === p.bg;
+                          return (
+                            <TouchableOpacity
+                              key={i}
+                              style={[s.swatch, { backgroundColor: p.bg }, on && s.swatchSelected]}
+                              onPress={() => setNewCatColor({ bg: p.bg, ink: p.ink })}
+                              accessibilityLabel={p.label}
+                            >
+                              {on && <Ionicons name="checkmark" size={14} color={p.ink} />}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                      <View style={s.createCatActions}>
+                        <TouchableOpacity
+                          style={s.createCatCancel}
+                          onPress={() => { setShowCreateCat(false); setNewCatLabel(''); }}
+                          accessibilityLabel="Annuler"
+                        >
+                          <Text style={s.createCatCancelText}>Annuler</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[s.createCatSave, !newCatLabel.trim() && s.createCatSaveDisabled]}
+                          onPress={() => {
+                            if (!newCatLabel.trim()) return;
+                            const newCat: CustomCategory = {
+                              id:    `custom_${Date.now()}`,
+                              label: newCatLabel.trim(),
+                              color: newCatColor,
+                            };
+                            addCustomCategory(newCat);
+                            if (userId) upsertCustomCat(userId, newCat);
+                            setCustomCatId(newCat.id);
+                            setCatKey('activite');
+                            setShowCreateCat(false);
+                            setNewCatLabel('');
+                            setNewCatColor(COLOR_PALETTE[0]);
+                          }}
+                          disabled={!newCatLabel.trim()}
+                          accessibilityLabel="Créer la catégorie"
+                        >
+                          <Text style={s.createCatSaveText}>Créer</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -745,6 +894,34 @@ const s = StyleSheet.create({
     paddingHorizontal: Spacing.md, paddingVertical: 10, ...Shadow.sm,
   },
   addBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.onPrimary },
+
+  bilanBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: Spacing.lg, marginBottom: Spacing.sm,
+    backgroundColor: Colors.light.primaryTint,
+    borderRadius: Radius.input,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2,
+  },
+  bilanLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  bilanText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.primaryStrong },
+
+  // Custom category creation
+  catSeparator: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginVertical: Spacing.sm },
+  catSepLine:   { flex: 1, height: 1, backgroundColor: Colors.light.hairline },
+  catSepLabel:  { fontSize: FontSize.xs, fontWeight: '700', color: Colors.light.ink3, textTransform: 'uppercase', letterSpacing: 0.5 },
+  colorDot:     { width: 10, height: 10, borderRadius: 5 },
+  createCatBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    paddingVertical: Spacing.md, justifyContent: 'center',
+  },
+  createCatBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.primary },
+  createCatForm:    { gap: Spacing.xs, marginTop: Spacing.sm, backgroundColor: Colors.light.surfaceSunk, borderRadius: Radius.block, padding: Spacing.md },
+  createCatActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
+  createCatCancel:  { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: Radius.input, backgroundColor: Colors.light.surface },
+  createCatCancelText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink2 },
+  createCatSave:       { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: Radius.input, backgroundColor: Colors.light.primary },
+  createCatSaveDisabled: { opacity: 0.4 },
+  createCatSaveText:   { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.onPrimary },
 
   scroll: { flex: 1 },
   listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },

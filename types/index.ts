@@ -17,12 +17,21 @@ export type Recurrence = 'none' | 'daily' | 'weekly' | 'biweekly' | 'triweekly' 
 
 export type WeekDay = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
+// ── Custom user-defined category ─────────────────────────────────────────────
+
+export interface CustomCategory {
+  id:    string;
+  label: string;
+  color: { bg: string; ink: string };
+}
+
 // ── User-defined repeating activity ──────────────────────────────────────────
 
 export interface UserActivity {
   id: string;
   title: string;
   cat: CatKey;
+  customCatId?: string;  // references CustomCategory.id — overrides label & color
   startTime: string;   // "HH:MM"
   endTime: string;     // "HH:MM"
   days: WeekDay[];
