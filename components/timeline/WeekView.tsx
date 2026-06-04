@@ -6,7 +6,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, cancelAnimation,
 } from 'react-native-reanimated';
 import { useState, useMemo, useRef } from 'react';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { CAT } from '@/constants/categories';
@@ -71,6 +71,8 @@ function WeekPanel({
   weekOffset, baseEvents, activities, panelWidth,
   timelineH, onTimelineLayout, todayStr, onDayPress,
 }: WeekPanelProps) {
+  const C = useColors();
+  const s = makeStyles(C);
   const monday = useMemo(() => getWeekMonday(weekOffset), [weekOffset]);
   const weekDates = useMemo(
     () => WEEK_ORDER.map((_, i) => {
@@ -101,21 +103,21 @@ function WeekPanel({
         return (
           <Pressable
             key={day}
-            style={[styles.column, isToday && styles.columnToday]}
+            style={[s.column, isToday && s.columnToday]}
             onPress={() => onDayPress(date)}
             accessibilityRole="button"
             accessibilityLabel={`Voir le ${date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`}
           >
-            <Text style={[styles.dayLetter, isToday && styles.dayLetterToday]}>
+            <Text style={[s.dayLetter, isToday && s.dayLetterToday]}>
               {WEEK_LABELS[idx]}
             </Text>
-            <View style={[styles.dateBubble, isToday && styles.dateBubbleToday]}>
-              <Text style={[styles.dateNum, isToday && styles.dateNumToday]}>
+            <View style={[s.dateBubble, isToday && s.dateBubbleToday]}>
+              <Text style={[s.dateNum, isToday && s.dateNumToday]}>
                 {date.getDate()}
               </Text>
             </View>
             <View
-              style={styles.timeline}
+              style={s.timeline}
               onLayout={(e) => onTimelineLayout(e.nativeEvent.layout.height)}
             >
               {timelineH != null &&
@@ -131,8 +133,8 @@ function WeekPanel({
                       <View
                         key={i}
                         style={[
-                          styles.block,
-                          { top, height, backgroundColor: CAT[ev.cat]?.bg ?? Colors.light.hairline },
+                          s.block,
+                          { top, height, backgroundColor: CAT[ev.cat]?.bg ?? C.hairline },
                         ]}
                       />
                     );
@@ -148,13 +150,15 @@ function WeekPanel({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function WeekView() {
+  const C = useColors();
+  const s = makeStyles(C);
   const [weekOffset, setWeekOffset] = useState(0);
   const [timelineH, setTimelineH]   = useState<number | undefined>(undefined);
 
   const { sleep, meals } = useUserStore();
-  const activities   = useScheduleStore((s) => s.activities);
-  const setViewMode  = useScheduleStore((s) => s.setViewMode);
-  const setDayOffset = useScheduleStore((s) => s.setDayOffset);
+  const activities   = useScheduleStore((st) => st.activities);
+  const setViewMode  = useScheduleStore((st) => st.setViewMode);
+  const setDayOffset = useScheduleStore((st) => st.setDayOffset);
 
   const handleDayPress = (date: Date) => {
     const today = new Date();
@@ -245,22 +249,22 @@ export function WeekView() {
   const currentMonday = useMemo(() => getWeekMonday(weekOffset), [weekOffset]);
 
   return (
-    <View style={styles.container} {...swipe.panHandlers}>
+    <View style={s.container} {...swipe.panHandlers}>
       {/* Fixed nav header */}
-      <View style={styles.nav}>
-        <TouchableOpacity onPress={goPrev} style={styles.navBtn} accessibilityLabel="Semaine précédente" accessibilityRole="button">
-          <Icon name="back" size={18} stroke={Colors.light.primary} />
+      <View style={s.nav}>
+        <TouchableOpacity onPress={goPrev} style={s.navBtn} accessibilityLabel="Semaine précédente" accessibilityRole="button">
+          <Icon name="back" size={18} stroke={C.primary} />
         </TouchableOpacity>
-        <Text style={styles.weekLabel}>{formatWeekRange(currentMonday)}</Text>
-        <TouchableOpacity onPress={goNext} style={styles.navBtn} accessibilityLabel="Semaine suivante" accessibilityRole="button">
-          <Icon name="arrow" size={18} stroke={Colors.light.primary} />
+        <Text style={s.weekLabel}>{formatWeekRange(currentMonday)}</Text>
+        <TouchableOpacity onPress={goNext} style={s.navBtn} accessibilityLabel="Semaine suivante" accessibilityRole="button">
+          <Icon name="arrow" size={18} stroke={C.primary} />
         </TouchableOpacity>
       </View>
 
       {/* 3-panel sliding area */}
-      <View style={styles.clipper}>
+      <View style={s.clipper}>
         <Animated.View
-          style={[styles.threePanels, { width: width * 3 }, panelsStyle]}
+          style={[s.threePanels, { width: width * 3 }, panelsStyle]}
         >
           {[weekOffset - 1, weekOffset, weekOffset + 1].map((off) => (
             <WeekPanel
@@ -279,11 +283,11 @@ export function WeekView() {
       </View>
 
       {/* Fixed legend */}
-      <View style={styles.legend}>
+      <View style={s.legend}>
         {CAT_LEGEND.map(({ key, label }) => (
-          <View key={key} style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: CAT[key].bg, borderColor: CAT[key].ink }]} />
-            <Text style={styles.legendLabel}>{label}</Text>
+          <View key={key} style={s.legendItem}>
+            <View style={[s.legendDot, { backgroundColor: CAT[key].bg, borderColor: CAT[key].ink }]} />
+            <Text style={s.legendLabel}>{label}</Text>
           </View>
         ))}
       </View>
@@ -291,129 +295,131 @@ export function WeekView() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: Spacing.xs,
-    paddingBottom: Spacing.base,
-  },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      paddingTop: Spacing.xs,
+      paddingBottom: Spacing.base,
+    },
 
-  nav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.md,
-    paddingHorizontal: Spacing.base,
-  },
-  navBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  weekLabel: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.light.ink,
-    letterSpacing: -0.2,
-  },
+    nav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: Spacing.md,
+      paddingHorizontal: Spacing.base,
+    },
+    navBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: Radius.pill,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    weekLabel: {
+      fontSize: FontSize.md,
+      fontWeight: '700',
+      color: C.ink,
+      letterSpacing: -0.2,
+    },
 
-  // Clips the 3x-wide animated strip to screen width
-  clipper: {
-    flex: 1,
-    overflow: 'hidden',
-  },
+    // Clips the 3x-wide animated strip to screen width
+    clipper: {
+      flex: 1,
+      overflow: 'hidden',
+    },
 
-  // 3 panels side by side; height fills via alignSelf:'stretch' on children
-  threePanels: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    paddingHorizontal: Spacing.base,
-    gap: 0,
-  },
+    // 3 panels side by side; height fills via alignSelf:'stretch' on children
+    threePanels: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      paddingHorizontal: Spacing.base,
+      gap: 0,
+    },
 
-  column: {
-    flex: 1,
-    alignItems: 'center',
-    borderRadius: Radius.input,
-    paddingVertical: Spacing.xs,
-    backgroundColor: 'transparent',
-  },
-  columnToday: {
-    backgroundColor: Colors.light.primaryTint,
-  },
+    column: {
+      flex: 1,
+      alignItems: 'center',
+      borderRadius: Radius.input,
+      paddingVertical: Spacing.xs,
+      backgroundColor: 'transparent',
+    },
+    columnToday: {
+      backgroundColor: C.primaryTint,
+    },
 
-  dayLetter: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: Colors.light.ink3,
-    letterSpacing: 0.3,
-  },
-  dayLetterToday: {
-    color: Colors.light.primaryStrong,
-  },
+    dayLetter: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: C.ink3,
+      letterSpacing: 0.3,
+    },
+    dayLetterToday: {
+      color: C.primaryStrong,
+    },
 
-  dateBubble: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-    marginBottom: Spacing.xs,
-  },
-  dateBubbleToday: {
-    backgroundColor: Colors.light.primary,
-  },
-  dateNum: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: Colors.light.ink3,
-  },
-  dateNumToday: {
-    color: Colors.light.onPrimary,
-  },
+    dateBubble: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
+      marginBottom: Spacing.xs,
+    },
+    dateBubbleToday: {
+      backgroundColor: C.primary,
+    },
+    dateNum: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: C.ink3,
+    },
+    dateNumToday: {
+      color: C.onPrimary,
+    },
 
-  timeline: {
-    flex: 1,
-    width: '100%',
-    backgroundColor: Colors.light.surfaceSunk,
-    borderRadius: Radius.sm,
-    overflow: 'hidden',
-  },
+    timeline: {
+      flex: 1,
+      width: '100%',
+      backgroundColor: C.surfaceSunk,
+      borderRadius: Radius.sm,
+      overflow: 'hidden',
+    },
 
-  block: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    borderRadius: 2,
-  },
+    block: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      borderRadius: 2,
+    },
 
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.base,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1.5,
-  },
-  legendLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    color: Colors.light.ink3,
-  },
-});
+    legend: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+      marginTop: Spacing.md,
+      justifyContent: 'center',
+      paddingHorizontal: Spacing.base,
+    },
+    legendItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    legendDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      borderWidth: 1.5,
+    },
+    legendLabel: {
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+      color: C.ink3,
+    },
+  });
+}

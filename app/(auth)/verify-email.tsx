@@ -5,13 +5,15 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Logo } from '@/components/ui/Logo';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
 export default function VerifyEmailScreen() {
+  const C = useColors();
+  const s = makeStyles(C);
   const { email } = useLocalSearchParams<{ email: string }>();
-  const session   = useAuthStore((s) => s.session);
+  const session   = useAuthStore((st) => st.session);
   const [resending, setResending] = useState(false);
   const [resent,    setResent]    = useState(false);
 
@@ -53,7 +55,7 @@ export default function VerifyEmailScreen() {
         </View>
 
         <View style={s.waiting}>
-          <ActivityIndicator size="small" color={Colors.light.primary} />
+          <ActivityIndicator size="small" color={C.primary} />
           <Text style={s.waitingText}>En attente de confirmation…</Text>
         </View>
 
@@ -81,57 +83,59 @@ export default function VerifyEmailScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  safe:  { flex: 1, backgroundColor: Colors.light.background },
-  inner: { flex: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, alignItems: 'center' },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    safe:  { flex: 1, backgroundColor: C.background },
+    inner: { flex: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, alignItems: 'center' },
 
-  logoWrap: { marginBottom: Spacing.xl },
-  iconWrap: {
-    width: 80, height: 80, borderRadius: 24,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: Spacing.lg,
-    ...Shadow.sm,
-  },
-  icon: { fontSize: 36 },
+    logoWrap: { marginBottom: Spacing.xl },
+    iconWrap: {
+      width: 80, height: 80, borderRadius: 24,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: Spacing.lg,
+      ...Shadow.sm,
+    },
+    icon: { fontSize: 36 },
 
-  title: {
-    fontSize: 26, fontWeight: '800', color: Colors.light.ink,
-    letterSpacing: -0.5, marginBottom: Spacing.sm, textAlign: 'center',
-  },
-  sub: {
-    fontSize: FontSize.base, color: Colors.light.ink3,
-    textAlign: 'center', lineHeight: 24, marginBottom: Spacing.lg,
-  },
-  email: { fontWeight: '700', color: Colors.light.ink },
+    title: {
+      fontSize: 26, fontWeight: '800', color: C.ink,
+      letterSpacing: -0.5, marginBottom: Spacing.sm, textAlign: 'center',
+    },
+    sub: {
+      fontSize: FontSize.base, color: C.ink3,
+      textAlign: 'center', lineHeight: 24, marginBottom: Spacing.lg,
+    },
+    email: { fontWeight: '700', color: C.ink },
 
-  hint: {
-    backgroundColor: Colors.light.primaryTint,
-    borderRadius: Radius.block,
-    padding: Spacing.md,
-    marginBottom: Spacing.xl,
-  },
-  hintText: {
-    fontSize: FontSize.sm, color: Colors.light.primaryStrong,
-    textAlign: 'center', lineHeight: 20,
-  },
+    hint: {
+      backgroundColor: C.primaryTint,
+      borderRadius: Radius.block,
+      padding: Spacing.md,
+      marginBottom: Spacing.xl,
+    },
+    hintText: {
+      fontSize: FontSize.sm, color: C.primaryStrong,
+      textAlign: 'center', lineHeight: 20,
+    },
 
-  waiting: {
-    flexDirection: 'row', alignItems: 'center',
-    gap: Spacing.sm, marginBottom: Spacing.xl,
-  },
-  waitingText: { fontSize: FontSize.sm, color: Colors.light.ink3, fontWeight: '600' },
+    waiting: {
+      flexDirection: 'row', alignItems: 'center',
+      gap: Spacing.sm, marginBottom: Spacing.xl,
+    },
+    waitingText: { fontSize: FontSize.sm, color: C.ink3, fontWeight: '600' },
 
-  resendBtn: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.pill,
-    paddingVertical: Spacing.base,
-    paddingHorizontal: Spacing.xl,
-    marginBottom: Spacing.lg,
-    ...Shadow.sm,
-  },
-  resendOff: { opacity: 0.5 },
-  resendText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primary },
+    resendBtn: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.pill,
+      paddingVertical: Spacing.base,
+      paddingHorizontal: Spacing.xl,
+      marginBottom: Spacing.lg,
+      ...Shadow.sm,
+    },
+    resendOff: { opacity: 0.5 },
+    resendText: { fontSize: FontSize.base, fontWeight: '700', color: C.primary },
 
-  back: { fontSize: FontSize.sm, color: Colors.light.ink3, fontWeight: '600' },
-});
+    back: { fontSize: FontSize.sm, color: C.ink3, fontWeight: '600' },
+  });
+}

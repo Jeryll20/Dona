@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { TimeField } from '@/components/ui/TimeField';
 import { useUserStore } from '@/store/useUserStore';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import type { MealEntry } from '@/types';
@@ -46,6 +46,8 @@ interface MealRowProps {
 }
 
 function MealRow({ entry, index, canDelete, onTimeChange, onLabelChange, onDelete }: MealRowProps) {
+  const C = useColors();
+  const row = makeRowStyles(C);
   const isOther   = !MEAL_LABELS.slice(0, -1).includes(entry.label);
   const [custom, setCustom] = useState(isOther ? entry.label : '');
   const [showCustom, setShowCustom] = useState(isOther);
@@ -107,7 +109,7 @@ function MealRow({ entry, index, canDelete, onTimeChange, onLabelChange, onDelet
           value={custom}
           onChangeText={handleCustomChange}
           placeholder="Nom personnalisé…"
-          placeholderTextColor={Colors.light.ink3}
+          placeholderTextColor={C.ink3}
           returnKeyType="done"
           accessibilityLabel="Nom personnalisé du repas"
         />
@@ -121,50 +123,54 @@ function MealRow({ entry, index, canDelete, onTimeChange, onLabelChange, onDelet
   );
 }
 
-const row = StyleSheet.create({
-  wrap:   {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.block,
-    padding: Spacing.base,
-    gap: Spacing.md,
-    ...Shadow.sm,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  index:  { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.ink2 },
-  deleteBtn: {
-    width: 32, height: 32, borderRadius: Radius.input,
-    backgroundColor: '#FEE2E2',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  chips:        { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  chip:         {
-    paddingHorizontal: Spacing.md, paddingVertical: 6,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.surfaceSunk,
-    borderWidth: 1.5, borderColor: 'transparent',
-  },
-  chipActive:   { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
-  chipText:     { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink3 },
-  chipTextActive: { color: Colors.light.primaryStrong },
-  customInput: {
-    backgroundColor: Colors.light.surfaceSunk,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    fontSize: FontSize.base,
-    fontWeight: '500',
-    color: Colors.light.ink,
-  },
-  timeCard: {
-    backgroundColor: Colors.light.surfaceSunk,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.base,
-  },
-});
+function makeRowStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    wrap:   {
+      backgroundColor: C.surface,
+      borderRadius: Radius.block,
+      padding: Spacing.base,
+      gap: Spacing.md,
+      ...Shadow.sm,
+    },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    index:  { fontSize: FontSize.sm, fontWeight: '700', color: C.ink2 },
+    deleteBtn: {
+      width: 32, height: 32, borderRadius: Radius.input,
+      backgroundColor: '#FEE2E2',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    chips:        { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+    chip:         {
+      paddingHorizontal: Spacing.md, paddingVertical: 6,
+      borderRadius: Radius.pill,
+      backgroundColor: C.surfaceSunk,
+      borderWidth: 1.5, borderColor: 'transparent',
+    },
+    chipActive:   { backgroundColor: C.primaryTint, borderColor: C.primary },
+    chipText:     { fontSize: FontSize.sm, fontWeight: '600', color: C.ink3 },
+    chipTextActive: { color: C.primaryStrong },
+    customInput: {
+      backgroundColor: C.surfaceSunk,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      fontSize: FontSize.base,
+      fontWeight: '500',
+      color: C.ink,
+    },
+    timeCard: {
+      backgroundColor: C.surfaceSunk,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.base,
+    },
+  });
+}
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function MealsScreen() {
+  const C = useColors();
+  const s = makeStyles(C);
   const { meals, setMeals } = useUserStore();
 
   const [entries, setEntries] = useState<EntryState[]>(() => {
@@ -205,22 +211,22 @@ export default function MealsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={s.safe} edges={['top']}>
+      <View style={s.header}>
         <TouchableOpacity
-          style={styles.backBtn}
+          style={s.backBtn}
           onPress={() => router.back()}
           accessibilityLabel="Retour"
         >
-          <Ionicons name="chevron-back" size={20} color={Colors.light.primary} />
+          <Ionicons name="chevron-back" size={20} color={C.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Repas</Text>
+        <Text style={s.title}>Repas</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        style={s.scroll}
+        contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}
       >
         {entries.map((entry, i) => (
@@ -237,57 +243,59 @@ export default function MealsScreen() {
 
         {entries.length < 6 && (
           <TouchableOpacity
-            style={styles.addBtn}
+            style={s.addBtn}
             onPress={addMeal}
             accessibilityRole="button"
             accessibilityLabel="Ajouter un repas"
           >
-            <Ionicons name="add-circle-outline" size={18} color={Colors.light.primary} />
-            <Text style={styles.addBtnText}>Ajouter un repas</Text>
+            <Ionicons name="add-circle-outline" size={18} color={C.primary} />
+            <Text style={s.addBtnText}>Ajouter un repas</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
-          style={styles.saveBtn}
+          style={s.saveBtn}
           onPress={handleSave}
           accessibilityRole="button"
           accessibilityLabel="Enregistrer"
         >
-          <Text style={styles.saveBtnText}>Enregistrer</Text>
+          <Text style={s.saveBtnText}>Enregistrer</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: Colors.light.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  backBtn: {
-    width: 36, height: 36, borderRadius: Radius.input,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  title:  { fontSize: FontSize.lg, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.3 },
-  scroll: { flex: 1 },
-  content: { paddingHorizontal: Spacing.lg, paddingBottom: 120, paddingTop: Spacing.sm, gap: Spacing.lg },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    safe:   { flex: 1, backgroundColor: C.background },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+    },
+    backBtn: {
+      width: 36, height: 36, borderRadius: Radius.input,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    title:  { fontSize: FontSize.lg, fontWeight: '800', color: C.ink, letterSpacing: -0.3 },
+    scroll: { flex: 1 },
+    content: { paddingHorizontal: Spacing.lg, paddingBottom: 120, paddingTop: Spacing.sm, gap: Spacing.lg },
 
-  addBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: Spacing.sm, paddingVertical: Spacing.base,
-    backgroundColor: Colors.light.primaryTint, borderRadius: Radius.pill,
-  },
-  addBtnText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primary },
+    addBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: Spacing.sm, paddingVertical: Spacing.base,
+      backgroundColor: C.primaryTint, borderRadius: Radius.pill,
+    },
+    addBtnText: { fontSize: FontSize.base, fontWeight: '700', color: C.primary },
 
-  saveBtn: {
-    backgroundColor: Colors.light.primary, borderRadius: Radius.pill,
-    paddingVertical: Spacing.base, alignItems: 'center', ...Shadow.sm,
-  },
-  saveBtnText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.onPrimary },
-});
+    saveBtn: {
+      backgroundColor: C.primary, borderRadius: Radius.pill,
+      paddingVertical: Spacing.base, alignItems: 'center', ...Shadow.sm,
+    },
+    saveBtnText: { fontSize: FontSize.base, fontWeight: '700', color: C.onPrimary },
+  });
+}

@@ -2,7 +2,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { CAT } from '@/constants/categories';
 import { Icon } from '@/components/ui/Icon';
 import type { TimelineEvent } from '@/types';
@@ -35,6 +35,8 @@ function lighten(hex: string, factor: number): string {
 export function TimelineBlock({
   event, hourHeight, leftOffset, onPress, onLongPress, completion,
 }: TimelineBlockProps) {
+  const C = useColors();
+  const s = makeStyles(C);
   const c = event.color ?? CAT[event.cat];
   const top    = event.start * hourHeight;
   const height = Math.max((event.end - event.start) * hourHeight, 16);
@@ -54,10 +56,10 @@ export function TimelineBlock({
       onLongPress={onLongPress}
       delayLongPress={400}
       style={[
-        styles.block,
+        s.block,
         { top, height, left: leftOffset },
-        isSmall && styles.blockSmall,
-        isSkipped && styles.blockSkipped,
+        isSmall && s.blockSmall,
+        isSkipped && s.blockSkipped,
       ]}
       accessibilityLabel={`${event.title}, ${fmtHour(event.start)} à ${fmtHour(event.end)}`}
       accessibilityRole={onPress ? 'button' : 'none'}
@@ -69,25 +71,25 @@ export function TimelineBlock({
         style={StyleSheet.absoluteFillObject}
       />
       <Text
-        style={[styles.title, { color: c.ink }, isSmall && styles.titleSmall, isSkipped && styles.textSkipped]}
+        style={[s.title, { color: c.ink }, isSmall && s.titleSmall, isSkipped && s.textSkipped]}
         numberOfLines={1}
         ellipsizeMode="tail"
       >
         {event.title}
       </Text>
       {!isMedium && (
-        <Text style={[styles.time, { color: c.ink }, isSkipped && styles.textSkipped]}>
+        <Text style={[s.time, { color: c.ink }, isSkipped && s.textSkipped]}>
           {fmtHour(event.start)} – {fmtHour(event.end)}
         </Text>
       )}
 
       {/* Completion badge */}
       {completion != null && !isSmall && (
-        <View style={[styles.badge, completion === 'done' ? styles.badgeDone : styles.badgeSkipped]}>
+        <View style={[s.badge, completion === 'done' ? s.badgeDone : s.badgeSkipped]}>
           <Icon
             name={completion === 'done' ? 'check' : 'x'}
             size={10}
-            stroke={completion === 'done' ? Colors.light.mealInk : Colors.light.ink2}
+            stroke={completion === 'done' ? C.mealInk : C.ink2}
             sw={2.5}
           />
         </View>
@@ -96,37 +98,39 @@ export function TimelineBlock({
   );
 }
 
-const styles = StyleSheet.create({
-  block: {
-    position:        'absolute',
-    right:           4,
-    borderRadius:    16,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    overflow:        'hidden',
-    justifyContent:  'center',
-  },
-  blockSmall: {
-    paddingVertical: 3,
-    borderRadius:    10,
-  },
-  blockSkipped: {
-    opacity: 0.55,
-  },
-  title:      { fontSize: FontSize.base, fontWeight: '700', letterSpacing: -0.2 },
-  titleSmall: { fontSize: FontSize.sm },
-  time:       { fontSize: FontSize.sm, fontWeight: '600', opacity: 0.78, marginTop: 3 },
-  textSkipped: { textDecorationLine: 'line-through' },
-  badge: {
-    position:     'absolute',
-    top:          6,
-    right:        8,
-    width:        18,
-    height:       18,
-    borderRadius: 9,
-    alignItems:   'center',
-    justifyContent: 'center',
-  },
-  badgeDone:    { backgroundColor: '#C8F0D4' },
-  badgeSkipped: { backgroundColor: Colors.light.surfaceSunk },
-});
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    block: {
+      position:        'absolute',
+      right:           4,
+      borderRadius:    16,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      overflow:        'hidden',
+      justifyContent:  'center',
+    },
+    blockSmall: {
+      paddingVertical: 3,
+      borderRadius:    10,
+    },
+    blockSkipped: {
+      opacity: 0.55,
+    },
+    title:      { fontSize: FontSize.base, fontWeight: '700', letterSpacing: -0.2 },
+    titleSmall: { fontSize: FontSize.sm },
+    time:       { fontSize: FontSize.sm, fontWeight: '600', opacity: 0.78, marginTop: 3 },
+    textSkipped: { textDecorationLine: 'line-through' },
+    badge: {
+      position:     'absolute',
+      top:          6,
+      right:        8,
+      width:        18,
+      height:       18,
+      borderRadius: 9,
+      alignItems:   'center',
+      justifyContent: 'center',
+    },
+    badgeDone:    { backgroundColor: '#C8F0D4' },
+    badgeSkipped: { backgroundColor: C.surfaceSunk },
+  });
+}

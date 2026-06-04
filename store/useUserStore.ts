@@ -2,10 +2,12 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { UserProfile, SleepSchedule, MealSchedule, SportInfo, WorkInfo, OtherActivityInfo, CycleInfo } from '../types';
+import type { ThemePreference } from '@/hooks/useColors';
 
 const INITIAL_STATE = {
-  isOnboarded: false,
-  userId:      null as string | null,
+  isOnboarded:     false,
+  userId:          null as string | null,
+  themePreference: 'system' as ThemePreference,
   profile:       {} as Partial<UserProfile>,
   sleep:         { bedtime: '23:00', waketime: '07:00', prepMinutes: 40 } as Partial<SleepSchedule>,
   meals:         { entries: [{ time: '08:00', label: 'Petit-déjeuner' }, { time: '13:00', label: 'Déjeuner' }, { time: '19:30', label: 'Dîner' }] } as Partial<MealSchedule>,
@@ -16,8 +18,9 @@ const INITIAL_STATE = {
 };
 
 interface UserState {
-  isOnboarded: boolean;
-  userId:      string | null;
+  isOnboarded:     boolean;
+  userId:          string | null;
+  themePreference: ThemePreference;
   profile:       Partial<UserProfile>;
   sleep:         Partial<SleepSchedule>;
   meals:         Partial<MealSchedule>;
@@ -26,6 +29,7 @@ interface UserState {
   otherActivity: Partial<OtherActivityInfo>;
   cycle:         Partial<CycleInfo>;
 
+  setTheme:         (pref: ThemePreference)            => void;
   setProfile:       (data: Partial<UserProfile>)       => void;
   setSleep:         (data: Partial<SleepSchedule>)     => void;
   setMeals:         (data: Partial<MealSchedule>)      => void;
@@ -43,6 +47,7 @@ export const useUserStore = create<UserState>()(
     (set) => ({
       ...INITIAL_STATE,
 
+      setTheme:         (pref) => set({ themePreference: pref }),
       setProfile:       (data) => set((s) => ({ profile:       { ...s.profile,       ...data } })),
       setSleep:         (data) => set((s) => ({ sleep:         { ...s.sleep,         ...data } })),
       setMeals:         (data) => set((s) => ({ meals:         { ...s.meals,         ...data } })),

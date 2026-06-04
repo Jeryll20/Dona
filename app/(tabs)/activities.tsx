@@ -28,6 +28,7 @@ import { getTravelTime } from '@/lib/maps';
 import { upsertActivity, deleteActivityRemote } from '@/lib/activitiesSync';
 import { upsertCustomCat, deleteCustomCatRemote } from '@/lib/customCatsSync';
 import { Colors, COLOR_PALETTE } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import type { CatKey, UserActivity, WeekDay, Recurrence, ActivityLocation, CustomCategory } from '@/types';
@@ -85,18 +86,22 @@ function formatDays(days: WeekDay[]): string {
 function TimePickerRow({ label, value, onChange }: {
   label: string; value: string; onChange: (v: string) => void;
 }) {
+  const C = useColors();
+  const s = makeTpStyles(C);
   return (
-    <View style={tpS.wrap}>
-      <Text style={tpS.label}>{label}</Text>
+    <View style={s.wrap}>
+      <Text style={s.label}>{label}</Text>
       <TimeField value={value} onChange={onChange} />
     </View>
   );
 }
 
-const tpS = StyleSheet.create({
-  wrap:  { alignItems: 'center', flex: 1 },
-  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.light.ink3, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-});
+function makeTpStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    wrap:  { alignItems: 'center', flex: 1 },
+    label: { fontSize: FontSize.xs, fontWeight: '700', color: C.ink3, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  });
+}
 
 // ── ActivityCard ──────────────────────────────────────────────────
 
@@ -107,7 +112,9 @@ function ActivityCard({ activity, onEdit, onDelete }: {
   onEdit: () => void;
   onDelete?: () => void;
 }) {
-  const customCategories = useScheduleStore((s) => s.customCategories);
+  const C = useColors();
+  const s = makeCardStyles(C);
+  const customCategories = useScheduleStore((st) => st.customCategories);
   const customCat = activity.customCatId
     ? customCategories.find((c) => c.id === activity.customCatId)
     : undefined;
@@ -117,60 +124,64 @@ function ActivityCard({ activity, onEdit, onDelete }: {
   const label  = customCat?.label ?? cat.label;
   return (
     <TouchableOpacity
-      style={cS.wrap}
+      style={s.wrap}
       onPress={onEdit}
       activeOpacity={0.75}
       accessibilityLabel={activity.title}
       accessibilityRole="button"
     >
-      <View style={[cS.icon, { backgroundColor: bg }]}>
+      <View style={[s.icon, { backgroundColor: bg }]}>
         <Ionicons name={cat.icon} size={20} color={ink} />
       </View>
-      <View style={cS.content}>
-        <Text style={cS.title}>{activity.title}</Text>
-        <Text style={cS.sub}>{activity.startTime} – {activity.endTime} · {formatDays(activity.days)}</Text>
+      <View style={s.content}>
+        <Text style={s.title}>{activity.title}</Text>
+        <Text style={s.sub}>{activity.startTime} – {activity.endTime} · {formatDays(activity.days)}</Text>
       </View>
-      <View style={[cS.pill, { backgroundColor: bg }]}>
-        <Text style={[cS.pillText, { color: ink }]}>{label}</Text>
+      <View style={[s.pill, { backgroundColor: bg }]}>
+        <Text style={[s.pillText, { color: ink }]}>{label}</Text>
       </View>
       {onDelete ? (
         <TouchableOpacity
           onPress={(e) => { e.stopPropagation(); onDelete(); }}
-          style={cS.action}
+          style={s.action}
           accessibilityLabel={`Supprimer ${activity.title}`}
           hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
         >
-          <Ionicons name="trash-outline" size={15} color={Colors.light.ink3} />
+          <Ionicons name="trash-outline" size={15} color={C.ink3} />
         </TouchableOpacity>
       ) : (
-        <Ionicons name="chevron-forward" size={16} color={Colors.light.ink3} />
+        <Ionicons name="chevron-forward" size={16} color={C.ink3} />
       )}
     </TouchableOpacity>
   );
 }
 
-const cS = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.light.surface, borderRadius: Radius.block,
-    padding: Spacing.base, ...Shadow.sm,
-  },
-  icon:     { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  content:  { flex: 1 },
-  title:    { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink, letterSpacing: -0.2 },
-  sub:      { fontSize: FontSize.sm, color: Colors.light.ink3, marginTop: 2 },
-  pill:     { borderRadius: Radius.pill, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
-  pillText: { fontSize: FontSize.xs, fontWeight: '700' },
-  action:   { padding: 6 },
-});
+function makeCardStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    wrap: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      backgroundColor: C.surface, borderRadius: Radius.block,
+      padding: Spacing.base, ...Shadow.sm,
+    },
+    icon:     { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    content:  { flex: 1 },
+    title:    { fontSize: FontSize.base, fontWeight: '700', color: C.ink, letterSpacing: -0.2 },
+    sub:      { fontSize: FontSize.sm, color: C.ink3, marginTop: 2 },
+    pill:     { borderRadius: Radius.pill, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
+    pillText: { fontSize: FontSize.xs, fontWeight: '700' },
+    action:   { padding: 6 },
+  });
+}
 
 // ── Main Screen ───────────────────────────────────────────────────
 
 export default function ActivitiesScreen() {
+  const C = useColors();
+  const s = makeStyles(C);
   const { activities, addActivity, updateActivity, removeActivity,
           customCategories, addCustomCategory, removeCustomCategory } = useScheduleStore();
   const { setWork, setSport, setOtherActivity, profile } = useUserStore();
-  const userId = useAuthStore((s) => s.session?.user?.id);
+  const userId = useAuthStore((st) => st.session?.user?.id);
   const insets = useSafeAreaInsets();
 
   const { editId } = useLocalSearchParams<{ editId?: string }>();
@@ -359,7 +370,7 @@ export default function ActivitiesScreen() {
           accessibilityLabel="Ajouter une activité"
           accessibilityRole="button"
         >
-          <Ionicons name="add" size={18} color={Colors.light.onPrimary} />
+          <Ionicons name="add" size={18} color={C.onPrimary} />
           <Text style={s.addBtnText}>Ajouter</Text>
         </TouchableOpacity>
       </View>
@@ -372,10 +383,10 @@ export default function ActivitiesScreen() {
         accessibilityRole="button"
       >
         <View style={s.bilanLeft}>
-          <Icon name="calendar" size={18} stroke={Colors.light.primary} sw={2} />
+          <Icon name="calendar" size={18} stroke={C.primary} sw={2} />
           <Text style={s.bilanText}>Bilan de la semaine</Text>
         </View>
-        <Icon name="chevright" size={16} stroke={Colors.light.ink3} sw={1.8} />
+        <Icon name="chevright" size={16} stroke={C.ink3} sw={1.8} />
       </TouchableOpacity>
 
       {/* List */}
@@ -387,7 +398,7 @@ export default function ActivitiesScreen() {
         {activities.length === 0 ? (
           <View style={s.empty}>
             <View style={s.emptyIcon}>
-              <Ionicons name="calendar-outline" size={34} color={Colors.light.ink3} />
+              <Ionicons name="calendar-outline" size={34} color={C.ink3} />
             </View>
             <Text style={s.emptyTitle}>Aucune activité</Text>
             <Text style={s.emptySub}>
@@ -439,7 +450,7 @@ export default function ActivitiesScreen() {
               <View style={s.sheetHead}>
                 <Text style={s.sheetTitle}>{stepTitles[step]}</Text>
                 <TouchableOpacity onPress={closeSheet} style={s.closeBtn} accessibilityLabel="Fermer">
-                  <Ionicons name="close" size={18} color={Colors.light.ink2} />
+                  <Ionicons name="close" size={18} color={C.ink2} />
                 </TouchableOpacity>
               </View>
 
@@ -467,8 +478,8 @@ export default function ActivitiesScreen() {
                         accessibilityRole="radio"
                         accessibilityState={{ selected: on }}
                       >
-                        <View style={[s.catIcon, { backgroundColor: on ? cat.bg : Colors.light.surfaceSunk }]}>
-                          <Ionicons name={cat.icon} size={20} color={on ? cat.ink : Colors.light.ink3} />
+                        <View style={[s.catIcon, { backgroundColor: on ? cat.bg : C.surfaceSunk }]}>
+                          <Ionicons name={cat.icon} size={20} color={on ? cat.ink : C.ink3} />
                         </View>
                         <Text style={[s.catLabel, on && s.catLabelOn]}>{cat.label}</Text>
                         <View style={[s.radio, on && s.radioOn]}>
@@ -497,8 +508,8 @@ export default function ActivitiesScreen() {
                             accessibilityRole="radio"
                             accessibilityState={{ selected: on }}
                           >
-                            <View style={[s.catIcon, { backgroundColor: on ? cc.color.bg : Colors.light.surfaceSunk }]}>
-                              <View style={[s.colorDot, { backgroundColor: on ? cc.color.ink : Colors.light.ink3 }]} />
+                            <View style={[s.catIcon, { backgroundColor: on ? cc.color.bg : C.surfaceSunk }]}>
+                              <View style={[s.colorDot, { backgroundColor: on ? cc.color.ink : C.ink3 }]} />
                             </View>
                             <Text style={[s.catLabel, on && s.catLabelOn]}>{cc.label}</Text>
                             <TouchableOpacity
@@ -511,7 +522,7 @@ export default function ActivitiesScreen() {
                               hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                               accessibilityLabel={`Supprimer ${cc.label}`}
                             >
-                              <Ionicons name="trash-outline" size={15} color={Colors.light.ink3} />
+                              <Ionicons name="trash-outline" size={15} color={C.ink3} />
                             </TouchableOpacity>
                           </TouchableOpacity>
                         );
@@ -526,7 +537,7 @@ export default function ActivitiesScreen() {
                       onPress={() => setShowCreateCat(true)}
                       accessibilityLabel="Créer une catégorie"
                     >
-                      <Ionicons name="add-circle-outline" size={18} color={Colors.light.primary} />
+                      <Ionicons name="add-circle-outline" size={18} color={C.primary} />
                       <Text style={s.createCatBtnText}>Créer une catégorie</Text>
                     </TouchableOpacity>
                   ) : (
@@ -537,7 +548,7 @@ export default function ActivitiesScreen() {
                         value={newCatLabel}
                         onChangeText={setNewCatLabel}
                         placeholder="Ex : Bien-être, Famille…"
-                        placeholderTextColor={Colors.light.ink3}
+                        placeholderTextColor={C.ink3}
                         returnKeyType="done"
                         autoFocus
                         accessibilityLabel="Nom de la catégorie"
@@ -604,7 +615,7 @@ export default function ActivitiesScreen() {
                       value={name}
                       onChangeText={setName}
                       placeholder={CATEGORIES.find((c) => c.key === catKey)?.label ?? 'Mon activité'}
-                      placeholderTextColor={Colors.light.ink3}
+                      placeholderTextColor={C.ink3}
                       accessibilityLabel="Nom de l'activité"
                       returnKeyType="done"
                     />
@@ -626,7 +637,7 @@ export default function ActivitiesScreen() {
                         onPress={() => setColor(undefined)}
                         accessibilityLabel="Couleur par défaut"
                       >
-                        <Ionicons name="color-palette-outline" size={15} color={Colors.light.ink3} />
+                        <Ionicons name="color-palette-outline" size={15} color={C.ink3} />
                       </TouchableOpacity>
                       {COLOR_PALETTE.map((c, i) => {
                         const on = color?.bg === c.bg;
@@ -667,7 +678,7 @@ export default function ActivitiesScreen() {
                                   <Ionicons
                                     name={opt === 'home' ? 'home-outline' : 'location-outline'}
                                     size={13}
-                                    color={on ? Colors.light.primaryStrong : Colors.light.ink3}
+                                    color={on ? C.primaryStrong : C.ink3}
                                   />
                                   <Text style={[s.depToggleText, on && s.depToggleTextOn]}>
                                     {opt === 'home' ? 'Domicile' : 'Autre lieu'}
@@ -688,13 +699,13 @@ export default function ActivitiesScreen() {
 
                       {trajetLoading && (
                         <View style={s.trajetChip}>
-                          <ActivityIndicator size="small" color={Colors.light.transitInk} />
+                          <ActivityIndicator size="small" color={C.transitInk} />
                           <Text style={s.trajetText}>Calcul du trajet…</Text>
                         </View>
                       )}
                       {!trajetLoading && trajetMinutes !== undefined && (
                         <View style={s.trajetChip}>
-                          <Ionicons name="car-outline" size={13} color={Colors.light.transitInk} />
+                          <Ionicons name="car-outline" size={13} color={C.transitInk} />
                           <Text style={s.trajetText}>
                             {trajetMinutes} min depuis {useHomeAsStart
                               ? 'ton domicile'
@@ -759,7 +770,7 @@ export default function ActivitiesScreen() {
                           <Text style={[s.recLabel, recurrence === 'weekly' && s.recLabelOn]}>Chaque semaine</Text>
                           <Text style={s.recSub}>Se répète toutes les semaines</Text>
                         </View>
-                        {recurrence === 'weekly' && <Ionicons name="checkmark-circle" size={20} color={Colors.light.primary} />}
+                        {recurrence === 'weekly' && <Ionicons name="checkmark-circle" size={20} color={C.primary} />}
                       </TouchableOpacity>
 
                       {/* Toutes les N semaines — bouton combiné */}
@@ -779,7 +790,7 @@ export default function ActivitiesScreen() {
                             </Text>
                             <Text style={s.recSub}>Choisir l'intervalle ci-dessous</Text>
                           </View>
-                          {N_WEEKLY_KEYS.includes(recurrence) && <Ionicons name="checkmark-circle" size={20} color={Colors.light.primary} />}
+                          {N_WEEKLY_KEYS.includes(recurrence) && <Ionicons name="checkmark-circle" size={20} color={C.primary} />}
                         </TouchableOpacity>
                         {N_WEEKLY_KEYS.includes(recurrence) && (
                           <View style={s.nWeekRow}>
@@ -814,7 +825,7 @@ export default function ActivitiesScreen() {
                           <Text style={[s.recLabel, recurrence === 'none' && s.recLabelOn]}>Ponctuel</Text>
                           <Text style={s.recSub}>Ne se répète pas</Text>
                         </View>
-                        {recurrence === 'none' && <Ionicons name="checkmark-circle" size={20} color={Colors.light.primary} />}
+                        {recurrence === 'none' && <Ionicons name="checkmark-circle" size={20} color={C.primary} />}
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -828,7 +839,7 @@ export default function ActivitiesScreen() {
                       accessibilityState={{ checked: notifyWeekEnd }}
                     >
                       <View style={s.notifyIcon}>
-                        <Ionicons name="notifications-outline" size={18} color={Colors.light.primary} />
+                        <Ionicons name="notifications-outline" size={18} color={C.primary} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={s.notifyLabel}>Rappel dimanche soir</Text>
@@ -837,8 +848,8 @@ export default function ActivitiesScreen() {
                       <Switch
                         value={notifyWeekEnd}
                         onValueChange={setNotifyWeekEnd}
-                        trackColor={{ false: Colors.light.hairline, true: Colors.light.primaryTint2 }}
-                        thumbColor={notifyWeekEnd ? Colors.light.primary : Colors.light.surface}
+                        trackColor={{ false: C.hairline, true: C.primaryTint2 }}
+                        thumbColor={notifyWeekEnd ? C.primary : C.surface}
                       />
                     </TouchableOpacity>
                   )}
@@ -855,7 +866,7 @@ export default function ActivitiesScreen() {
                     onPress={() => { if (step === 2) setStep(1); else setStep(2); }}
                     accessibilityLabel="Étape précédente"
                   >
-                    <Ionicons name="chevron-back" size={18} color={Colors.light.primary} />
+                    <Ionicons name="chevron-back" size={18} color={C.primary} />
                     <Text style={s.prevText}>Retour</Text>
                   </TouchableOpacity>
                 )}
@@ -870,7 +881,7 @@ export default function ActivitiesScreen() {
                   accessibilityLabel={step === 3 ? 'Ajouter au planning' : 'Continuer'}
                 >
                   <Text style={s.nextText}>{step === 3 ? 'Ajouter au planning' : 'Continuer'}</Text>
-                  {step !== 3 && <Ionicons name="chevron-forward" size={16} color={Colors.light.onPrimary} />}
+                  {step !== 3 && <Ionicons name="chevron-forward" size={16} color={C.onPrimary} />}
                 </TouchableOpacity>
               </View>
           </Animated.View>
@@ -880,215 +891,217 @@ export default function ActivitiesScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.light.background },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: C.background },
 
-  header: {
-    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, paddingTop: Spacing.sm,
-  },
-  eyebrow: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.primaryStrong, letterSpacing: 0.3 },
-  title: { fontSize: 30, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.6, marginTop: 2 },
-  addBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    backgroundColor: Colors.light.primary, borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md, paddingVertical: 10, ...Shadow.sm,
-  },
-  addBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.onPrimary },
+    header: {
+      flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
+      paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, paddingTop: Spacing.sm,
+    },
+    eyebrow: { fontSize: FontSize.sm, fontWeight: '600', color: C.primaryStrong, letterSpacing: 0.3 },
+    title: { fontSize: 30, fontWeight: '800', color: C.ink, letterSpacing: -0.6, marginTop: 2 },
+    addBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+      backgroundColor: C.primary, borderRadius: Radius.pill,
+      paddingHorizontal: Spacing.md, paddingVertical: 10, ...Shadow.sm,
+    },
+    addBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: C.onPrimary },
 
-  bilanBanner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginHorizontal: Spacing.lg, marginBottom: Spacing.sm,
-    backgroundColor: Colors.light.primaryTint,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2,
-  },
-  bilanLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  bilanText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.primaryStrong },
+    bilanBanner: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      marginHorizontal: Spacing.lg, marginBottom: Spacing.sm,
+      backgroundColor: C.primaryTint,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2,
+    },
+    bilanLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    bilanText: { fontSize: FontSize.sm, fontWeight: '700', color: C.primaryStrong },
 
-  // Custom category creation
-  catSeparator: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginVertical: Spacing.sm },
-  catSepLine:   { flex: 1, height: 1, backgroundColor: Colors.light.hairline },
-  catSepLabel:  { fontSize: FontSize.xs, fontWeight: '700', color: Colors.light.ink3, textTransform: 'uppercase', letterSpacing: 0.5 },
-  colorDot:     { width: 10, height: 10, borderRadius: 5 },
-  createCatBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    paddingVertical: Spacing.md, justifyContent: 'center',
-  },
-  createCatBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.primary },
-  createCatForm:    { gap: Spacing.xs, marginTop: Spacing.sm, backgroundColor: Colors.light.surfaceSunk, borderRadius: Radius.block, padding: Spacing.md },
-  createCatActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
-  createCatCancel:  { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: Radius.input, backgroundColor: Colors.light.surface },
-  createCatCancelText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink2 },
-  createCatSave:       { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: Radius.input, backgroundColor: Colors.light.primary },
-  createCatSaveDisabled: { opacity: 0.4 },
-  createCatSaveText:   { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.onPrimary },
+    // Custom category creation
+    catSeparator: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginVertical: Spacing.sm },
+    catSepLine:   { flex: 1, height: 1, backgroundColor: C.hairline },
+    catSepLabel:  { fontSize: FontSize.xs, fontWeight: '700', color: C.ink3, textTransform: 'uppercase', letterSpacing: 0.5 },
+    colorDot:     { width: 10, height: 10, borderRadius: 5 },
+    createCatBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+      paddingVertical: Spacing.md, justifyContent: 'center',
+    },
+    createCatBtnText: { fontSize: FontSize.sm, fontWeight: '700', color: C.primary },
+    createCatForm:    { gap: Spacing.xs, marginTop: Spacing.sm, backgroundColor: C.surfaceSunk, borderRadius: Radius.block, padding: Spacing.md },
+    createCatActions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
+    createCatCancel:  { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: Radius.input, backgroundColor: C.surface },
+    createCatCancelText: { fontSize: FontSize.sm, fontWeight: '600', color: C.ink2 },
+    createCatSave:       { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: Radius.input, backgroundColor: C.primary },
+    createCatSaveDisabled: { opacity: 0.4 },
+    createCatSaveText:   { fontSize: FontSize.sm, fontWeight: '700', color: C.onPrimary },
 
-  scroll: { flex: 1 },
-  listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },
-  list: { gap: Spacing.md },
+    scroll: { flex: 1 },
+    listContent: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm },
+    list: { gap: Spacing.md },
 
-  empty: { alignItems: 'center', marginTop: 72, paddingHorizontal: Spacing.xl, gap: Spacing.md },
-  emptyIcon: {
-    width: 72, height: 72, borderRadius: 22,
-    backgroundColor: Colors.light.surfaceSunk,
-    alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.sm,
-  },
-  emptyTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.light.ink },
-  emptySub: { fontSize: FontSize.base, color: Colors.light.ink3, textAlign: 'center', lineHeight: 22 },
+    empty: { alignItems: 'center', marginTop: 72, paddingHorizontal: Spacing.xl, gap: Spacing.md },
+    emptyIcon: {
+      width: 72, height: 72, borderRadius: 22,
+      backgroundColor: C.surfaceSunk,
+      alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.sm,
+    },
+    emptyTitle: { fontSize: FontSize.lg, fontWeight: '700', color: C.ink },
+    emptySub: { fontSize: FontSize.base, color: C.ink3, textAlign: 'center', lineHeight: 22 },
 
-  // Modal / sheet
-  modalRoot: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: {
-    backgroundColor: Colors.light.surface,
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingTop: Spacing.sm, paddingHorizontal: Spacing.lg,
-  },
-  handle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: Colors.light.hairline, alignSelf: 'center', marginBottom: Spacing.md,
-  },
-  sheetHead: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: Spacing.sm,
-  },
-  sheetTitle: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.4 },
-  closeBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: Colors.light.surfaceSunk, alignItems: 'center', justifyContent: 'center',
-  },
+    // Modal / sheet
+    modalRoot: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+    sheet: {
+      backgroundColor: C.surface,
+      borderTopLeftRadius: 28, borderTopRightRadius: 28,
+      paddingTop: Spacing.sm, paddingHorizontal: Spacing.lg,
+    },
+    handle: {
+      width: 36, height: 4, borderRadius: 2,
+      backgroundColor: C.hairline, alignSelf: 'center', marginBottom: Spacing.md,
+    },
+    sheetHead: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      marginBottom: Spacing.sm,
+    },
+    sheetTitle: { fontSize: FontSize.xl, fontWeight: '800', color: C.ink, letterSpacing: -0.4 },
+    closeBtn: {
+      width: 32, height: 32, borderRadius: 16,
+      backgroundColor: C.surfaceSunk, alignItems: 'center', justifyContent: 'center',
+    },
 
-  dots: { flexDirection: 'row', gap: 6, marginBottom: Spacing.lg },
-  dot:  { height: 6, width: 6, borderRadius: 3, backgroundColor: Colors.light.hairline },
-  dotOn: { backgroundColor: Colors.light.primary, width: 20 },
+    dots: { flexDirection: 'row', gap: 6, marginBottom: Spacing.lg },
+    dot:  { height: 6, width: 6, borderRadius: 3, backgroundColor: C.hairline },
+    dotOn: { backgroundColor: C.primary, width: 20 },
 
-  body: { gap: Spacing.sm },
-  fg:   { gap: Spacing.sm },
+    body: { gap: Spacing.sm },
+    fg:   { gap: Spacing.sm },
 
-  fieldLabel: {
-    fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
-    textTransform: 'uppercase', letterSpacing: 0.6,
-  },
-  input: {
-    backgroundColor: Colors.light.surfaceSunk, borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.base,
-    fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink,
-  },
-  timeRow: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.light.surfaceSunk,
-    borderRadius: Radius.block, padding: Spacing.md, gap: Spacing.md,
-  },
-  timeSep: { width: 1, height: 52, backgroundColor: Colors.light.hairline },
+    fieldLabel: {
+      fontSize: 11, fontWeight: '700', color: C.ink3,
+      textTransform: 'uppercase', letterSpacing: 0.6,
+    },
+    input: {
+      backgroundColor: C.surfaceSunk, borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md, paddingVertical: Spacing.base,
+      fontSize: FontSize.base, fontWeight: '600', color: C.ink,
+    },
+    timeRow: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: C.surfaceSunk,
+      borderRadius: Radius.block, padding: Spacing.md, gap: Spacing.md,
+    },
+    timeSep: { width: 1, height: 52, backgroundColor: C.hairline },
 
-  // Category step
-  catRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.light.background, borderRadius: Radius.input,
-    padding: Spacing.md, borderWidth: 1.5, borderColor: 'transparent',
-  },
-  catRowOn:    { borderColor: Colors.light.primary, backgroundColor: Colors.light.surface },
-  catIcon:     { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  catLabel:    { flex: 1, fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink },
-  catLabelOn:  { color: Colors.light.primaryStrong },
-  radio:    { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: Colors.light.hairline, alignItems: 'center', justifyContent: 'center' },
-  radioOn:  { borderColor: Colors.light.primary, backgroundColor: Colors.light.primary },
-  radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#fff' },
+    // Category step
+    catRow: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      backgroundColor: C.background, borderRadius: Radius.input,
+      padding: Spacing.md, borderWidth: 1.5, borderColor: 'transparent',
+    },
+    catRowOn:    { borderColor: C.primary, backgroundColor: C.surface },
+    catIcon:     { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    catLabel:    { flex: 1, fontSize: FontSize.base, fontWeight: '600', color: C.ink },
+    catLabelOn:  { color: C.primaryStrong },
+    radio:    { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: C.hairline, alignItems: 'center', justifyContent: 'center' },
+    radioOn:  { borderColor: C.primary, backgroundColor: C.primary },
+    radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#fff' },
 
-  // Days step
-  daysRow: { flexDirection: 'row', gap: Spacing.sm },
-  dayChip: {
-    flex: 1, height: 40, borderRadius: 11,
-    backgroundColor: Colors.light.surfaceSunk,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'transparent',
-  },
-  dayChipOn: { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
-  dayText:   { fontSize: FontSize.xs, fontWeight: '700', color: Colors.light.ink3 },
-  dayTextOn: { color: Colors.light.primaryStrong },
+    // Days step
+    daysRow: { flexDirection: 'row', gap: Spacing.sm },
+    dayChip: {
+      flex: 1, height: 40, borderRadius: 11,
+      backgroundColor: C.surfaceSunk,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1.5, borderColor: 'transparent',
+    },
+    dayChipOn: { backgroundColor: C.primaryTint, borderColor: C.primary },
+    dayText:   { fontSize: FontSize.xs, fontWeight: '700', color: C.ink3 },
+    dayTextOn: { color: C.primaryStrong },
 
-  // Recurrence step
-  recRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.light.background, borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
-    borderWidth: 1.5, borderColor: 'transparent',
-  },
-  recRowOn:   { borderColor: Colors.light.primary, backgroundColor: Colors.light.primaryTint },
-  recLabel:   { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink },
-  recLabelOn: { color: Colors.light.primaryStrong },
-  recSub:     { fontSize: FontSize.xs, color: Colors.light.ink3, marginTop: 2 },
+    // Recurrence step
+    recRow: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      backgroundColor: C.background, borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
+      borderWidth: 1.5, borderColor: 'transparent',
+    },
+    recRowOn:   { borderColor: C.primary, backgroundColor: C.primaryTint },
+    recLabel:   { fontSize: FontSize.base, fontWeight: '600', color: C.ink },
+    recLabelOn: { color: C.primaryStrong },
+    recSub:     { fontSize: FontSize.xs, color: C.ink3, marginTop: 2 },
 
-  // N-weekly sub-chips
-  nWeekRow:    { flexDirection: 'row', gap: Spacing.sm },
-  nWeekChip: {
-    flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.input,
-    backgroundColor: Colors.light.surfaceSunk,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'transparent',
-  },
-  nWeekChipOn: { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
-  nWeekText:   { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink3 },
-  nWeekTextOn: { color: Colors.light.primaryStrong },
+    // N-weekly sub-chips
+    nWeekRow:    { flexDirection: 'row', gap: Spacing.sm },
+    nWeekChip: {
+      flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.input,
+      backgroundColor: C.surfaceSunk,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 1.5, borderColor: 'transparent',
+    },
+    nWeekChipOn: { backgroundColor: C.primaryTint, borderColor: C.primary },
+    nWeekText:   { fontSize: FontSize.sm, fontWeight: '600', color: C.ink3 },
+    nWeekTextOn: { color: C.primaryStrong },
 
-  // Notify week-end toggle
-  notifyRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.light.primaryTint,
-    borderRadius: Radius.input, padding: Spacing.md,
-  },
-  notifyIcon: {
-    width: 36, height: 36, borderRadius: 11,
-    backgroundColor: Colors.light.primaryTint2,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  notifyLabel: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primaryStrong },
-  notifySub:   { fontSize: FontSize.xs,   fontWeight: '500', color: Colors.light.primary, marginTop: 2 },
+    // Notify week-end toggle
+    notifyRow: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      backgroundColor: C.primaryTint,
+      borderRadius: Radius.input, padding: Spacing.md,
+    },
+    notifyIcon: {
+      width: 36, height: 36, borderRadius: 11,
+      backgroundColor: C.primaryTint2,
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    },
+    notifyLabel: { fontSize: FontSize.base, fontWeight: '700', color: C.primaryStrong },
+    notifySub:   { fontSize: FontSize.xs,   fontWeight: '500', color: C.primary, marginTop: 2 },
 
-  // Departure toggle
-  depToggleRow: { flexDirection: 'row', gap: Spacing.sm },
-  depToggleBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: Spacing.xs, paddingVertical: Spacing.sm,
-    backgroundColor: Colors.light.surface, borderRadius: Radius.input,
-    borderWidth: 1.5, borderColor: Colors.light.hairline, ...Shadow.sm,
-  },
-  depToggleBtnOn:  { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
-  depToggleText:   { fontSize: FontSize.sm, fontWeight: '600', color: Colors.light.ink2 } as const,
-  depToggleTextOn: { color: Colors.light.primaryStrong, fontWeight: '700' } as const,
+    // Departure toggle
+    depToggleRow: { flexDirection: 'row', gap: Spacing.sm },
+    depToggleBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: Spacing.xs, paddingVertical: Spacing.sm,
+      backgroundColor: C.surface, borderRadius: Radius.input,
+      borderWidth: 1.5, borderColor: C.hairline, ...Shadow.sm,
+    },
+    depToggleBtnOn:  { backgroundColor: C.primaryTint, borderColor: C.primary },
+    depToggleText:   { fontSize: FontSize.sm, fontWeight: '600', color: C.ink2 } as const,
+    depToggleTextOn: { color: C.primaryStrong, fontWeight: '700' } as const,
 
-  // Trajet chip
-  trajetChip: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
-    backgroundColor: Colors.light.transitBg, borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md, paddingVertical: 6, alignSelf: 'flex-start',
-  },
-  trajetText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.light.transitInk },
-  trajetHint: { fontSize: FontSize.xs, color: Colors.light.ink3, fontStyle: 'italic', marginTop: 2 },
+    // Trajet chip
+    trajetChip: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.xs,
+      backgroundColor: C.transitBg, borderRadius: Radius.pill,
+      paddingHorizontal: Spacing.md, paddingVertical: 6, alignSelf: 'flex-start',
+    },
+    trajetText: { fontSize: FontSize.xs, fontWeight: '600', color: C.transitInk },
+    trajetHint: { fontSize: FontSize.xs, color: C.ink3, fontStyle: 'italic', marginTop: 2 },
 
-  // Color picker
-  colorRow:      { flexDirection: 'row', gap: 10, paddingVertical: 4 },
-  swatch: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'transparent',
-  },
-  swatchDefault: { backgroundColor: Colors.light.surfaceSunk },
-  swatchSelected: { borderColor: Colors.light.ink2 },
+    // Color picker
+    colorRow:      { flexDirection: 'row', gap: 10, paddingVertical: 4 },
+    swatch: {
+      width: 36, height: 36, borderRadius: 18,
+      alignItems: 'center', justifyContent: 'center',
+      borderWidth: 2, borderColor: 'transparent',
+    },
+    swatchDefault: { backgroundColor: C.surfaceSunk },
+    swatchSelected: { borderColor: C.ink2 },
 
-  // Footer
-  footer: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },
-  prevBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingVertical: Spacing.base, paddingHorizontal: Spacing.md,
-    backgroundColor: Colors.light.primaryTint, borderRadius: Radius.pill,
-  },
-  prevText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primary },
-  nextBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: Spacing.sm, backgroundColor: Colors.light.primary,
-    borderRadius: Radius.pill, paddingVertical: Spacing.base,
-  },
-  nextOff:  { opacity: 0.45 },
-  nextText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.onPrimary },
-});
+    // Footer
+    footer: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },
+    prevBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      paddingVertical: Spacing.base, paddingHorizontal: Spacing.md,
+      backgroundColor: C.primaryTint, borderRadius: Radius.pill,
+    },
+    prevText: { fontSize: FontSize.base, fontWeight: '700', color: C.primary },
+    nextBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: Spacing.sm, backgroundColor: C.primary,
+      borderRadius: Radius.pill, paddingVertical: Spacing.base,
+    },
+    nextOff:  { opacity: 0.45 },
+    nextText: { fontSize: FontSize.base, fontWeight: '700', color: C.onPrimary },
+  });
+}

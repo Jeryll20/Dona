@@ -4,7 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
+import type { ThemePreference } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
@@ -26,41 +27,99 @@ interface RowProps {
 }
 
 function SettingsRow({ icon, iconBg, iconInk, label, value, onPress }: RowProps) {
+  const C = useColors();
+  const s = makeRowStyles(C);
   return (
     <TouchableOpacity
-      style={row.wrap}
+      style={s.wrap}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
       accessibilityLabel={label}
       accessibilityRole={onPress ? 'button' : 'none'}
     >
-      <View style={[row.icon, { backgroundColor: iconBg }]}>
+      <View style={[s.icon, { backgroundColor: iconBg }]}>
         <Ionicons name={icon} size={18} color={iconInk} />
       </View>
-      <View style={row.content}>
-        <Text style={row.label}>{label}</Text>
-        {value ? <Text style={row.value}>{value}</Text> : null}
+      <View style={s.content}>
+        <Text style={s.label}>{label}</Text>
+        {value ? <Text style={s.value}>{value}</Text> : null}
       </View>
-      {onPress && <Ionicons name="chevron-forward" size={16} color={Colors.light.ink3} />}
+      {onPress && <Ionicons name="chevron-forward" size={16} color={C.ink3} />}
     </TouchableOpacity>
   );
 }
 
-const row = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.light.surface, borderRadius: Radius.block,
-    padding: Spacing.base, ...Shadow.sm,
-  },
-  icon:    { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  content: { flex: 1 },
-  label:   { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink, letterSpacing: -0.2 },
-  value:   { fontSize: FontSize.sm, color: Colors.light.ink3, marginTop: 2 },
-});
+function makeRowStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    wrap: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      backgroundColor: C.surface, borderRadius: Radius.block,
+      padding: Spacing.base, ...Shadow.sm,
+    },
+    icon:    { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    content: { flex: 1 },
+    label:   { fontSize: FontSize.base, fontWeight: '700', color: C.ink, letterSpacing: -0.2 },
+    value:   { fontSize: FontSize.sm, color: C.ink3, marginTop: 2 },
+  });
+}
+
+const THEME_OPTIONS: { key: ThemePreference; label: string; icon: IoniconsName }[] = [
+  { key: 'system', label: 'Auto',   icon: 'phone-portrait-outline' },
+  { key: 'light',  label: 'Clair',  icon: 'sunny-outline'          },
+  { key: 'dark',   label: 'Sombre', icon: 'moon-outline'           },
+];
+
+function ThemeRow() {
+  const C = useColors();
+  const s = makeThemeStyles(C);
+  const themePreference = useUserStore((st) => st.themePreference ?? 'system');
+  const setTheme        = useUserStore((st) => st.setTheme);
+  return (
+    <View style={s.wrap}>
+      <View style={s.iconWrap}>
+        <Ionicons name="color-palette-outline" size={18} color={C.primaryStrong} />
+      </View>
+      <Text style={s.label}>Apparence</Text>
+      <View style={s.chips}>
+        {THEME_OPTIONS.map((opt) => {
+          const on = themePreference === opt.key;
+          return (
+            <TouchableOpacity
+              key={opt.key}
+              style={[s.chip, on && s.chipOn]}
+              onPress={() => setTheme(opt.key)}
+              accessibilityLabel={opt.label}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+            >
+              <Ionicons name={opt.icon} size={13} color={on ? C.primaryStrong : C.ink3} />
+              <Text style={[s.chipText, on && s.chipTextOn]}>{opt.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function makeThemeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    wrap:       { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: C.surface, borderRadius: Radius.block, padding: Spacing.base, ...Shadow.sm },
+    iconWrap:   { width: 42, height: 42, borderRadius: 13, backgroundColor: C.primaryTint, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    label:      { fontSize: FontSize.base, fontWeight: '700', color: C.ink, flex: 1 },
+    chips:      { flexDirection: 'row', gap: 6 },
+    chip:       { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: Radius.pill, backgroundColor: C.surfaceSunk, borderWidth: 1.5, borderColor: 'transparent' },
+    chipOn:     { backgroundColor: C.primaryTint, borderColor: C.primary },
+    chipText:   { fontSize: 11, fontWeight: '600', color: C.ink3 },
+    chipTextOn: { color: C.primaryStrong, fontWeight: '700' },
+  });
+}
 
 export default function ProfileScreen() {
+  const C = useColors();
+  const s = makeStyles(C);
   const { profile, sleep, meals, cycle } = useUserStore();
-  const signOut = useAuthStore((s) => s.signOut);
+  const signOut = useAuthStore((st) => st.signOut);
 
   const firstName = profile.firstName ?? '';
   const lastName  = profile.lastName  ?? '';
@@ -84,47 +143,47 @@ export default function ProfileScreen() {
     : 'Non activé';
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        style={s.scroll}
+        contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}
       >
         {/* Avatar */}
         <TouchableOpacity
-          style={styles.avatarSection}
+          style={s.avatarSection}
           onPress={() => router.push('/profile/account')}
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel="Modifier mon compte"
         >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarLetter}>{avatarLetter}</Text>
+          <View style={s.avatar}>
+            <Text style={s.avatarLetter}>{avatarLetter}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.screenTitle}>
+            <Text style={s.screenTitle}>
               {fullName ?? 'Mon profil'}
             </Text>
             {!fullName && (
-              <Text style={styles.editHint}>Appuie pour renseigner ton profil</Text>
+              <Text style={s.editHint}>Appuie pour renseigner ton profil</Text>
             )}
             {goalLabel && (
-              <View style={styles.goalBadge}>
-                <Ionicons name="flag-outline" size={12} color={Colors.light.primaryStrong} />
-                <Text style={styles.goalText}>{goalLabel}</Text>
+              <View style={s.goalBadge}>
+                <Ionicons name="flag-outline" size={12} color={C.primaryStrong} />
+                <Text style={s.goalText}>{goalLabel}</Text>
               </View>
             )}
           </View>
-          <Ionicons name="chevron-forward" size={16} color={Colors.light.ink3} />
+          <Ionicons name="chevron-forward" size={16} color={C.ink3} />
         </TouchableOpacity>
 
         {/* Stats */}
-        <Text style={styles.sectionLabel}>Aperçu</Text>
-        <View style={styles.group}>
+        <Text style={s.sectionLabel}>Aperçu</Text>
+        <View style={s.group}>
           <SettingsRow
             icon="bar-chart-outline"
-            iconBg={Colors.light.primaryTint}
-            iconInk={Colors.light.primary}
+            iconBg={C.primaryTint}
+            iconInk={C.primary}
             label="Statistiques & suivi"
             value="Sommeil, activités, répartition"
             onPress={() => router.push('/profile/stats')}
@@ -132,28 +191,29 @@ export default function ProfileScreen() {
         </View>
 
         {/* Settings */}
-        <Text style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Mes paramètres</Text>
-        <View style={styles.group}>
+        <Text style={[s.sectionLabel, { marginTop: Spacing.xl }]}>Mes paramètres</Text>
+        <View style={s.group}>
+          <ThemeRow />
           <SettingsRow
             icon="moon-outline"
-            iconBg={Colors.light.sleepBg}
-            iconInk={Colors.light.sleepInk}
+            iconBg={C.sleepBg}
+            iconInk={C.sleepInk}
             label="Sommeil"
             value={sleepValue}
             onPress={() => router.push('/profile/sleep')}
           />
           <SettingsRow
             icon="restaurant-outline"
-            iconBg={Colors.light.mealBg}
-            iconInk={Colors.light.mealInk}
+            iconBg={C.mealBg}
+            iconInk={C.mealInk}
             label="Repas"
             value={mealsValue}
             onPress={() => router.push('/profile/meals')}
           />
           <SettingsRow
             icon="flower-outline"
-            iconBg={Colors.light.activityBg}
-            iconInk={Colors.light.activityInk}
+            iconBg={C.activityBg}
+            iconInk={C.activityInk}
             label="Cycle menstruel"
             value={cycleValue}
             onPress={() => router.push('/profile/cycle')}
@@ -161,12 +221,12 @@ export default function ProfileScreen() {
         </View>
 
         {/* Integrations */}
-        <Text style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>Intégrations</Text>
-        <View style={styles.group}>
+        <Text style={[s.sectionLabel, { marginTop: Spacing.xl }]}>Intégrations</Text>
+        <View style={s.group}>
           <SettingsRow
             icon="calendar-outline"
-            iconBg={Colors.light.primaryTint}
-            iconInk={Colors.light.primary}
+            iconBg={C.primaryTint}
+            iconInk={C.primary}
             label="Calendrier & Santé"
             value="Synchroniser avec ton appareil"
             onPress={() => router.push('/profile/calendar')}
@@ -174,87 +234,89 @@ export default function ProfileScreen() {
         </View>
 
         {/* About */}
-        <Text style={[styles.sectionLabel, { marginTop: Spacing.xl }]}>À propos</Text>
-        <View style={styles.group}>
+        <Text style={[s.sectionLabel, { marginTop: Spacing.xl }]}>À propos</Text>
+        <View style={s.group}>
           <SettingsRow
             icon="information-circle-outline"
-            iconBg={Colors.light.surfaceSunk}
-            iconInk={Colors.light.ink2}
+            iconBg={C.surfaceSunk}
+            iconInk={C.ink2}
             label="Version"
             value="1.0.0 — Dona"
           />
           <SettingsRow
             icon="shield-checkmark-outline"
-            iconBg={Colors.light.surfaceSunk}
-            iconInk={Colors.light.ink2}
+            iconBg={C.surfaceSunk}
+            iconInk={C.ink2}
             label="Confidentialité"
           />
         </View>
 
         {/* Sign out */}
         <TouchableOpacity
-          style={styles.signOutBtn}
+          style={s.signOutBtn}
           onPress={signOut}
           accessibilityRole="button"
           accessibilityLabel="Se déconnecter"
         >
           <Ionicons name="log-out-outline" size={18} color="#DC2626" />
-          <Text style={styles.signOutText}>Se déconnecter</Text>
+          <Text style={s.signOutText}>Se déconnecter</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe:    { flex: 1, backgroundColor: Colors.light.background },
-  scroll:  { flex: 1 },
-  content: { paddingHorizontal: Spacing.lg, paddingBottom: 120 },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    safe:    { flex: 1, backgroundColor: C.background },
+    scroll:  { flex: 1 },
+    content: { paddingHorizontal: Spacing.lg, paddingBottom: 120 },
 
-  avatarSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.base,
-    paddingVertical: Spacing.xl,
-  },
-  avatar: {
-    width: 64, height: 64, borderRadius: 20,
-    backgroundColor: Colors.light.primary,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarLetter: { fontSize: 28, fontWeight: '800', color: Colors.light.onPrimary },
+    avatarSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.base,
+      paddingVertical: Spacing.xl,
+    },
+    avatar: {
+      width: 64, height: 64, borderRadius: 20,
+      backgroundColor: C.primary,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    avatarLetter: { fontSize: 28, fontWeight: '800', color: C.onPrimary },
 
-  screenTitle: { fontSize: 26, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.5 },
-  editHint:    { fontSize: FontSize.sm, color: Colors.light.ink3, marginTop: 2 },
-  goalBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: Colors.light.primaryTint,
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    marginTop: 6, alignSelf: 'flex-start',
-  },
-  goalText: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.light.primaryStrong },
+    screenTitle: { fontSize: 26, fontWeight: '800', color: C.ink, letterSpacing: -0.5 },
+    editHint:    { fontSize: FontSize.sm, color: C.ink3, marginTop: 2 },
+    goalBadge: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      backgroundColor: C.primaryTint,
+      borderRadius: Radius.pill,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 4,
+      marginTop: 6, alignSelf: 'flex-start',
+    },
+    goalText: { fontSize: FontSize.xs, fontWeight: '700', color: C.primaryStrong },
 
-  sectionLabel: {
-    fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
-    textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: Spacing.md,
-  },
-  group: { gap: Spacing.md },
+    sectionLabel: {
+      fontSize: 11, fontWeight: '700', color: C.ink3,
+      textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: Spacing.md,
+    },
+    group: { gap: Spacing.md },
 
-  signOutBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: Spacing.sm, marginTop: Spacing.xl, marginBottom: Spacing.lg,
-    paddingVertical: Spacing.base,
-    backgroundColor: '#FEE2E2',
-    borderRadius: Radius.pill,
-  },
-  signOutText: { fontSize: FontSize.base, fontWeight: '700', color: '#DC2626' },
+    signOutBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: Spacing.sm, marginTop: Spacing.xl, marginBottom: Spacing.lg,
+      paddingVertical: Spacing.base,
+      backgroundColor: '#FEE2E2',
+      borderRadius: Radius.pill,
+    },
+    signOutText: { fontSize: FontSize.base, fontWeight: '700', color: '#DC2626' },
 
-  tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  tag: {
-    backgroundColor: Colors.light.primaryTint, borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md, paddingVertical: 7,
-  },
-  tagText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.primaryStrong },
-});
+    tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+    tag: {
+      backgroundColor: C.primaryTint, borderRadius: Radius.pill,
+      paddingHorizontal: Spacing.md, paddingVertical: 7,
+    },
+    tagText: { fontSize: FontSize.sm, fontWeight: '700', color: C.primaryStrong },
+  });
+}

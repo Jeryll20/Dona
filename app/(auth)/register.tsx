@@ -7,11 +7,13 @@ import { useState } from 'react';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Logo } from '@/components/ui/Logo';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
 export default function RegisterScreen() {
+  const C = useColors();
+  const s = makeStyles(C);
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [confirm,  setConfirm]  = useState('');
@@ -79,7 +81,7 @@ export default function RegisterScreen() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="toi@email.com"
-                placeholderTextColor={Colors.light.ink3}
+                placeholderTextColor={C.ink3}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
@@ -95,7 +97,7 @@ export default function RegisterScreen() {
                 value={password}
                 onChangeText={setPassword}
                 placeholder="6 caractères minimum"
-                placeholderTextColor={Colors.light.ink3}
+                placeholderTextColor={C.ink3}
                 secureTextEntry
                 autoComplete="new-password"
                 returnKeyType="next"
@@ -110,7 +112,7 @@ export default function RegisterScreen() {
                 value={confirm}
                 onChangeText={setConfirm}
                 placeholder="••••••••"
-                placeholderTextColor={Colors.light.ink3}
+                placeholderTextColor={C.ink3}
                 secureTextEntry
                 returnKeyType="done"
                 onSubmitEditing={handleRegister}
@@ -132,7 +134,7 @@ export default function RegisterScreen() {
               accessibilityLabel="Créer mon compte"
             >
               {loading
-                ? <ActivityIndicator color={Colors.light.onPrimary} />
+                ? <ActivityIndicator color={C.onPrimary} />
                 : <Text style={s.btnText}>Créer mon compte</Text>
               }
             </TouchableOpacity>
@@ -154,45 +156,47 @@ export default function RegisterScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  safe:  { flex: 1, backgroundColor: Colors.light.background },
-  inner: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, paddingBottom: Spacing.xl },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    safe:  { flex: 1, backgroundColor: C.background },
+    inner: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, paddingBottom: Spacing.xl },
 
-  logoWrap: { alignItems: 'center', marginBottom: Spacing.xl, gap: Spacing.sm },
-  appName:  { fontSize: 22, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.5 },
+    logoWrap: { alignItems: 'center', marginBottom: Spacing.xl, gap: Spacing.sm },
+    appName:  { fontSize: 22, fontWeight: '800', color: C.ink, letterSpacing: -0.5 },
 
-  title: { fontSize: 28, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.5, marginBottom: Spacing.sm },
-  sub:   { fontSize: FontSize.base, color: Colors.light.ink3, marginBottom: Spacing.xl, lineHeight: 22 },
+    title: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -0.5, marginBottom: Spacing.sm },
+    sub:   { fontSize: FontSize.base, color: C.ink3, marginBottom: Spacing.xl, lineHeight: 22 },
 
-  form:  { gap: Spacing.md },
-  field: { gap: Spacing.xs },
-  label: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.ink2 },
-  input: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.base,
-    fontSize: FontSize.base,
-    fontWeight: '500',
-    color: Colors.light.ink,
-    ...Shadow.sm,
-  },
+    form:  { gap: Spacing.md },
+    field: { gap: Spacing.xs },
+    label: { fontSize: FontSize.sm, fontWeight: '700', color: C.ink2 },
+    input: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.base,
+      fontSize: FontSize.base,
+      fontWeight: '500',
+      color: C.ink,
+      ...Shadow.sm,
+    },
 
-  errorWrap: { backgroundColor: '#FEE2E2', borderRadius: Radius.input, padding: Spacing.md },
-  errorText: { fontSize: FontSize.sm, color: '#DC2626', fontWeight: '600' },
+    errorWrap: { backgroundColor: '#FEE2E2', borderRadius: Radius.input, padding: Spacing.md },
+    errorText: { fontSize: FontSize.sm, color: '#DC2626', fontWeight: '600' },
 
-  btn: {
-    backgroundColor: Colors.light.primary,
-    borderRadius: Radius.pill,
-    paddingVertical: Spacing.base,
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-    ...Shadow.sm,
-  },
-  btnOff:  { opacity: 0.6 },
-  btnText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.onPrimary },
+    btn: {
+      backgroundColor: C.primary,
+      borderRadius: Radius.pill,
+      paddingVertical: Spacing.base,
+      alignItems: 'center',
+      marginTop: Spacing.sm,
+      ...Shadow.sm,
+    },
+    btnOff:  { opacity: 0.6 },
+    btnText: { fontSize: FontSize.base, fontWeight: '700', color: C.onPrimary },
 
-  footer:     { flexDirection: 'row', justifyContent: 'center', gap: Spacing.xs, marginTop: Spacing.xl },
-  footerText: { fontSize: FontSize.base, color: Colors.light.ink3 },
-  footerLink: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primary },
-});
+    footer:     { flexDirection: 'row', justifyContent: 'center', gap: Spacing.xs, marginTop: Spacing.xl },
+    footerText: { fontSize: FontSize.base, color: C.ink3 },
+    footerLink: { fontSize: FontSize.base, fontWeight: '700', color: C.primary },
+  });
+}

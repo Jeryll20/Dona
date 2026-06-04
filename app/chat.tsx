@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 import { Icon } from '@/components/ui/Icon';
 import { Logo } from '@/components/ui/Logo';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { sendChatMessage, HistoryMessage, PlanningAction, AddActivityAction, UpdateSleepAction } from '@/lib/ai';
@@ -27,6 +27,8 @@ interface Message {
 // ── Bubble ────────────────────────────────────────────────────────────────────
 
 function Bubble({ message }: { message: Message }) {
+  const C = useColors();
+  const s = makeStyles(C);
   const opacity    = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(8)).current;
 
@@ -42,18 +44,18 @@ function Bubble({ message }: { message: Message }) {
   return (
     <Animated.View
       style={[
-        styles.bubbleRow,
-        isBot ? styles.bubbleRowBot : styles.bubbleRowUser,
+        s.bubbleRow,
+        isBot ? s.bubbleRowBot : s.bubbleRowUser,
         { opacity, transform: [{ translateY }] },
       ]}
     >
       {isBot && (
-        <View style={styles.avatar}>
-          <Icon name="spark" size={15} stroke={Colors.light.primary} />
+        <View style={s.avatar}>
+          <Icon name="spark" size={15} stroke={C.primary} />
         </View>
       )}
-      <View style={[styles.bubble, isBot ? styles.bubbleBot : styles.bubbleUser]}>
-        <Text style={[styles.bubbleText, isBot ? styles.bubbleTextBot : styles.bubbleTextUser]}>
+      <View style={[s.bubble, isBot ? s.bubbleBot : s.bubbleUser]}>
+        <Text style={[s.bubbleText, isBot ? s.bubbleTextBot : s.bubbleTextUser]}>
           {message.text}
         </Text>
       </View>
@@ -64,6 +66,8 @@ function Bubble({ message }: { message: Message }) {
 // ── Typing indicator ──────────────────────────────────────────────────────────
 
 function TypingIndicator() {
+  const C = useColors();
+  const s = makeStyles(C);
   const dots = [
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
@@ -86,17 +90,17 @@ function TypingIndicator() {
   }, []);
 
   return (
-    <View style={[styles.bubbleRow, styles.bubbleRowBot]}>
-      <View style={styles.avatar}>
-        <Icon name="spark" size={14} stroke={Colors.light.primary} />
+    <View style={[s.bubbleRow, s.bubbleRowBot]}>
+      <View style={s.avatar}>
+        <Icon name="spark" size={14} stroke={C.primary} />
       </View>
-      <View style={[styles.bubble, styles.bubbleBot, styles.typingBubble]}>
-        <View style={styles.typingDots}>
+      <View style={[s.bubble, s.bubbleBot, s.typingBubble]}>
+        <View style={s.typingDots}>
           {dots.map((dot, i) => (
             <Animated.View
               key={i}
               style={[
-                styles.typingDot,
+                s.typingDot,
                 {
                   opacity: dot,
                   transform: [
@@ -121,6 +125,8 @@ function QuickChips({
   chips:  string[];
   onPick: (c: string) => void;
 }) {
+  const C = useColors();
+  const s = makeStyles(C);
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -128,17 +134,17 @@ function QuickChips({
   }, [chips]);
 
   return (
-    <Animated.View style={[styles.chipsRow, { opacity }]}>
+    <Animated.View style={[s.chipsRow, { opacity }]}>
       {chips.map((c, i) => (
         <TouchableOpacity
           key={i}
-          style={styles.chip}
+          style={s.chip}
           onPress={() => onPick(c)}
           activeOpacity={0.75}
           accessibilityRole="button"
           accessibilityLabel={c}
         >
-          <Text style={styles.chipText}>{c}</Text>
+          <Text style={s.chipText}>{c}</Text>
         </TouchableOpacity>
       ))}
     </Animated.View>
@@ -161,6 +167,8 @@ function ActionCard({
   onConfirm: () => void;
   onDismiss: () => void;
 }) {
+  const C = useColors();
+  const s = makeStyles(C);
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
@@ -185,27 +193,27 @@ function ActionCard({
   }
 
   return (
-    <Animated.View style={[styles.actionCard, { opacity }]}>
-      <View style={styles.actionCardBody}>
-        <Text style={styles.actionCardTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.actionCardSub}>{subtitle}</Text> : null}
+    <Animated.View style={[s.actionCard, { opacity }]}>
+      <View style={s.actionCardBody}>
+        <Text style={s.actionCardTitle}>{title}</Text>
+        {subtitle ? <Text style={s.actionCardSub}>{subtitle}</Text> : null}
       </View>
-      <View style={styles.actionCardBtns}>
+      <View style={s.actionCardBtns}>
         <TouchableOpacity
-          style={[styles.actionBtn, styles.actionBtnConfirm]}
+          style={[s.actionBtn, s.actionBtnConfirm]}
           onPress={onConfirm}
           accessibilityLabel="Confirmer"
           accessibilityRole="button"
         >
-          <Text style={styles.actionBtnConfirmText}>Confirmer</Text>
+          <Text style={s.actionBtnConfirmText}>Confirmer</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionBtn, styles.actionBtnDismiss]}
+          style={[s.actionBtn, s.actionBtnDismiss]}
           onPress={onDismiss}
           accessibilityLabel="Annuler"
           accessibilityRole="button"
         >
-          <Text style={styles.actionBtnDismissText}>Annuler</Text>
+          <Text style={s.actionBtnDismissText}>Annuler</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -222,6 +230,8 @@ const WELCOME_CHIPS = ["Mon planning ne me correspond pas", "Je veux ajouter une
 const ERROR_TEXT    = "Oups, je n'arrive pas à te répondre pour l'instant. Réessaie dans quelques secondes.";
 
 export default function ChatScreen() {
+  const C = useColors();
+  const s = makeStyles(C);
   const scrollRef = useRef<ScrollView>(null);
   const inputRef  = useRef<TextInput>(null);
   const insets    = useSafeAreaInsets();
@@ -236,8 +246,8 @@ export default function ChatScreen() {
   const [pendingAction, setPendingAction] = useState<PlanningAction | null>(null);
   const historyRef = useRef<HistoryMessage[]>([]);
 
-  const addActivity  = useScheduleStore((s) => s.addActivity);
-  const setSleep     = useUserStore((s) => s.setSleep);
+  const addActivity  = useScheduleStore((st) => st.addActivity);
+  const setSleep     = useUserStore((st) => st.setSleep);
 
   function executeAction(action: PlanningAction) {
     if (action.type === 'add_activity') {
@@ -327,31 +337,31 @@ export default function ChatScreen() {
   const extraBottom = Math.max(0, kbHeight - insets.bottom);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
+        <View style={s.header}>
+          <View style={s.headerLeft}>
             <Logo size={40} />
             <View>
-              <Text style={styles.headerName}>Dona</Text>
-              <Text style={styles.headerSub}>Assistante planning</Text>
+              <Text style={s.headerName}>Dona</Text>
+              <Text style={s.headerSub}>Assistante planning</Text>
             </View>
           </View>
           <TouchableOpacity
-            style={styles.closeBtn}
+            style={s.closeBtn}
             onPress={() => router.back()}
             accessibilityLabel="Fermer le chat"
             accessibilityRole="button"
           >
-            <Icon name="x" size={20} stroke={Colors.light.ink2} />
+            <Icon name="x" size={20} stroke={C.ink2} />
           </TouchableOpacity>
         </View>
 
         {/* Messages */}
         <ScrollView
           ref={scrollRef}
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={s.scroll}
+          contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
@@ -375,14 +385,14 @@ export default function ChatScreen() {
         )}
 
         {/* Input bar */}
-        <View style={[styles.inputBar, { paddingBottom: Spacing.md + extraBottom }]}>
+        <View style={[s.inputBar, { paddingBottom: Spacing.md + extraBottom }]}>
           <TextInput
             ref={inputRef}
-            style={styles.textInput}
+            style={s.textInput}
             value={input}
             onChangeText={setInput}
             placeholder="Écris un message…"
-            placeholderTextColor={Colors.light.ink3}
+            placeholderTextColor={C.ink3}
             multiline
             returnKeyType="send"
             blurOnSubmit
@@ -390,13 +400,13 @@ export default function ChatScreen() {
             accessibilityLabel="Message"
           />
           <TouchableOpacity
-            style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnOff]}
+            style={[s.sendBtn, (!input.trim() || loading) && s.sendBtnOff]}
             onPress={() => send(input)}
             disabled={!input.trim() || loading}
             accessibilityRole="button"
             accessibilityLabel="Envoyer"
           >
-            <Icon name="arrow" size={18} stroke={Colors.light.onPrimary} />
+            <Icon name="arrow" size={18} stroke={C.onPrimary} />
           </TouchableOpacity>
         </View>
     </SafeAreaView>
@@ -405,172 +415,174 @@ export default function ChatScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.light.background },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: C.background },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.hairline,
-    backgroundColor: Colors.light.surface,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  headerName: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink },
-  headerSub:  { fontSize: 12.5,          fontWeight: '600', color: Colors.light.primaryStrong },
-  closeBtn: {
-    width: 36, height: 36, borderRadius: Radius.pill,
-    backgroundColor: Colors.light.surfaceSunk,
-    alignItems: 'center', justifyContent: 'center',
-  },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: C.hairline,
+      backgroundColor: C.surface,
+    },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    headerName: { fontSize: FontSize.base, fontWeight: '700', color: C.ink },
+    headerSub:  { fontSize: 12.5,          fontWeight: '600', color: C.primaryStrong },
+    closeBtn: {
+      width: 36, height: 36, borderRadius: Radius.pill,
+      backgroundColor: C.surfaceSunk,
+      alignItems: 'center', justifyContent: 'center',
+    },
 
-  scroll:        { flex: 1 },
-  scrollContent: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xl },
+    scroll:        { flex: 1 },
+    scrollContent: { padding: Spacing.lg, gap: Spacing.md, paddingBottom: Spacing.xl },
 
-  bubbleRow:     { flexDirection: 'row', gap: Spacing.sm, maxWidth: '85%' },
-  bubbleRowBot:  { alignSelf: 'flex-start' },
-  bubbleRowUser: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
+    bubbleRow:     { flexDirection: 'row', gap: Spacing.sm, maxWidth: '85%' },
+    bubbleRowBot:  { alignSelf: 'flex-start' },
+    bubbleRowUser: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
 
-  avatar: {
-    marginTop: 2,
-    flexShrink: 0,
-    width: 28,
-    height: 28,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    avatar: {
+      marginTop: 2,
+      flexShrink: 0,
+      width: 28,
+      height: 28,
+      borderRadius: Radius.pill,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  bubble: {
-    borderRadius: Radius.block,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    flexShrink: 1,
-  },
-  bubbleBot: {
-    backgroundColor: Colors.light.surface,
-    borderBottomLeftRadius: 4,
-    ...Shadow.sm,
-  },
-  bubbleUser: {
-    backgroundColor: Colors.light.primary,
-    borderBottomRightRadius: 4,
-  },
-  bubbleText:     { fontSize: FontSize.md, lineHeight: 22 },
-  bubbleTextBot:  { color: Colors.light.ink },
-  bubbleTextUser: { color: Colors.light.onPrimary },
+    bubble: {
+      borderRadius: Radius.block,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: Spacing.md,
+      flexShrink: 1,
+    },
+    bubbleBot: {
+      backgroundColor: C.surface,
+      borderBottomLeftRadius: 4,
+      ...Shadow.sm,
+    },
+    bubbleUser: {
+      backgroundColor: C.primary,
+      borderBottomRightRadius: 4,
+    },
+    bubbleText:     { fontSize: FontSize.md, lineHeight: 22 },
+    bubbleTextBot:  { color: C.ink },
+    bubbleTextUser: { color: C.onPrimary },
 
-  typingBubble: { paddingVertical: Spacing.base },
-  typingDots:   { flexDirection: 'row', gap: 5, alignItems: 'center' },
-  typingDot: {
-    width: 7, height: 7, borderRadius: 4,
-    backgroundColor: Colors.light.primary,
-  },
+    typingBubble: { paddingVertical: Spacing.base },
+    typingDots:   { flexDirection: 'row', gap: 5, alignItems: 'center' },
+    typingDot: {
+      width: 7, height: 7, borderRadius: 4,
+      backgroundColor: C.primary,
+    },
 
-  actionCard: {
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-    backgroundColor: Colors.light.primaryTint,
-    borderRadius: Radius.block,
-    borderWidth: 1,
-    borderColor: Colors.light.primaryTint2,
-    overflow: 'hidden',
-    ...Shadow.sm,
-  },
-  actionCardBody: {
-    paddingHorizontal: Spacing.base,
-    paddingTop: Spacing.base,
-    paddingBottom: Spacing.sm,
-  },
-  actionCardTitle: {
-    fontSize: FontSize.base,
-    fontWeight: '700',
-    color: Colors.light.primaryStrong,
-  },
-  actionCardSub: {
-    fontSize: FontSize.sm,
-    color: Colors.light.primary,
-    marginTop: 3,
-  },
-  actionCardBtns: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.primaryTint2,
-  },
-  actionBtn: {
-    flex: 1,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-  },
-  actionBtnConfirm: {
-    backgroundColor: Colors.light.primary,
-  },
-  actionBtnConfirmText: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.light.onPrimary,
-  },
-  actionBtnDismiss: {
-    backgroundColor: 'transparent',
-  },
-  actionBtnDismissText: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.light.ink3,
-  },
+    actionCard: {
+      marginHorizontal: Spacing.lg,
+      marginBottom: Spacing.sm,
+      backgroundColor: C.primaryTint,
+      borderRadius: Radius.block,
+      borderWidth: 1,
+      borderColor: C.primaryTint2,
+      overflow: 'hidden',
+      ...Shadow.sm,
+    },
+    actionCardBody: {
+      paddingHorizontal: Spacing.base,
+      paddingTop: Spacing.base,
+      paddingBottom: Spacing.sm,
+    },
+    actionCardTitle: {
+      fontSize: FontSize.base,
+      fontWeight: '700',
+      color: C.primaryStrong,
+    },
+    actionCardSub: {
+      fontSize: FontSize.sm,
+      color: C.primary,
+      marginTop: 3,
+    },
+    actionCardBtns: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: C.primaryTint2,
+    },
+    actionBtn: {
+      flex: 1,
+      paddingVertical: Spacing.md,
+      alignItems: 'center',
+    },
+    actionBtnConfirm: {
+      backgroundColor: C.primary,
+    },
+    actionBtnConfirmText: {
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+      color: C.onPrimary,
+    },
+    actionBtnDismiss: {
+      backgroundColor: 'transparent',
+    },
+    actionBtnDismissText: {
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+      color: C.ink3,
+    },
 
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.hairline,
-  },
-  chip: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.light.hairline,
-    ...Shadow.sm,
-  },
-  chipText: { fontSize: FontSize.md, fontWeight: '500', color: Colors.light.ink },
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: C.hairline,
+    },
+    chip: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: Spacing.md,
+      borderWidth: 1,
+      borderColor: C.hairline,
+      ...Shadow.sm,
+    },
+    chipText: { fontSize: FontSize.md, fontWeight: '500', color: C.ink },
 
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.hairline,
-    backgroundColor: Colors.light.surface,
-  },
-  textInput: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Platform.OS === 'ios' ? Spacing.md : Spacing.sm,
-    fontSize: FontSize.base,
-    fontWeight: '500',
-    color: Colors.light.ink,
-    maxHeight: 100,
-    ...Shadow.sm,
-  },
-  sendBtn: {
-    width: 42, height: 42, borderRadius: Radius.pill,
-    backgroundColor: Colors.light.primary,
-    alignItems: 'center', justifyContent: 'center',
-    ...Shadow.sm,
-  },
-  sendBtnOff: { opacity: 0.45 },
-});
+    inputBar: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: C.hairline,
+      backgroundColor: C.surface,
+    },
+    textInput: {
+      flex: 1,
+      backgroundColor: C.background,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: Platform.OS === 'ios' ? Spacing.md : Spacing.sm,
+      fontSize: FontSize.base,
+      fontWeight: '500',
+      color: C.ink,
+      maxHeight: 100,
+      ...Shadow.sm,
+    },
+    sendBtn: {
+      width: 42, height: 42, borderRadius: Radius.pill,
+      backgroundColor: C.primary,
+      alignItems: 'center', justifyContent: 'center',
+      ...Shadow.sm,
+    },
+    sendBtnOff: { opacity: 0.45 },
+  });
+}

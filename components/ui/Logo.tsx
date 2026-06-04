@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 
 interface LogoProps {
   size?: number;
@@ -14,9 +14,10 @@ const D_PATH =
   'C 38,90 39,85 47,79 C 57,71 62,65 62,57 C 62,49 57,43 47,37 C 39,32 38,23 38,23 Z';
 
 export function Logo({ size = 40 }: LogoProps) {
+  const C = useColors();
   return (
     <LinearGradient
-      colors={[Colors.light.primary, Colors.light.primaryStrong]}
+      colors={[C.primary, C.primaryStrong]}
       start={{ x: 0.15, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.wrap, { width: size, height: size, borderRadius: size * 0.32 }]}

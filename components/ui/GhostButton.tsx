@@ -1,5 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, TouchableOpacityProps } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
@@ -8,32 +8,37 @@ interface GhostButtonProps extends TouchableOpacityProps {
 }
 
 export function GhostButton({ label, style, ...rest }: GhostButtonProps) {
+  const C = useColors();
+  const s = makeStyles(C);
+
   return (
     <TouchableOpacity
       activeOpacity={0.82}
-      style={[styles.btn, style]}
+      style={[s.btn, style]}
       accessibilityRole="button"
       accessibilityLabel={label}
       {...rest}
     >
-      <Text style={styles.label}>{label}</Text>
+      <Text style={s.label}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  btn: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.pill,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.sm,
-  },
-  label: {
-    color: Colors.light.ink,
-    fontSize: FontSize.base,
-    fontWeight: '600',
-  },
-});
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    btn: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.pill,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Shadow.sm,
+    },
+    label: {
+      color: C.ink,
+      fontSize: FontSize.base,
+      fontWeight: '600',
+    },
+  });
+}

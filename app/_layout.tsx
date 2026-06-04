@@ -2,6 +2,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { useIsDark } from '@/hooks/useColors';
 import {
   useFonts,
   HankenGrotesk_300Light,
@@ -131,6 +132,7 @@ function useProtectedRoute() {
 }
 
 export default function RootLayout() {
+  const isDark = useIsDark();
   const [fontsLoaded, fontError] = useFonts({
     HankenGrotesk_300Light,
     HankenGrotesk_400Regular,
@@ -167,7 +169,7 @@ export default function RootLayout() {
 
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />

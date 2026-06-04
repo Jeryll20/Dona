@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { searchAddresses } from '@/lib/maps';
@@ -17,6 +17,8 @@ interface Props {
 }
 
 export function LocationPicker({ value, onChange, placeholder = 'Rechercher une adresse…' }: Props) {
+  const C = useColors();
+  const s = makeStyles(C);
   const [query,   setQuery]   = useState('');
   const [results, setResults] = useState<AddressResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,14 +69,14 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
         activeOpacity={0.7}
         accessibilityLabel="Modifier l'adresse"
       >
-        <Ionicons name="location" size={15} color={Colors.light.primary} />
+        <Ionicons name="location" size={15} color={C.primary} />
         <Text style={s.selectedText} numberOfLines={2}>{value.address}</Text>
         <TouchableOpacity
           onPress={clear}
           hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
           accessibilityLabel="Supprimer l'adresse"
         >
-          <Ionicons name="close-circle" size={16} color={Colors.light.ink3} />
+          <Ionicons name="close-circle" size={16} color={C.ink3} />
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -84,7 +86,7 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
   return (
     <View>
       <View style={s.inputWrap}>
-        <Ionicons name="search-outline" size={15} color={Colors.light.ink3} />
+        <Ionicons name="search-outline" size={15} color={C.ink3} />
         <TextInput
           style={s.input}
           value={query}
@@ -92,17 +94,17 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
           onFocus={() => setEditing(true)}
           onSubmitEditing={confirmManual}
           placeholder={placeholder}
-          placeholderTextColor={Colors.light.ink3}
+          placeholderTextColor={C.ink3}
           returnKeyType="done"
           autoCorrect={false}
           accessibilityLabel="Rechercher une adresse"
         />
         {loading
-          ? <ActivityIndicator size="small" color={Colors.light.primary} />
+          ? <ActivityIndicator size="small" color={C.primary} />
           : query.length > 0
           ? (
             <TouchableOpacity onPress={clear} accessibilityLabel="Effacer">
-              <Ionicons name="close-circle" size={15} color={Colors.light.ink3} />
+              <Ionicons name="close-circle" size={15} color={C.ink3} />
             </TouchableOpacity>
           ) : null
         }
@@ -117,7 +119,7 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
               onPress={() => selectResult(r)}
               accessibilityLabel={r.address}
             >
-              <Ionicons name="location-outline" size={13} color={Colors.light.ink3} style={s.predIcon} />
+              <Ionicons name="location-outline" size={13} color={C.ink3} style={s.predIcon} />
               <Text style={s.predText} numberOfLines={2}>{r.address}</Text>
             </TouchableOpacity>
           ))}
@@ -131,59 +133,61 @@ export function LocationPicker({ value, onChange, placeholder = 'Rechercher une 
   );
 }
 
-const s = StyleSheet.create({
-  selected: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.light.primaryTint,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.light.primary,
-  },
-  selectedText: {
-    flex: 1,
-    fontSize: FontSize.sm,
-    fontWeight: '500',
-    color: Colors.light.primaryStrong,
-  },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    selected: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      backgroundColor: C.primaryTint,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderWidth: 1,
+      borderColor: C.primary,
+    },
+    selectedText: {
+      flex: 1,
+      fontSize: FontSize.sm,
+      fontWeight: '500',
+      color: C.primaryStrong,
+    },
 
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.light.surfaceSunk,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.base,
-  },
-  input: {
-    flex: 1,
-    fontSize: FontSize.base,
-    fontWeight: '500',
-    color: Colors.light.ink,
-    padding: 0,
-  },
+    inputWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      backgroundColor: C.surfaceSunk,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.base,
+    },
+    input: {
+      flex: 1,
+      fontSize: FontSize.base,
+      fontWeight: '500',
+      color: C.ink,
+      padding: 0,
+    },
 
-  dropdown: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    marginTop: 4,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.light.hairline,
-  },
-  prediction: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-  },
-  predBorder: { borderBottomWidth: 1, borderBottomColor: Colors.light.hairline },
-  predIcon:   { marginTop: 2, flexShrink: 0 },
-  predText:   { flex: 1, fontSize: FontSize.sm, fontWeight: '500', color: Colors.light.ink, lineHeight: 18 },
-  noResult:   { fontSize: FontSize.xs, color: Colors.light.ink3, fontStyle: 'italic', marginTop: 6, paddingHorizontal: 2 },
-});
+    dropdown: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      marginTop: 4,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: C.hairline,
+    },
+    prediction: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+    },
+    predBorder: { borderBottomWidth: 1, borderBottomColor: C.hairline },
+    predIcon:   { marginTop: 2, flexShrink: 0 },
+    predText:   { flex: 1, fontSize: FontSize.sm, fontWeight: '500', color: C.ink, lineHeight: 18 },
+    noResult:   { fontSize: FontSize.xs, color: C.ink3, fontStyle: 'italic', marginTop: 6, paddingHorizontal: 2 },
+  });
+}

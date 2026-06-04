@@ -10,7 +10,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { LocationPicker } from '@/components/ui/LocationPicker';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import type { ActivityLocation } from '@/types';
@@ -32,8 +32,10 @@ function formatDate(iso: string): string {
 }
 
 export default function AccountScreen() {
+  const C = useColors();
+  const s = makeStyles(C);
   const { profile, setProfile } = useUserStore();
-  const email = useAuthStore((s) => s.session?.user?.email ?? '');
+  const email = useAuthStore((st) => st.session?.user?.email ?? '');
 
   const [firstName,   setFirstName]   = useState(profile.firstName   ?? '');
   const [lastName,    setLastName]    = useState(profile.lastName     ?? '');
@@ -95,59 +97,59 @@ export default function AccountScreen() {
   const avatarLetter = (firstName.trim() || profile.firstName || 'D')[0].toUpperCase();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={s.safe} edges={['top']}>
+      <View style={s.header}>
         <TouchableOpacity
-          style={styles.backBtn}
+          style={s.backBtn}
           onPress={() => router.back()}
           accessibilityLabel="Retour"
         >
-          <Ionicons name="chevron-back" size={20} color={Colors.light.primary} />
+          <Ionicons name="chevron-back" size={20} color={C.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Mon compte</Text>
+        <Text style={s.title}>Mon compte</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
         ref={scrollRef}
-        style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: keyboardH > 0 ? keyboardH + 40 : 120 }]}
+        style={s.scroll}
+        contentContainerStyle={[s.content, { paddingBottom: keyboardH > 0 ? keyboardH + 40 : 120 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Avatar preview */}
-        <View style={styles.avatarWrap}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarLetter}>{avatarLetter}</Text>
+        <View style={s.avatarWrap}>
+          <View style={s.avatar}>
+            <Text style={s.avatarLetter}>{avatarLetter}</Text>
           </View>
         </View>
 
         {/* Form */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Identité</Text>
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>Identité</Text>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Prénom</Text>
+          <View style={s.field}>
+            <Text style={s.label}>Prénom</Text>
             <TextInput
-              style={styles.input}
+              style={s.input}
               value={firstName}
               onChangeText={setFirstName}
               placeholder="Ton prénom"
-              placeholderTextColor={Colors.light.ink3}
+              placeholderTextColor={C.ink3}
               autoCapitalize="words"
               returnKeyType="next"
               accessibilityLabel="Prénom"
             />
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Nom de famille</Text>
+          <View style={s.field}>
+            <Text style={s.label}>Nom de famille</Text>
             <TextInput
-              style={styles.input}
+              style={s.input}
               value={lastName}
               onChangeText={setLastName}
               placeholder="Ton nom (optionnel)"
-              placeholderTextColor={Colors.light.ink3}
+              placeholderTextColor={C.ink3}
               autoCapitalize="words"
               returnKeyType="done"
               accessibilityLabel="Nom de famille"
@@ -155,49 +157,49 @@ export default function AccountScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Sexe</Text>
-          <View style={styles.genderRow}>
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>Sexe</Text>
+          <View style={s.genderRow}>
             {(['homme', 'femme', 'autre'] as const).map((key) => {
               const labels = { homme: 'Homme', femme: 'Femme', autre: 'Autre' };
               const on = genderKey === key;
               return (
                 <TouchableOpacity
                   key={key}
-                  style={[styles.genderPill, on && styles.genderPillOn]}
+                  style={[s.genderPill, on && s.genderPillOn]}
                   onPress={() => setGenderKey(key)}
                   accessibilityLabel={labels[key]}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on }}
                 >
-                  <Text style={[styles.genderText, on && styles.genderTextOn]}>{labels[key]}</Text>
+                  <Text style={[s.genderText, on && s.genderTextOn]}>{labels[key]}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
           {genderKey === 'autre' && (
             <TextInput
-              style={styles.input}
+              style={s.input}
               value={genderOther}
               onChangeText={setGenderOther}
               placeholder="Précise si tu le souhaites…"
-              placeholderTextColor={Colors.light.ink3}
+              placeholderTextColor={C.ink3}
               returnKeyType="done"
               accessibilityLabel="Préciser le genre"
             />
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Date de naissance</Text>
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>Date de naissance</Text>
           <TouchableOpacity
-            style={styles.dateRow}
+            style={s.dateRow}
             onPress={() => setShowPicker(true)}
             accessibilityRole="button"
             accessibilityLabel="Choisir la date de naissance"
           >
-            <Ionicons name="calendar-outline" size={18} color={Colors.light.primary} />
-            <Text style={[styles.dateText, !dateOfBirth && styles.datePlaceholder]}>
+            <Ionicons name="calendar-outline" size={18} color={C.primary} />
+            <Text style={[s.dateText, !dateOfBirth && s.datePlaceholder]}>
               {dateOfBirth ? formatDate(dateOfBirth.toISOString().split('T')[0]) : 'Non renseignée'}
             </Text>
             {dateOfBirth && (
@@ -206,7 +208,7 @@ export default function AccountScreen() {
                 hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                 accessibilityLabel="Effacer la date"
               >
-                <Ionicons name="close-circle" size={18} color={Colors.light.ink3} />
+                <Ionicons name="close-circle" size={18} color={C.ink3} />
               </TouchableOpacity>
             )}
           </TouchableOpacity>
@@ -222,131 +224,133 @@ export default function AccountScreen() {
                 if (date) setDateOfBirth(date);
               }}
               themeVariant="light"
-              accentColor={Colors.light.primary}
+              accentColor={C.primary}
             />
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Domicile</Text>
-          <Text style={styles.hint}>
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>Domicile</Text>
+          <Text style={s.hint}>
             Utilisée pour calculer les temps de trajet vers tes activités.
           </Text>
           <LocationPicker value={homeLocation} onChange={setHomeLocation} placeholder="Adresse de ton domicile…" />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Compte</Text>
-          <View style={styles.emailRow}>
-            <Ionicons name="mail-outline" size={18} color={Colors.light.ink3} />
-            <Text style={styles.emailText}>{email}</Text>
-            <View style={styles.readonlyBadge}>
-              <Text style={styles.readonlyText}>lecture seule</Text>
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>Compte</Text>
+          <View style={s.emailRow}>
+            <Ionicons name="mail-outline" size={18} color={C.ink3} />
+            <Text style={s.emailText}>{email}</Text>
+            <View style={s.readonlyBadge}>
+              <Text style={s.readonlyText}>lecture seule</Text>
             </View>
           </View>
         </View>
 
         <TouchableOpacity
-          style={styles.saveBtn}
+          style={s.saveBtn}
           onPress={handleSave}
           accessibilityRole="button"
           accessibilityLabel="Enregistrer"
         >
-          <Text style={styles.saveBtnText}>Enregistrer</Text>
+          <Text style={s.saveBtnText}>Enregistrer</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe:    { flex: 1, backgroundColor: Colors.light.background },
-  header:  {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
-  },
-  backBtn: {
-    width: 36, height: 36, borderRadius: Radius.input,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  title: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.3 },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    safe:    { flex: 1, backgroundColor: C.background },
+    header:  {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md,
+    },
+    backBtn: {
+      width: 36, height: 36, borderRadius: Radius.input,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    title: { fontSize: FontSize.lg, fontWeight: '800', color: C.ink, letterSpacing: -0.3 },
 
-  scroll:  { flex: 1 },
-  content: { paddingHorizontal: Spacing.lg, paddingBottom: 120, gap: Spacing.xl },
+    scroll:  { flex: 1 },
+    content: { paddingHorizontal: Spacing.lg, paddingBottom: 120, gap: Spacing.xl },
 
-  avatarWrap: { alignItems: 'center', paddingTop: Spacing.md },
-  avatar: {
-    width: 80, height: 80, borderRadius: 24,
-    backgroundColor: Colors.light.primary,
-    alignItems: 'center', justifyContent: 'center',
-    ...Shadow.sm,
-  },
-  avatarLetter: { fontSize: 36, fontWeight: '800', color: Colors.light.onPrimary },
+    avatarWrap: { alignItems: 'center', paddingTop: Spacing.md },
+    avatar: {
+      width: 80, height: 80, borderRadius: 24,
+      backgroundColor: C.primary,
+      alignItems: 'center', justifyContent: 'center',
+      ...Shadow.sm,
+    },
+    avatarLetter: { fontSize: 36, fontWeight: '800', color: C.onPrimary },
 
-  section:      { gap: Spacing.md },
-  sectionLabel: {
-    fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
-    textTransform: 'uppercase', letterSpacing: 0.6,
-  },
+    section:      { gap: Spacing.md },
+    sectionLabel: {
+      fontSize: 11, fontWeight: '700', color: C.ink3,
+      textTransform: 'uppercase', letterSpacing: 0.6,
+    },
 
-  hint: { fontSize: FontSize.sm, fontWeight: '400', color: Colors.light.ink3, lineHeight: 19 },
+    hint: { fontSize: FontSize.sm, fontWeight: '400', color: C.ink3, lineHeight: 19 },
 
-  field: { gap: Spacing.xs },
-  label: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.ink2 },
-  input: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.base,
-    fontSize: FontSize.base,
-    fontWeight: '500',
-    color: Colors.light.ink,
-    ...Shadow.sm,
-  },
+    field: { gap: Spacing.xs },
+    label: { fontSize: FontSize.sm, fontWeight: '700', color: C.ink2 },
+    input: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.base,
+      fontSize: FontSize.base,
+      fontWeight: '500',
+      color: C.ink,
+      ...Shadow.sm,
+    },
 
-  dateRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.base,
-    ...Shadow.sm,
-  },
-  dateText:        { flex: 1, fontSize: FontSize.base, fontWeight: '500', color: Colors.light.ink },
-  datePlaceholder: { color: Colors.light.ink3 },
+    dateRow: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.base,
+      ...Shadow.sm,
+    },
+    dateText:        { flex: 1, fontSize: FontSize.base, fontWeight: '500', color: C.ink },
+    datePlaceholder: { color: C.ink3 },
 
-  emailRow: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.base,
-    ...Shadow.sm,
-  },
-  emailText: { flex: 1, fontSize: FontSize.base, fontWeight: '500', color: Colors.light.ink2 },
-  readonlyBadge: {
-    backgroundColor: Colors.light.surfaceSunk,
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-  },
-  readonlyText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.light.ink3 },
+    emailRow: {
+      flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.base,
+      ...Shadow.sm,
+    },
+    emailText: { flex: 1, fontSize: FontSize.base, fontWeight: '500', color: C.ink2 },
+    readonlyBadge: {
+      backgroundColor: C.surfaceSunk,
+      borderRadius: Radius.pill,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 3,
+    },
+    readonlyText: { fontSize: FontSize.xs, fontWeight: '600', color: C.ink3 },
 
-  genderRow:    { flexDirection: 'row', gap: Spacing.sm },
-  genderPill: {
-    flex: 1, paddingVertical: Spacing.base,
-    backgroundColor: Colors.light.surface, borderRadius: Radius.input,
-    borderWidth: 1.5, borderColor: Colors.light.hairline,
-    alignItems: 'center', justifyContent: 'center', ...Shadow.sm,
-  },
-  genderPillOn:  { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
-  genderText:    { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink2 },
-  genderTextOn:  { color: Colors.light.primaryStrong, fontWeight: '700' },
+    genderRow:    { flexDirection: 'row', gap: Spacing.sm },
+    genderPill: {
+      flex: 1, paddingVertical: Spacing.base,
+      backgroundColor: C.surface, borderRadius: Radius.input,
+      borderWidth: 1.5, borderColor: C.hairline,
+      alignItems: 'center', justifyContent: 'center', ...Shadow.sm,
+    },
+    genderPillOn:  { backgroundColor: C.primaryTint, borderColor: C.primary },
+    genderText:    { fontSize: FontSize.base, fontWeight: '600', color: C.ink2 },
+    genderTextOn:  { color: C.primaryStrong, fontWeight: '700' },
 
-  saveBtn: {
-    backgroundColor: Colors.light.primary, borderRadius: Radius.pill,
-    paddingVertical: Spacing.base, alignItems: 'center', ...Shadow.sm,
-  },
-  saveBtnText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.onPrimary },
-});
+    saveBtn: {
+      backgroundColor: C.primary, borderRadius: Radius.pill,
+      paddingVertical: Spacing.base, alignItems: 'center', ...Shadow.sm,
+    },
+    saveBtnText: { fontSize: FontSize.base, fontWeight: '700', color: C.onPrimary },
+  });
+}

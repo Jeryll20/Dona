@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Sheet } from '@/components/ui/Sheet';
 import { TimeField } from '@/components/ui/TimeField';
 import { DayPicker } from './DayPicker';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import type { WeekDay } from '@/types';
@@ -40,6 +40,8 @@ export function ActivityBlock({
   startTime, onStartTimeChange,
   endTime, onEndTimeChange,
 }: ActivityBlockProps) {
+  const C = useColors();
+  const s = makeStyles(C);
   const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
   const [tempTime, setTempTime] = useState('');
   const [nameFocused, setNameFocused] = useState(false);
@@ -56,22 +58,22 @@ export function ActivityBlock({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       {/* 3-choice selector */}
-      <View style={styles.choices}>
+      <View style={s.choices}>
         {CHOICES.map(({ key, label, icon }) => {
           const selected = status === key;
           return (
             <TouchableOpacity
               key={key}
-              style={[styles.choice, selected && styles.choiceActive]}
+              style={[s.choice, selected && s.choiceActive]}
               onPress={() => onStatusChange(key)}
               accessibilityLabel={label}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
             >
-              <Text style={[styles.choiceIcon, selected && styles.choiceIconActive]}>{icon}</Text>
-              <Text style={[styles.choiceLabel, selected && styles.choiceLabelActive]}>{label}</Text>
+              <Text style={[s.choiceIcon, selected && s.choiceIconActive]}>{icon}</Text>
+              <Text style={[s.choiceLabel, selected && s.choiceLabelActive]}>{label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -79,15 +81,15 @@ export function ActivityBlock({
 
       {/* Conditional details — only when "yes" */}
       {status === 'yes' && (
-        <View style={styles.details}>
+        <View style={s.details}>
           {/* Activity name */}
-          <Text style={styles.fieldLabel}>Quoi ?</Text>
+          <Text style={s.fieldLabel}>Quoi ?</Text>
           <TextInput
-            style={[styles.input, nameFocused && styles.inputFocused]}
+            style={[s.input, nameFocused && s.inputFocused]}
             value={activityName}
             onChangeText={onActivityNameChange}
             placeholder={activityPlaceholder ?? 'Ex: Football, Yoga, Piano…'}
-            placeholderTextColor={Colors.light.ink3}
+            placeholderTextColor={C.ink3}
             onFocus={() => setNameFocused(true)}
             onBlur={() => setNameFocused(false)}
             returnKeyType="done"
@@ -95,26 +97,26 @@ export function ActivityBlock({
           />
 
           {/* Days */}
-          <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>Quels jours ?</Text>
+          <Text style={[s.fieldLabel, { marginTop: Spacing.md }]}>Quels jours ?</Text>
           <DayPicker value={days} onChange={onDaysChange} />
 
           {/* Time range */}
-          <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>De quelle heure à quelle heure ?</Text>
-          <View style={styles.timeRow}>
+          <Text style={[s.fieldLabel, { marginTop: Spacing.md }]}>De quelle heure à quelle heure ?</Text>
+          <View style={s.timeRow}>
             <TouchableOpacity
-              style={[styles.timeBtn, pickerTarget === 'start' && styles.timeBtnActive]}
+              style={[s.timeBtn, pickerTarget === 'start' && s.timeBtnActive]}
               onPress={() => openPicker('start')}
               accessibilityLabel="Heure de début"
             >
-              <Text style={styles.timeBtnText}>{startTime}</Text>
+              <Text style={s.timeBtnText}>{startTime}</Text>
             </TouchableOpacity>
-            <Text style={styles.timeSep}>→</Text>
+            <Text style={s.timeSep}>→</Text>
             <TouchableOpacity
-              style={[styles.timeBtn, pickerTarget === 'end' && styles.timeBtnActive]}
+              style={[s.timeBtn, pickerTarget === 'end' && s.timeBtnActive]}
               onPress={() => openPicker('end')}
               accessibilityLabel="Heure de fin"
             >
-              <Text style={styles.timeBtnText}>{endTime}</Text>
+              <Text style={s.timeBtnText}>{endTime}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -127,108 +129,110 @@ export function ActivityBlock({
       >
         <TimeField value={tempTime} onChange={setTempTime} />
         <TouchableOpacity
-          style={styles.confirmBtn}
+          style={s.confirmBtn}
           onPress={confirmTime}
           accessibilityLabel="Valider l'heure"
           accessibilityRole="button"
         >
-          <Text style={styles.confirmText}>Valider</Text>
+          <Text style={s.confirmText}>Valider</Text>
         </TouchableOpacity>
       </Sheet>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { gap: Spacing.md },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    container: { gap: Spacing.md },
 
-  choices: { gap: Spacing.sm },
-  choice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    padding: Spacing.base,
-    borderWidth: 1.5,
-    borderColor: Colors.light.hairline,
-    ...Shadow.sm,
-  },
-  choiceActive: {
-    backgroundColor: Colors.light.primaryTint,
-    borderColor: Colors.light.primary,
-  },
-  choiceIcon:       { fontSize: 16, color: Colors.light.ink3, width: 20, textAlign: 'center' },
-  choiceIconActive: { color: Colors.light.primary },
-  choiceLabel:      { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink2 },
-  choiceLabelActive:{ color: Colors.light.primaryStrong },
+    choices: { gap: Spacing.sm },
+    choice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      padding: Spacing.base,
+      borderWidth: 1.5,
+      borderColor: C.hairline,
+      ...Shadow.sm,
+    },
+    choiceActive: {
+      backgroundColor: C.primaryTint,
+      borderColor: C.primary,
+    },
+    choiceIcon:       { fontSize: 16, color: C.ink3, width: 20, textAlign: 'center' },
+    choiceIconActive: { color: C.primary },
+    choiceLabel:      { fontSize: FontSize.base, fontWeight: '600', color: C.ink2 },
+    choiceLabelActive:{ color: C.primaryStrong },
 
-  details: { gap: Spacing.sm, marginTop: Spacing.xs },
+    details: { gap: Spacing.sm, marginTop: Spacing.xs },
 
-  fieldLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.light.ink3,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 4,
-  },
+    fieldLabel: {
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+      color: C.ink3,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      marginBottom: 4,
+    },
 
-  input: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    borderWidth: 1.5,
-    borderColor: Colors.light.hairline,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: 14,
-    fontSize: FontSize.base,
-    fontWeight: '500',
-    color: Colors.light.ink,
-  },
-  inputFocused: { borderColor: Colors.light.primary },
+    input: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      borderWidth: 1.5,
+      borderColor: C.hairline,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: 14,
+      fontSize: FontSize.base,
+      fontWeight: '500',
+      color: C.ink,
+    },
+    inputFocused: { borderColor: C.primary },
 
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  timeBtn: {
-    flex: 1,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    borderWidth: 1.5,
-    borderColor: Colors.light.hairline,
-    paddingVertical: 14,
-    alignItems: 'center',
-    ...Shadow.sm,
-  },
-  timeBtnActive: {
-    borderColor: Colors.light.primary,
-    backgroundColor: Colors.light.primaryTint,
-  },
-  timeBtnText: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.light.ink,
-    letterSpacing: -0.3,
-  },
-  timeSep: {
-    fontSize: FontSize.base,
-    color: Colors.light.ink3,
-    fontWeight: '600',
-  },
+    timeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+    },
+    timeBtn: {
+      flex: 1,
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      borderWidth: 1.5,
+      borderColor: C.hairline,
+      paddingVertical: 14,
+      alignItems: 'center',
+      ...Shadow.sm,
+    },
+    timeBtnActive: {
+      borderColor: C.primary,
+      backgroundColor: C.primaryTint,
+    },
+    timeBtnText: {
+      fontSize: FontSize.lg,
+      fontWeight: '700',
+      color: C.ink,
+      letterSpacing: -0.3,
+    },
+    timeSep: {
+      fontSize: FontSize.base,
+      color: C.ink3,
+      fontWeight: '600',
+    },
 
-  confirmBtn: {
-    marginTop: Spacing.md,
-    backgroundColor: Colors.light.primary,
-    borderRadius: Radius.pill,
-    paddingVertical: Spacing.base + 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmText: {
-    fontSize: FontSize.base,
-    fontWeight: '700',
-    color: '#fff',
-  },
-});
+    confirmBtn: {
+      marginTop: Spacing.md,
+      backgroundColor: C.primary,
+      borderRadius: Radius.pill,
+      paddingVertical: Spacing.base + 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    confirmText: {
+      fontSize: FontSize.base,
+      fontWeight: '700',
+      color: '#fff',
+    },
+  });
+}

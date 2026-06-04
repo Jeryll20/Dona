@@ -1,5 +1,5 @@
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { Icon, IconName } from '@/components/ui/Icon';
@@ -30,35 +30,38 @@ interface SuggestionCardProps {
 }
 
 export function SuggestionCard({ suggestion, onAccept, onDismiss }: SuggestionCardProps) {
+  const C = useColors();
+  const s = makeStyles(C);
+
   if (suggestion.accepted || suggestion.dismissed) return null;
 
   return (
-    <View style={styles.card} accessibilityLabel={`Suggestion : ${suggestion.title}`}>
-      <View style={styles.row}>
-        <View style={styles.iconWrap}>
-          <Icon name={CAT_ICON[suggestion.cat]} size={20} stroke={Colors.light.primary} />
+    <View style={s.card} accessibilityLabel={`Suggestion : ${suggestion.title}`}>
+      <View style={s.row}>
+        <View style={s.iconWrap}>
+          <Icon name={CAT_ICON[suggestion.cat]} size={20} stroke={C.primary} />
         </View>
-        <View style={styles.body}>
-          <Text style={styles.label}>{CAT_LABEL[suggestion.cat]}</Text>
-          <Text style={styles.title}>{suggestion.title}</Text>
-          <Text style={styles.meta}>{suggestion.durationMinutes} min</Text>
+        <View style={s.body}>
+          <Text style={s.label}>{CAT_LABEL[suggestion.cat]}</Text>
+          <Text style={s.title}>{suggestion.title}</Text>
+          <Text style={s.meta}>{suggestion.durationMinutes} min</Text>
         </View>
-        <View style={styles.actions}>
+        <View style={s.actions}>
           <TouchableOpacity
-            style={styles.acceptBtn}
+            style={s.acceptBtn}
             onPress={onAccept}
             accessibilityLabel={`Accepter : ${suggestion.title}`}
             accessibilityRole="button"
           >
-            <Icon name="check" size={16} stroke={Colors.light.primary} />
+            <Icon name="check" size={16} stroke={C.primary} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.dismissBtn}
+            style={s.dismissBtn}
             onPress={onDismiss}
             accessibilityLabel={`Ignorer : ${suggestion.title}`}
             accessibilityRole="button"
           >
-            <Icon name="x" size={16} stroke={Colors.light.ink3} />
+            <Icon name="x" size={16} stroke={C.ink3} />
           </TouchableOpacity>
         </View>
       </View>
@@ -66,38 +69,40 @@ export function SuggestionCard({ suggestion, onAccept, onDismiss }: SuggestionCa
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.block,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    ...Shadow.sm,
-  },
-  row:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.input,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  body:  { flex: 1, gap: 2 },
-  label: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.light.primary, letterSpacing: 0.2 },
-  title: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink, letterSpacing: -0.2 },
-  meta:  { fontSize: FontSize.sm, color: Colors.light.ink3 },
-  actions:    { flexDirection: 'row', gap: Spacing.sm },
-  acceptBtn:  {
-    width: 32, height: 32,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  dismissBtn: {
-    width: 32, height: 32,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.surfaceSunk,
-    alignItems: 'center', justifyContent: 'center',
-  },
-});
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.block,
+      padding: Spacing.md,
+      marginBottom: Spacing.sm,
+      ...Shadow.sm,
+    },
+    row:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    iconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: Radius.input,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    body:  { flex: 1, gap: 2 },
+    label: { fontSize: FontSize.xs, fontWeight: '600', color: C.primary, letterSpacing: 0.2 },
+    title: { fontSize: FontSize.base, fontWeight: '700', color: C.ink, letterSpacing: -0.2 },
+    meta:  { fontSize: FontSize.sm, color: C.ink3 },
+    actions:    { flexDirection: 'row', gap: Spacing.sm },
+    acceptBtn:  {
+      width: 32, height: 32,
+      borderRadius: Radius.pill,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    dismissBtn: {
+      width: 32, height: 32,
+      borderRadius: Radius.pill,
+      backgroundColor: C.surfaceSunk,
+      alignItems: 'center', justifyContent: 'center',
+    },
+  });
+}

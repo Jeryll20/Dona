@@ -9,7 +9,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { TimeField } from '@/components/ui/TimeField';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import type { WeekDay } from '@/types';
@@ -30,6 +30,8 @@ function ExtraBlock({ entry, index, onChange, onRemove }: {
   onChange: (patch: Partial<OtherEntry>) => void;
   onRemove: () => void;
 }) {
+  const C = useColors();
+  const xb = makeXbStyles(C);
   const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null);
   const [tempTime, setTempTime] = useState('');
 
@@ -54,7 +56,7 @@ function ExtraBlock({ entry, index, onChange, onRemove }: {
           accessibilityLabel="Supprimer cette activité"
           hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
         >
-          <Ionicons name="close-circle" size={22} color={Colors.light.ink3} />
+          <Ionicons name="close-circle" size={22} color={C.ink3} />
         </TouchableOpacity>
       </View>
 
@@ -64,7 +66,7 @@ function ExtraBlock({ entry, index, onChange, onRemove }: {
         value={entry.title}
         onChangeText={(t) => onChange({ title: t })}
         placeholder="Ex: Cours de piano, Bénévolat…"
-        placeholderTextColor={Colors.light.ink3}
+        placeholderTextColor={C.ink3}
         returnKeyType="done"
         accessibilityLabel="Nom de l'activité"
       />
@@ -105,51 +107,55 @@ function ExtraBlock({ entry, index, onChange, onRemove }: {
   );
 }
 
-const xb = StyleSheet.create({
-  container: {
-    gap: Spacing.sm,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.block,
-    padding: Spacing.base,
-    borderWidth: 1.5,
-    borderColor: Colors.light.hairline,
-    ...Shadow.sm,
-  },
-  header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  heading:   { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink },
-  removeBtn: { padding: 2 },
-  label: {
-    fontSize: FontSize.sm, fontWeight: '700', color: Colors.light.ink3,
-    textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4,
-  },
-  input: {
-    backgroundColor: Colors.light.surface, borderRadius: Radius.input,
-    borderWidth: 1.5, borderColor: Colors.light.hairline,
-    paddingHorizontal: Spacing.base, paddingVertical: 14,
-    fontSize: FontSize.base, fontWeight: '500', color: Colors.light.ink,
-  },
-  timeRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  timeBtn: {
-    flex: 1, backgroundColor: Colors.light.surface, borderRadius: Radius.input,
-    borderWidth: 1.5, borderColor: Colors.light.hairline,
-    paddingVertical: 14, alignItems: 'center', ...Shadow.sm,
-  },
-  timeBtnActive:{ borderColor: Colors.light.primary, backgroundColor: Colors.light.primaryTint },
-  timeBtnText:  { fontSize: FontSize.lg, fontWeight: '700', color: Colors.light.ink, letterSpacing: -0.3 },
-  timeSep:      { fontSize: FontSize.base, color: Colors.light.ink3, fontWeight: '600' },
-  confirmBtn: {
-    marginTop: Spacing.md, backgroundColor: Colors.light.primary,
-    borderRadius: Radius.pill, paddingVertical: Spacing.base + 2,
-    alignItems: 'center',
-  },
-  confirmText: { fontSize: FontSize.base, fontWeight: '700', color: '#fff' },
-});
+function makeXbStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    container: {
+      gap: Spacing.sm,
+      backgroundColor: C.surface,
+      borderRadius: Radius.block,
+      padding: Spacing.base,
+      borderWidth: 1.5,
+      borderColor: C.hairline,
+      ...Shadow.sm,
+    },
+    header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+    heading:   { fontSize: FontSize.base, fontWeight: '700', color: C.ink },
+    removeBtn: { padding: 2 },
+    label: {
+      fontSize: FontSize.sm, fontWeight: '700', color: C.ink3,
+      textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4,
+    },
+    input: {
+      backgroundColor: C.surface, borderRadius: Radius.input,
+      borderWidth: 1.5, borderColor: C.hairline,
+      paddingHorizontal: Spacing.base, paddingVertical: 14,
+      fontSize: FontSize.base, fontWeight: '500', color: C.ink,
+    },
+    timeRow:      { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+    timeBtn: {
+      flex: 1, backgroundColor: C.surface, borderRadius: Radius.input,
+      borderWidth: 1.5, borderColor: C.hairline,
+      paddingVertical: 14, alignItems: 'center', ...Shadow.sm,
+    },
+    timeBtnActive:{ borderColor: C.primary, backgroundColor: C.primaryTint },
+    timeBtnText:  { fontSize: FontSize.lg, fontWeight: '700', color: C.ink, letterSpacing: -0.3 },
+    timeSep:      { fontSize: FontSize.base, color: C.ink3, fontWeight: '600' },
+    confirmBtn: {
+      marginTop: Spacing.md, backgroundColor: C.primary,
+      borderRadius: Radius.pill, paddingVertical: Spacing.base + 2,
+      alignItems: 'center',
+    },
+    confirmText: { fontSize: FontSize.base, fontWeight: '700', color: '#fff' },
+  });
+}
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function Q8Other() {
-  const setOtherActivity = useUserStore((s) => s.setOtherActivity);
-  const stored           = useUserStore((s) => s.otherActivity);
+  const C = useColors();
+  const s = makeStyles(C);
+  const setOtherActivity = useUserStore((st) => st.setOtherActivity);
+  const stored           = useUserStore((st) => st.otherActivity);
   const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
 
   const [status, setStatus] = useState<ActivityStatus>(
@@ -272,7 +278,7 @@ export default function Q8Other() {
             accessibilityLabel="Ajouter une autre activité"
             accessibilityRole="button"
           >
-            <Ionicons name="add-circle-outline" size={20} color={Colors.light.primary} />
+            <Ionicons name="add-circle-outline" size={20} color={C.primary} />
             <Text style={s.addBtnText}>Ajouter une autre activité</Text>
           </TouchableOpacity>
         </View>
@@ -281,14 +287,16 @@ export default function Q8Other() {
   );
 }
 
-const s = StyleSheet.create({
-  extrasWrapper: { gap: Spacing.md, marginTop: Spacing.sm },
-  addBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: Spacing.sm, paddingVertical: Spacing.base,
-    borderRadius: Radius.input, borderWidth: 1.5,
-    borderColor: Colors.light.primary,
-    backgroundColor: Colors.light.primaryTint,
-  },
-  addBtnText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primary },
-});
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    extrasWrapper: { gap: Spacing.md, marginTop: Spacing.sm },
+    addBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+      gap: Spacing.sm, paddingVertical: Spacing.base,
+      borderRadius: Radius.input, borderWidth: 1.5,
+      borderColor: C.primary,
+      backgroundColor: C.primaryTint,
+    },
+    addBtnText: { fontSize: FontSize.base, fontWeight: '700', color: C.primary },
+  });
+}

@@ -5,7 +5,7 @@ import { Animated } from 'react-native';
 import { router } from 'expo-router';
 import { Logo } from '@/components/ui/Logo';
 import { Icon } from '@/components/ui/Icon';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
@@ -25,6 +25,8 @@ const uid = () => String(++msgCounter);
 // ── AnimatedBubble ────────────────────────────────────────────────────────────
 
 function AnimatedBubble({ message }: { message: ChatMessage }) {
+  const C = useColors();
+  const s = makeStyles(C);
   const opacity    = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(8)).current;
 
@@ -40,18 +42,18 @@ function AnimatedBubble({ message }: { message: ChatMessage }) {
   return (
     <Animated.View
       style={[
-        styles.bubbleRow,
-        isBot ? styles.bubbleRowBot : styles.bubbleRowUser,
+        s.bubbleRow,
+        isBot ? s.bubbleRowBot : s.bubbleRowUser,
         { opacity, transform: [{ translateY }] },
       ]}
     >
       {isBot && (
-        <View style={styles.botAvatar}>
-          <Icon name="spark" size={15} stroke={Colors.light.primary} />
+        <View style={s.botAvatar}>
+          <Icon name="spark" size={15} stroke={C.primary} />
         </View>
       )}
-      <View style={[styles.bubble, isBot ? styles.bubbleBot : styles.bubbleUser]}>
-        <Text style={[styles.bubbleText, isBot ? styles.bubbleTextBot : styles.bubbleTextUser]}>
+      <View style={[s.bubble, isBot ? s.bubbleBot : s.bubbleUser]}>
+        <Text style={[s.bubbleText, isBot ? s.bubbleTextBot : s.bubbleTextUser]}>
           {message.text}
         </Text>
       </View>
@@ -68,6 +70,8 @@ function AnimatedChips({
   chips:  string[];
   onPick: (c: string) => void;
 }) {
+  const C = useColors();
+  const s = makeStyles(C);
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -75,17 +79,17 @@ function AnimatedChips({
   }, [chips.join(',')]);
 
   return (
-    <Animated.View style={[styles.chipsRow, { opacity }]}>
+    <Animated.View style={[s.chipsRow, { opacity }]}>
       {chips.map((c) => (
         <TouchableOpacity
           key={c}
-          style={styles.chip}
+          style={s.chip}
           onPress={() => onPick(c)}
           activeOpacity={0.75}
           accessibilityRole="button"
           accessibilityLabel={c}
         >
-          <Text style={styles.chipText}>{c}</Text>
+          <Text style={s.chipText}>{c}</Text>
         </TouchableOpacity>
       ))}
     </Animated.View>
@@ -95,6 +99,8 @@ function AnimatedChips({
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function ConversationScreen() {
+  const C = useColors();
+  const s = makeStyles(C);
   const scrollRef = useRef<ScrollView>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -139,21 +145,21 @@ export default function ConversationScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={s.safe} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={s.header}>
         <Logo size={38} />
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerName}>Mon assistant</Text>
-          <Text style={styles.headerStatus}>● en ligne</Text>
+        <View style={s.headerInfo}>
+          <Text style={s.headerName}>Mon assistant</Text>
+          <Text style={s.headerStatus}>● en ligne</Text>
         </View>
       </View>
 
       {/* Messages */}
       <ScrollView
         ref={scrollRef}
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={s.scroll}
+        contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -169,91 +175,93 @@ export default function ConversationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: Colors.light.background },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    safe:   { flex: 1, backgroundColor: C.background },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    backgroundColor: Colors.light.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.hairline,
-  },
-  headerInfo: { gap: 2 },
-  headerName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.light.ink,
-    letterSpacing: -0.3,
-  },
-  headerStatus: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: Colors.light.primaryStrong,
-  },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.md,
+      backgroundColor: C.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: C.hairline,
+    },
+    headerInfo: { gap: 2 },
+    headerName: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: C.ink,
+      letterSpacing: -0.3,
+    },
+    headerStatus: {
+      fontSize: 12.5,
+      fontWeight: '600',
+      color: C.primaryStrong,
+    },
 
-  scroll:        { flex: 1 },
-  scrollContent: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xl,
-    gap: Spacing.md,
-  },
+    scroll:        { flex: 1 },
+    scrollContent: {
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.lg,
+      paddingBottom: Spacing.xl,
+      gap: Spacing.md,
+    },
 
-  bubbleRow:     { flexDirection: 'row', gap: Spacing.sm, maxWidth: '80%' },
-  bubbleRowBot:  { alignSelf: 'flex-start', alignItems: 'flex-end' },
-  bubbleRowUser: { alignSelf: 'flex-end' },
+    bubbleRow:     { flexDirection: 'row', gap: Spacing.sm, maxWidth: '80%' },
+    bubbleRowBot:  { alignSelf: 'flex-start', alignItems: 'flex-end' },
+    bubbleRowUser: { alignSelf: 'flex-end' },
 
-  botAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    marginBottom: 2,
-  },
+    botAvatar: {
+      width: 28,
+      height: 28,
+      borderRadius: Radius.pill,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      marginBottom: 2,
+    },
 
-  bubble: {
-    borderRadius: Radius.block,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    flexShrink: 1,
-  },
-  bubbleBot: {
-    backgroundColor: Colors.light.primaryTint,
-    borderBottomLeftRadius: 4,
-  },
-  bubbleUser: {
-    backgroundColor: Colors.light.primary,
-    borderBottomRightRadius: 4,
-  },
-  bubbleText:     { fontSize: FontSize.base, lineHeight: 22 },
-  bubbleTextBot:  { color: Colors.light.primaryStrong, fontWeight: '500' },
-  bubbleTextUser: { color: Colors.light.onPrimary, fontWeight: '500' },
+    bubble: {
+      borderRadius: Radius.block,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: Spacing.md,
+      flexShrink: 1,
+    },
+    bubbleBot: {
+      backgroundColor: C.primaryTint,
+      borderBottomLeftRadius: 4,
+    },
+    bubbleUser: {
+      backgroundColor: C.primary,
+      borderBottomRightRadius: 4,
+    },
+    bubbleText:     { fontSize: FontSize.base, lineHeight: 22 },
+    bubbleTextBot:  { color: C.primaryStrong, fontWeight: '500' },
+    bubbleTextUser: { color: C.onPrimary, fontWeight: '500' },
 
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginTop: Spacing.xs,
-  },
-  chip: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.sm,
-    borderWidth: 1.5,
-    borderColor: Colors.light.hairline,
-    ...Shadow.sm,
-  },
-  chipText: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.light.ink,
-  },
-});
+    chipsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+      marginTop: Spacing.xs,
+    },
+    chip: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.pill,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: Spacing.sm,
+      borderWidth: 1.5,
+      borderColor: C.hairline,
+      ...Shadow.sm,
+    },
+    chipText: {
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+      color: C.ink,
+    },
+  });
+}

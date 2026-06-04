@@ -3,7 +3,7 @@ import {
   StyleSheet, View, Text, ScrollView, Animated,
   NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Radius } from '@/constants/spacing';
 
 const ITEM_H  = 52;
@@ -25,6 +25,7 @@ interface WheelProps {
 }
 
 function Wheel({ items, initial, onChange }: WheelProps) {
+  const C              = useColors();
   const ref            = useRef<ScrollView>(null);
   const [selected, setSelected] = useState(initial);
   const scrollY        = useRef(new Animated.Value(initial * ITEM_H)).current;
@@ -128,10 +129,12 @@ function Wheel({ items, initial, onChange }: WheelProps) {
     [scrollY, onScrollJS],
   );
 
+  const s = makeStyles(C);
+
   return (
     <ScrollView
       ref={ref}
-      style={styles.wheel}
+      style={s.wheel}
       contentContainerStyle={{ paddingVertical: PAD }}
       contentOffset={{ x: 0, y: initial * ITEM_H }}
       showsVerticalScrollIndicator={false}
@@ -144,8 +147,8 @@ function Wheel({ items, initial, onChange }: WheelProps) {
       onScrollEndDrag={onScrollEndDrag}
     >
       {items.map((item, i) => (
-        <Animated.View key={item} style={[styles.item, { opacity: opacities[i] }]}>
-          <Text style={[styles.itemText, i === selected && styles.itemSelected]}>
+        <Animated.View key={item} style={[s.item, { opacity: opacities[i] }]}>
+          <Text style={[s.itemText, i === selected && s.itemSelected]}>
             {item}
           </Text>
         </Animated.View>
@@ -155,6 +158,7 @@ function Wheel({ items, initial, onChange }: WheelProps) {
 }
 
 export function TimeField({ value, onChange }: TimeFieldProps) {
+  const C = useColors();
   const [hStr, mStr] = value.split(':');
   const hourInitial = Math.max(0, Math.min(23, parseInt(hStr, 10) || 0));
   const minInitial  = Math.max(0, Math.min(59, parseInt(mStr, 10) || 0));
@@ -172,54 +176,58 @@ export function TimeField({ value, onChange }: TimeFieldProps) {
     onChange(`${String(hourRef.current).padStart(2, '0')}:${String(i).padStart(2, '0')}`);
   }, [onChange]);
 
+  const s = makeStyles(C);
+
   return (
-    <View style={styles.wrap}>
-      <View style={styles.band} pointerEvents="none" />
+    <View style={s.wrap}>
+      <View style={s.band} pointerEvents="none" />
       <Wheel items={HOURS}   initial={hourInitial} onChange={onHour} />
-      <Text style={styles.colon}>:</Text>
+      <Text style={s.colon}>:</Text>
       <Wheel items={MINUTES} initial={minInitial}  onChange={onMin} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    height: VISIBLE * ITEM_H,
-    flexDirection: 'row',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  band: {
-    position: 'absolute',
-    top: PAD,
-    left: 0,
-    right: 0,
-    height: ITEM_H,
-    backgroundColor: Colors.light.primaryTint,
-    borderRadius: Radius.input,
-  },
-  wheel: { flex: 1 },
-  item: {
-    height: ITEM_H,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemText: {
-    fontSize: 28,
-    fontWeight: '400',
-    color: Colors.light.ink3,
-    textAlign: 'center',
-  },
-  itemSelected: {
-    fontSize: 38,
-    fontWeight: '700',
-    color: Colors.light.ink,
-  },
-  colon: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: Colors.light.ink,
-    paddingHorizontal: 4,
-    marginBottom: 4,
-  },
-});
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    wrap: {
+      height: VISIBLE * ITEM_H,
+      flexDirection: 'row',
+      alignItems: 'center',
+      overflow: 'hidden',
+    },
+    band: {
+      position: 'absolute',
+      top: PAD,
+      left: 0,
+      right: 0,
+      height: ITEM_H,
+      backgroundColor: C.primaryTint,
+      borderRadius: Radius.input,
+    },
+    wheel: { flex: 1 },
+    item: {
+      height: ITEM_H,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    itemText: {
+      fontSize: 28,
+      fontWeight: '400',
+      color: C.ink3,
+      textAlign: 'center',
+    },
+    itemSelected: {
+      fontSize: 38,
+      fontWeight: '700',
+      color: C.ink,
+    },
+    colon: {
+      fontSize: 34,
+      fontWeight: '700',
+      color: C.ink,
+      paddingHorizontal: 4,
+      marginBottom: 4,
+    },
+  });
+}

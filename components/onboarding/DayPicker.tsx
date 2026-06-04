@@ -1,5 +1,5 @@
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Radius } from '@/constants/spacing';
 import type { WeekDay } from '@/types';
 
@@ -19,6 +19,9 @@ interface DayPickerProps {
 }
 
 export function DayPicker({ value, onChange }: DayPickerProps) {
+  const C = useColors();
+  const s = makeStyles(C);
+
   function toggle(key: WeekDay) {
     onChange(
       value.includes(key)
@@ -28,19 +31,19 @@ export function DayPicker({ value, onChange }: DayPickerProps) {
   }
 
   return (
-    <View style={styles.row}>
+    <View style={s.row}>
       {DAY_CONFIG.map(({ key, label }) => {
         const active = value.includes(key);
         return (
           <TouchableOpacity
             key={key}
-            style={[styles.pill, active && styles.pillActive]}
+            style={[s.pill, active && s.pillActive]}
             onPress={() => toggle(key)}
             accessibilityLabel={key}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: active }}
           >
-            <Text style={[styles.label, active && styles.labelActive]}>{label}</Text>
+            <Text style={[s.label, active && s.labelActive]}>{label}</Text>
           </TouchableOpacity>
         );
       })}
@@ -50,10 +53,12 @@ export function DayPicker({ value, onChange }: DayPickerProps) {
 
 const PILL = 40;
 
-const styles = StyleSheet.create({
-  row:        { flexDirection: 'row', justifyContent: 'space-between' },
-  pill:       { width: PILL, height: PILL, borderRadius: Radius.pill, backgroundColor: Colors.light.surfaceSunk, alignItems: 'center', justifyContent: 'center' },
-  pillActive: { backgroundColor: Colors.light.primary },
-  label:      { fontSize: 13, fontWeight: '700', color: Colors.light.ink3 },
-  labelActive:{ color: Colors.light.onPrimary },
-});
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    row:        { flexDirection: 'row', justifyContent: 'space-between' },
+    pill:       { width: PILL, height: PILL, borderRadius: Radius.pill, backgroundColor: C.surfaceSunk, alignItems: 'center', justifyContent: 'center' },
+    pillActive: { backgroundColor: C.primary },
+    label:      { fontSize: 13, fontWeight: '700', color: C.ink3 },
+    labelActive:{ color: C.onPrimary },
+  });
+}

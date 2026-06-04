@@ -7,7 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import OnboardingShell from '@/components/onboarding/OnboardingShell';
 import { Sheet } from '@/components/ui/Sheet';
 import { useUserStore } from '@/store/useUserStore';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
@@ -20,8 +20,10 @@ function dateToISO(d: Date): string {
 }
 
 export default function PersonalInfo() {
-  const setProfile = useUserStore((s) => s.setProfile);
-  const stored     = useUserStore((s) => s.profile);
+  const C = useColors();
+  const s = makeStyles(C);
+  const setProfile = useUserStore((st) => st.setProfile);
+  const stored     = useUserStore((st) => st.profile);
 
   const [firstName, setFirstName] = useState(stored.firstName ?? '');
   const [lastName,  setLastName]  = useState(stored.lastName  ?? '');
@@ -82,29 +84,29 @@ export default function PersonalInfo() {
       nextDisabled={!canContinue}
       scrollable
     >
-      <View style={styles.fields}>
-        <View style={styles.row}>
+      <View style={s.fields}>
+        <View style={s.row}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Prénom *</Text>
+            <Text style={s.label}>Prénom *</Text>
             <TextInput
-              style={styles.input}
+              style={s.input}
               value={firstName}
               onChangeText={setFirstName}
               placeholder="Marie"
-              placeholderTextColor={Colors.light.ink3}
+              placeholderTextColor={C.ink3}
               autoCapitalize="words"
               returnKeyType="next"
               accessibilityLabel="Prénom"
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Nom</Text>
+            <Text style={s.label}>Nom</Text>
             <TextInput
-              style={styles.input}
+              style={s.input}
               value={lastName}
               onChangeText={setLastName}
               placeholder="Dupont"
-              placeholderTextColor={Colors.light.ink3}
+              placeholderTextColor={C.ink3}
               autoCapitalize="words"
               returnKeyType="done"
               accessibilityLabel="Nom de famille"
@@ -113,32 +115,32 @@ export default function PersonalInfo() {
         </View>
 
         <View>
-          <Text style={styles.label}>Sexe</Text>
-          <View style={styles.genderRow}>
+          <Text style={s.label}>Sexe</Text>
+          <View style={s.genderRow}>
             {(['homme', 'femme', 'autre'] as const).map((key) => {
               const labels = { homme: 'Homme', femme: 'Femme', autre: 'Autre' };
               const on = genderKey === key;
               return (
                 <TouchableOpacity
                   key={key}
-                  style={[styles.genderPill, on && styles.genderPillOn]}
+                  style={[s.genderPill, on && s.genderPillOn]}
                   onPress={() => setGenderKey(key)}
                   accessibilityLabel={labels[key]}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on }}
                 >
-                  <Text style={[styles.genderText, on && styles.genderTextOn]}>{labels[key]}</Text>
+                  <Text style={[s.genderText, on && s.genderTextOn]}>{labels[key]}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
           {genderKey === 'autre' && (
             <TextInput
-              style={[styles.input, { marginTop: Spacing.sm }]}
+              style={[s.input, { marginTop: Spacing.sm }]}
               value={genderOther}
               onChangeText={setGenderOther}
               placeholder="Précise si tu le souhaites…"
-              placeholderTextColor={Colors.light.ink3}
+              placeholderTextColor={C.ink3}
               returnKeyType="done"
               accessibilityLabel="Préciser le genre"
             />
@@ -146,14 +148,14 @@ export default function PersonalInfo() {
         </View>
 
         <View>
-          <Text style={styles.label}>Date de naissance</Text>
+          <Text style={s.label}>Date de naissance</Text>
           <TouchableOpacity
-            style={styles.datePill}
+            style={s.datePill}
             onPress={openDatePicker}
             accessibilityLabel="Sélectionner la date de naissance"
             accessibilityRole="button"
           >
-            <Text style={[styles.datePillText, !dob && styles.datePillPlaceholder]}>
+            <Text style={[s.datePillText, !dob && s.datePillPlaceholder]}>
               {dob ? formatDate(dob) : 'Optionnel — touche pour choisir'}
             </Text>
           </TouchableOpacity>
@@ -173,92 +175,94 @@ export default function PersonalInfo() {
           minimumDate={new Date(1920, 0, 1)}
           onChange={(_, date) => { if (date) setTempDob(date); }}
           themeVariant="light"
-          style={styles.datePicker}
+          style={s.datePicker}
         />
         <TouchableOpacity
-          style={styles.confirmBtn}
+          style={s.confirmBtn}
           onPress={confirmDate}
           accessibilityLabel="Confirmer la date"
           accessibilityRole="button"
         >
-          <Text style={styles.confirmText}>Confirmer</Text>
+          <Text style={s.confirmText}>Confirmer</Text>
         </TouchableOpacity>
       </Sheet>
     </OnboardingShell>
   );
 }
 
-const styles = StyleSheet.create({
-  fields: { gap: Spacing.lg },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    fields: { gap: Spacing.lg },
 
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-  },
+    row: {
+      flexDirection: 'row',
+      gap: Spacing.md,
+    },
 
-  label: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.light.ink3,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 6,
-  },
+    label: {
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+      color: C.ink3,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      marginBottom: 6,
+    },
 
-  input: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    borderWidth: 1.5,
-    borderColor: Colors.light.hairline,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: 14,
-    fontSize: FontSize.base,
-    fontWeight: '500',
-    color: Colors.light.ink,
-    ...Shadow.sm,
-  },
+    input: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      borderWidth: 1.5,
+      borderColor: C.hairline,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: 14,
+      fontSize: FontSize.base,
+      fontWeight: '500',
+      color: C.ink,
+      ...Shadow.sm,
+    },
 
-  genderRow: { flexDirection: 'row', gap: Spacing.sm },
-  genderPill: {
-    flex: 1, paddingVertical: 13, borderRadius: Radius.input,
-    backgroundColor: Colors.light.surface,
-    borderWidth: 1.5, borderColor: Colors.light.hairline,
-    alignItems: 'center', justifyContent: 'center',
-    ...Shadow.sm,
-  },
-  genderPillOn: { backgroundColor: Colors.light.primaryTint, borderColor: Colors.light.primary },
-  genderText:   { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink2 },
-  genderTextOn: { color: Colors.light.primaryStrong, fontWeight: '700' },
+    genderRow: { flexDirection: 'row', gap: Spacing.sm },
+    genderPill: {
+      flex: 1, paddingVertical: 13, borderRadius: Radius.input,
+      backgroundColor: C.surface,
+      borderWidth: 1.5, borderColor: C.hairline,
+      alignItems: 'center', justifyContent: 'center',
+      ...Shadow.sm,
+    },
+    genderPillOn: { backgroundColor: C.primaryTint, borderColor: C.primary },
+    genderText:   { fontSize: FontSize.base, fontWeight: '600', color: C.ink2 },
+    genderTextOn: { color: C.primaryStrong, fontWeight: '700' },
 
-  datePill: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    borderWidth: 1.5,
-    borderColor: Colors.light.hairline,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: 14,
-    ...Shadow.sm,
-  },
-  datePillText: {
-    fontSize: FontSize.base,
-    fontWeight: '500',
-    color: Colors.light.ink,
-  },
-  datePillPlaceholder: { color: Colors.light.ink3 },
+    datePill: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      borderWidth: 1.5,
+      borderColor: C.hairline,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: 14,
+      ...Shadow.sm,
+    },
+    datePillText: {
+      fontSize: FontSize.base,
+      fontWeight: '500',
+      color: C.ink,
+    },
+    datePillPlaceholder: { color: C.ink3 },
 
-  datePicker: { width: '100%' as any },
+    datePicker: { width: '100%' as any },
 
-  confirmBtn: {
-    marginTop: Spacing.md,
-    backgroundColor: Colors.light.primary,
-    borderRadius: Radius.pill,
-    paddingVertical: Spacing.base + 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmText: {
-    fontSize: FontSize.base,
-    fontWeight: '700',
-    color: '#fff',
-  },
-});
+    confirmBtn: {
+      marginTop: Spacing.md,
+      backgroundColor: C.primary,
+      borderRadius: Radius.pill,
+      paddingVertical: Spacing.base + 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    confirmText: {
+      fontSize: FontSize.base,
+      fontWeight: '700',
+      color: '#fff',
+    },
+  });
+}

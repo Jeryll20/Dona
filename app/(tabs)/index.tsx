@@ -9,7 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, COLOR_PALETTE } from '@/constants/Colors';
+import { COLOR_PALETTE } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { CAT } from '@/constants/categories';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -99,8 +100,10 @@ function DayPanel({
   activities, overrides, onActivityPress, onActivityLongPress,
   visibleSuggestions, onAccept, onDismiss, nowHour, panelWidth,
 }: DayPanelProps) {
-  const completions      = useBehaviorStore((s) => s.completions);
-  const customCategories = useScheduleStore((s) => s.customCategories);
+  const C = useColors();
+  const s = makeStyles(C);
+  const completions      = useBehaviorStore((st) => st.completions);
+  const customCategories = useScheduleStore((st) => st.customCategories);
   const d = new Date();
   d.setDate(d.getDate() + absOffset);
   const weekDay = DAY_MAP[d.getDay()];
@@ -175,24 +178,24 @@ function DayPanel({
   return (
     <ScrollView
       style={{ width: panelWidth, flex: 1 }}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={s.scrollContent}
       showsVerticalScrollIndicator={false}
       contentOffset={{ x: 0, y: 6 * HH }}
     >
       {isToday && visibleSuggestions.length > 0 && (
-        <View style={styles.suggestionsSection}>
-          <Text style={styles.sectionLabel}>Suggestions pour toi</Text>
-          {visibleSuggestions.map((s) => (
+        <View style={s.suggestionsSection}>
+          <Text style={s.sectionLabel}>Suggestions pour toi</Text>
+          {visibleSuggestions.map((sg) => (
             <SuggestionCard
-              key={s.id}
-              suggestion={s}
-              onAccept={() => onAccept(s.id)}
-              onDismiss={() => onDismiss(s.id)}
+              key={sg.id}
+              suggestion={sg}
+              onAccept={() => onAccept(sg.id)}
+              onDismiss={() => onDismiss(sg.id)}
             />
           ))}
         </View>
       )}
-      <View style={[styles.grid, { minHeight: 24 * HH }]}>
+      <View style={[s.grid, { minHeight: 24 * HH }]}>
         <HourGrid hourHeight={HH} />
         {isToday && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
         {events.filter((ev) => ev.thin).map((ev, i) => {
@@ -245,6 +248,9 @@ const PHASE_COLOR: Record<string, string> = {
 };
 
 export default function TodayScreen() {
+  const C = useColors();
+  const s = makeStyles(C);
+  const sh = makeSheetStyles(C);
   const nowHour = new Date().getHours() + new Date().getMinutes() / 60;
 
   const { width } = useWindowDimensions();
@@ -255,15 +261,15 @@ export default function TodayScreen() {
   const slideStartX = useRef(-width);
 
   const { sleep, meals, cycle, profile } = useUserStore();
-  const userId       = useAuthStore((s) => s.session?.user?.id);
-  const activities   = useScheduleStore((s) => s.activities);
-  const overrides    = useScheduleStore((s) => s.overrides);
-  const setOverride  = useScheduleStore((s) => s.setOverride);
-  const removeOverride = useScheduleStore((s) => s.removeOverride);
-  const viewMode     = useScheduleStore((s) => s.viewMode);
-  const setViewMode  = useScheduleStore((s) => s.setViewMode);
-  const dayOffset    = useScheduleStore((s) => s.dayOffset);
-  const setDayOffset = useScheduleStore((s) => s.setDayOffset);
+  const userId       = useAuthStore((st) => st.session?.user?.id);
+  const activities   = useScheduleStore((st) => st.activities);
+  const overrides    = useScheduleStore((st) => st.overrides);
+  const setOverride  = useScheduleStore((st) => st.setOverride);
+  const removeOverride = useScheduleStore((st) => st.removeOverride);
+  const viewMode     = useScheduleStore((st) => st.viewMode);
+  const setViewMode  = useScheduleStore((st) => st.setViewMode);
+  const dayOffset    = useScheduleStore((st) => st.dayOffset);
+  const setDayOffset = useScheduleStore((st) => st.setDayOffset);
   const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion } =
     useSuggestionsStore();
   const { completions, setCompletion, removeCompletion, clearReport } = useBehaviorStore();
@@ -461,7 +467,7 @@ export default function TodayScreen() {
     setSuggestions(buildSuggestions({ events: todayEvents, goal: profile.goal ?? undefined, cyclePhase }));
   }, [todayEvents, profile.goal, cyclePhase, setSuggestions]);
 
-  const visibleSuggestions = suggestions.filter((s) => !s.accepted && !s.dismissed);
+  const visibleSuggestions = suggestions.filter((sg) => !sg.accepted && !sg.dismissed);
 
   const panelsStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: slideX.value }],
@@ -479,70 +485,70 @@ export default function TodayScreen() {
   }, [viewMode]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={s.safe} edges={['top']}>
       <View style={{ flex: 1 }} {...(viewMode === 'day' ? swipe.panHandlers : {})}>
-      <View style={styles.header}>
+      <View style={s.header}>
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => setViewMode(VIEW_MODE_ORDER[(VIEW_MODE_ORDER.indexOf(viewMode) + 1) % 3])}
           accessibilityRole="button"
           accessibilityLabel="Changer la vue"
         >
-          <View style={styles.dateLabelRow}>
-            <Text style={styles.dateLabel} accessibilityLabel="Date du jour">
+          <View style={s.dateLabelRow}>
+            <Text style={s.dateLabel} accessibilityLabel="Date du jour">
               {selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
             </Text>
-            <View style={styles.viewChip}>
-              <Text style={styles.viewChipText}>{VIEW_MODE_LABELS[viewMode]}</Text>
+            <View style={s.viewChip}>
+              <Text style={s.viewChipText}>{VIEW_MODE_LABELS[viewMode]}</Text>
             </View>
           </View>
-          <View style={styles.titleRow}>
+          <View style={s.titleRow}>
             {viewMode === 'day' && (
               <TouchableOpacity
                 onPress={() => slideDay('prev')}
-                style={styles.navArrow}
+                style={s.navArrow}
                 accessibilityLabel="Jour précédent"
                 accessibilityRole="button"
               >
-                <Icon name="back" size={16} stroke={Colors.light.primary} />
+                <Icon name="back" size={16} stroke={C.primary} />
               </TouchableOpacity>
             )}
-            <Text style={styles.title}>{getDayTitle(dayOffset)}</Text>
+            <Text style={s.title}>{getDayTitle(dayOffset)}</Text>
             {viewMode === 'day' && (
               <TouchableOpacity
                 onPress={() => slideDay('next')}
-                style={styles.navArrow}
+                style={s.navArrow}
                 accessibilityLabel="Jour suivant"
                 accessibilityRole="button"
               >
-                <Icon name="arrow" size={16} stroke={Colors.light.primary} />
+                <Icon name="arrow" size={16} stroke={C.primary} />
               </TouchableOpacity>
             )}
           </View>
         </TouchableOpacity>
-        <View style={styles.headerRight}>
-          <View style={styles.badge}>
-            <Icon name="clock" size={14} stroke={Colors.light.ink2} />
-            <Text style={styles.badgeText}>
+        <View style={s.headerRight}>
+          <View style={s.badge}>
+            <Icon name="clock" size={14} stroke={C.ink2} />
+            <Text style={s.badgeText}>
               {Math.round(scheduledHours(todayEvents))}h planifiées
             </Text>
           </View>
           <TouchableOpacity
-            style={styles.chatBtn}
+            style={s.chatBtn}
             onPress={() => router.push('/chat' as any)}
             accessibilityLabel="Ouvrir le chat Dona"
             accessibilityRole="button"
           >
-            <Icon name="spark" size={20} stroke={Colors.light.primary} />
+            <Icon name="spark" size={20} stroke={C.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Cycle phase mini-badge */}
       {cyclePhase && (
-        <View style={[styles.phaseBadge, { borderColor: PHASE_COLOR[cyclePhase] }]}>
-          <View style={[styles.phaseDot, { backgroundColor: PHASE_COLOR[cyclePhase] }]} />
-          <Text style={[styles.phaseText, { color: PHASE_COLOR[cyclePhase] }]}>
+        <View style={[s.phaseBadge, { borderColor: PHASE_COLOR[cyclePhase] }]}>
+          <View style={[s.phaseDot, { backgroundColor: PHASE_COLOR[cyclePhase] }]} />
+          <Text style={[s.phaseText, { color: PHASE_COLOR[cyclePhase] }]}>
             {PHASE_LABEL[cyclePhase]}
           </Text>
         </View>
@@ -551,9 +557,9 @@ export default function TodayScreen() {
       {viewMode === 'week'  && <WeekView />}
       {viewMode === 'month' && <MonthView />}
       {viewMode === 'day' && (
-        <View style={styles.dayClipper}>
+        <View style={s.dayClipper}>
           <Animated.View
-            style={[styles.dayPanels, { width: width * 3 }, panelsStyle]}
+            style={[s.dayPanels, { width: width * 3 }, panelsStyle]}
           >
             {[dayOffset - 1, dayOffset, dayOffset + 1].map((off) => (
               <DayPanel
@@ -583,32 +589,32 @@ export default function TodayScreen() {
         onClose={() => setCompletionTarget(null)}
         title={completionActivity?.title ?? 'Activité'}
       >
-        <TouchableOpacity style={sheet.option} onPress={() => markCompletion(true)} accessibilityRole="button">
-          <View style={[sheet.optionIcon, { backgroundColor: '#C8F0D4' }]}>
-            <Icon name="check" size={20} stroke={Colors.light.mealInk} sw={2.2} />
+        <TouchableOpacity style={sh.option} onPress={() => markCompletion(true)} accessibilityRole="button">
+          <View style={[sh.optionIcon, { backgroundColor: '#C8F0D4' }]}>
+            <Icon name="check" size={20} stroke={C.mealInk} sw={2.2} />
           </View>
-          <View style={sheet.optionText}>
-            <Text style={sheet.optionLabel}>Activité réalisée</Text>
-            <Text style={sheet.optionSub}>Marquer comme complétée aujourd'hui</Text>
+          <View style={sh.optionText}>
+            <Text style={sh.optionLabel}>Activité réalisée</Text>
+            <Text style={sh.optionSub}>Marquer comme complétée aujourd'hui</Text>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity style={sheet.option} onPress={() => markCompletion(false)} accessibilityRole="button">
-          <View style={[sheet.optionIcon, { backgroundColor: Colors.light.surfaceSunk }]}>
-            <Icon name="x" size={20} stroke={Colors.light.ink2} sw={2.2} />
+        <TouchableOpacity style={sh.option} onPress={() => markCompletion(false)} accessibilityRole="button">
+          <View style={[sh.optionIcon, { backgroundColor: C.surfaceSunk }]}>
+            <Icon name="x" size={20} stroke={C.ink2} sw={2.2} />
           </View>
-          <View style={sheet.optionText}>
-            <Text style={sheet.optionLabel}>Activité sautée</Text>
-            <Text style={sheet.optionSub}>Indiquer que tu n'as pas pu la faire</Text>
+          <View style={sh.optionText}>
+            <Text style={sh.optionLabel}>Activité sautée</Text>
+            <Text style={sh.optionSub}>Indiquer que tu n'as pas pu la faire</Text>
           </View>
         </TouchableOpacity>
         {existingCompletion && (
-          <TouchableOpacity style={sheet.option} onPress={resetCompletion} accessibilityRole="button">
-            <View style={[sheet.optionIcon, { backgroundColor: Colors.light.primaryTint }]}>
-              <Ionicons name="refresh-outline" size={20} color={Colors.light.primary} />
+          <TouchableOpacity style={sh.option} onPress={resetCompletion} accessibilityRole="button">
+            <View style={[sh.optionIcon, { backgroundColor: C.primaryTint }]}>
+              <Ionicons name="refresh-outline" size={20} color={C.primary} />
             </View>
-            <View style={sheet.optionText}>
-              <Text style={sheet.optionLabel}>Remettre à zéro</Text>
-              <Text style={sheet.optionSub}>Annuler le statut et repasser en neutre</Text>
+            <View style={sh.optionText}>
+              <Text style={sh.optionLabel}>Remettre à zéro</Text>
+              <Text style={sh.optionSub}>Annuler le statut et repasser en neutre</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -620,18 +626,18 @@ export default function TodayScreen() {
         onClose={() => setChoiceTarget(null)}
         title={choiceActivity?.title ?? ''}
       >
-        <TouchableOpacity style={sheet.option} onPress={openSingleEdit} accessibilityRole="button">
-          <View style={[sheet.optionIcon, { backgroundColor: Colors.light.primaryTint }]}>
-            <Ionicons name="calendar-outline" size={20} color={Colors.light.primary} />
+        <TouchableOpacity style={sh.option} onPress={openSingleEdit} accessibilityRole="button">
+          <View style={[sh.optionIcon, { backgroundColor: C.primaryTint }]}>
+            <Ionicons name="calendar-outline" size={20} color={C.primary} />
           </View>
-          <View style={sheet.optionText}>
-            <Text style={sheet.optionLabel}>Modifier ce jour uniquement</Text>
-            <Text style={sheet.optionSub}>Changer l'horaire ou le titre pour cette occurrence</Text>
+          <View style={sh.optionText}>
+            <Text style={sh.optionLabel}>Modifier ce jour uniquement</Text>
+            <Text style={sh.optionSub}>Changer l'horaire ou le titre pour cette occurrence</Text>
           </View>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={sheet.option}
+          style={sh.option}
           onPress={() => {
             if (choiceTarget) {
               router.navigate({ pathname: '/(tabs)/activities', params: { editId: choiceTarget.activityId } } as any);
@@ -640,22 +646,22 @@ export default function TodayScreen() {
           }}
           accessibilityRole="button"
         >
-          <View style={[sheet.optionIcon, { backgroundColor: Colors.light.surfaceSunk }]}>
-            <Ionicons name="repeat-outline" size={20} color={Colors.light.ink2} />
+          <View style={[sh.optionIcon, { backgroundColor: C.surfaceSunk }]}>
+            <Ionicons name="repeat-outline" size={20} color={C.ink2} />
           </View>
-          <View style={sheet.optionText}>
-            <Text style={sheet.optionLabel}>Modifier tous les jours</Text>
-            <Text style={sheet.optionSub}>Changer la récurrence ou les jours</Text>
+          <View style={sh.optionText}>
+            <Text style={sh.optionLabel}>Modifier tous les jours</Text>
+            <Text style={sh.optionSub}>Changer la récurrence ou les jours</Text>
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity style={sheet.option} onPress={cancelOccurrence} accessibilityRole="button">
-          <View style={[sheet.optionIcon, { backgroundColor: '#FEE2E2' }]}>
+        <TouchableOpacity style={sh.option} onPress={cancelOccurrence} accessibilityRole="button">
+          <View style={[sh.optionIcon, { backgroundColor: '#FEE2E2' }]}>
             <Ionicons name="trash-outline" size={20} color="#DC2626" />
           </View>
-          <View style={sheet.optionText}>
-            <Text style={[sheet.optionLabel, { color: '#DC2626' }]}>Supprimer ce jour</Text>
-            <Text style={sheet.optionSub}>Masquer l'activité uniquement pour cette date</Text>
+          <View style={sh.optionText}>
+            <Text style={[sh.optionLabel, { color: '#DC2626' }]}>Supprimer ce jour</Text>
+            <Text style={sh.optionSub}>Masquer l'activité uniquement pour cette date</Text>
           </View>
         </TouchableOpacity>
 
@@ -663,7 +669,7 @@ export default function TodayScreen() {
           (o) => o.activityId === choiceTarget?.activityId && o.date === choiceTarget?.date,
         ) && (
           <TouchableOpacity
-            style={sheet.option}
+            style={sh.option}
             onPress={() => {
               if (choiceTarget) {
                 removeOverride(choiceTarget.activityId, choiceTarget.date);
@@ -673,12 +679,12 @@ export default function TodayScreen() {
             }}
             accessibilityRole="button"
           >
-            <View style={[sheet.optionIcon, { backgroundColor: Colors.light.primaryTint }]}>
-              <Ionicons name="refresh-outline" size={20} color={Colors.light.primary} />
+            <View style={[sh.optionIcon, { backgroundColor: C.primaryTint }]}>
+              <Ionicons name="refresh-outline" size={20} color={C.primary} />
             </View>
-            <View style={sheet.optionText}>
-              <Text style={sheet.optionLabel}>Réinitialiser ce jour</Text>
-              <Text style={sheet.optionSub}>Revenir à l'activité d'origine</Text>
+            <View style={sh.optionText}>
+              <Text style={sh.optionLabel}>Réinitialiser ce jour</Text>
+              <Text style={sh.optionSub}>Revenir à l'activité d'origine</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -692,46 +698,46 @@ export default function TodayScreen() {
       >
         {singleEdit && (
           <>
-            <View style={sheet.field}>
-              <Text style={sheet.fieldLabel}>Titre</Text>
+            <View style={sh.field}>
+              <Text style={sh.fieldLabel}>Titre</Text>
               <TextInput
-                style={sheet.input}
+                style={sh.input}
                 value={singleEdit.title}
-                onChangeText={(v) => setSingleEdit((s) => s ? { ...s, title: v } : s)}
-                placeholderTextColor={Colors.light.ink3}
+                onChangeText={(v) => setSingleEdit((st) => st ? { ...st, title: v } : st)}
+                placeholderTextColor={C.ink3}
                 returnKeyType="done"
                 accessibilityLabel="Titre de l'activité"
               />
             </View>
 
-            <View style={sheet.timeRow}>
+            <View style={sh.timeRow}>
               <View style={{ flex: 1 }}>
-                <Text style={sheet.fieldLabel}>Début</Text>
-                <View style={sheet.timeCard}>
+                <Text style={sh.fieldLabel}>Début</Text>
+                <View style={sh.timeCard}>
                   <TimeField
                     value={singleEdit.startTime}
-                    onChange={(v) => setSingleEdit((s) => s ? { ...s, startTime: v } : s)}
+                    onChange={(v) => setSingleEdit((st) => st ? { ...st, startTime: v } : st)}
                   />
                 </View>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={sheet.fieldLabel}>Fin</Text>
-                <View style={sheet.timeCard}>
+                <Text style={sh.fieldLabel}>Fin</Text>
+                <View style={sh.timeCard}>
                   <TimeField
                     value={singleEdit.endTime}
-                    onChange={(v) => setSingleEdit((s) => s ? { ...s, endTime: v } : s)}
+                    onChange={(v) => setSingleEdit((st) => st ? { ...st, endTime: v } : st)}
                   />
                 </View>
               </View>
             </View>
 
-            <View style={sheet.field}>
-              <Text style={sheet.fieldLabel}>Couleur</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={sheet.colorRow}>
+            <View style={sh.field}>
+              <Text style={sh.fieldLabel}>Couleur</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={sh.colorRow}>
                 <TouchableOpacity
-                  style={[sheet.swatch, !singleEdit.color && sheet.swatchSelected,
-                    { backgroundColor: Colors.light.surfaceSunk }]}
-                  onPress={() => setSingleEdit((s) => s ? { ...s, color: undefined } : s)}
+                  style={[sh.swatch, !singleEdit.color && sh.swatchSelected,
+                    { backgroundColor: C.surfaceSunk }]}
+                  onPress={() => setSingleEdit((st) => st ? { ...st, color: undefined } : st)}
                   accessibilityLabel="Couleur par défaut"
                 />
                 {COLOR_PALETTE.map((p) => {
@@ -739,8 +745,8 @@ export default function TodayScreen() {
                   return (
                     <TouchableOpacity
                       key={p.bg}
-                      style={[sheet.swatch, { backgroundColor: p.bg }, on && sheet.swatchSelected]}
-                      onPress={() => setSingleEdit((s) => s ? { ...s, color: { bg: p.bg, ink: p.ink } } : s)}
+                      style={[sh.swatch, { backgroundColor: p.bg }, on && sh.swatchSelected]}
+                      onPress={() => setSingleEdit((st) => st ? { ...st, color: { bg: p.bg, ink: p.ink } } : st)}
                       accessibilityLabel={p.label}
                     />
                   );
@@ -748,8 +754,8 @@ export default function TodayScreen() {
               </ScrollView>
             </View>
 
-            <TouchableOpacity style={sheet.saveBtn} onPress={saveSingleEdit} accessibilityRole="button">
-              <Text style={sheet.saveBtnText}>Enregistrer</Text>
+            <TouchableOpacity style={sh.saveBtn} onPress={saveSingleEdit} accessibilityRole="button">
+              <Text style={sh.saveBtnText}>Enregistrer</Text>
             </TouchableOpacity>
           </>
         )}
@@ -758,169 +764,173 @@ export default function TodayScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: Colors.light.background },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    paddingBottom: 12,
-  },
-  dateLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.light.primaryStrong,
-    letterSpacing: 0.3,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginTop: 2,
-  },
-  navArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: Colors.light.ink,
-    letterSpacing: -0.5,
-  },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  chatBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.sm,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.pill,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-    ...Shadow.sm,
-  },
-  badgeText: { fontSize: 13.5, fontWeight: '600', color: Colors.light.ink2 },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    safe:   { flex: 1, backgroundColor: C.background },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 22,
+      paddingBottom: 12,
+    },
+    dateLabel: {
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+      color: C.primaryStrong,
+      letterSpacing: 0.3,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginTop: 2,
+    },
+    navArrow: {
+      width: 28,
+      height: 28,
+      borderRadius: Radius.pill,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: '800',
+      color: C.ink,
+      letterSpacing: -0.5,
+    },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    chatBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: Radius.pill,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...Shadow.sm,
+    },
+    badge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      backgroundColor: C.surface,
+      borderRadius: Radius.pill,
+      paddingHorizontal: 13,
+      paddingVertical: 8,
+      ...Shadow.sm,
+    },
+    badgeText: { fontSize: 13.5, fontWeight: '600', color: C.ink2 },
 
-  dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  viewChip: {
-    backgroundColor: Colors.light.primaryTint,
-    borderRadius: Radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  viewChipText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: Colors.light.primary,
-    letterSpacing: 0.3,
-  },
+    dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+    viewChip: {
+      backgroundColor: C.primaryTint,
+      borderRadius: Radius.pill,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    viewChipText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: C.primary,
+      letterSpacing: 0.3,
+    },
 
-  phaseBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    marginHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 5,
-    borderRadius: Radius.pill,
-    borderWidth: 1.5,
-    backgroundColor: Colors.light.surface,
-  },
-  phaseDot:  { width: 7, height: 7, borderRadius: 4 },
-  phaseText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+    phaseBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'flex-start',
+      marginHorizontal: Spacing.lg,
+      marginBottom: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 5,
+      borderRadius: Radius.pill,
+      borderWidth: 1.5,
+      backgroundColor: C.surface,
+    },
+    phaseDot:  { width: 7, height: 7, borderRadius: 4 },
+    phaseText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
 
-  dayClipper: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  dayPanels: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  scrollContent: { paddingBottom: 120, paddingHorizontal: Spacing.base, paddingTop: Spacing.sm },
+    dayClipper: {
+      flex: 1,
+      overflow: 'hidden',
+    },
+    dayPanels: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'stretch',
+    },
+    scrollContent: { paddingBottom: 120, paddingHorizontal: Spacing.base, paddingTop: Spacing.sm },
 
-  suggestionsSection: { marginBottom: Spacing.lg, gap: Spacing.xs },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.light.ink3,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: Spacing.xs,
-  },
+    suggestionsSection: { marginBottom: Spacing.lg, gap: Spacing.xs },
+    sectionLabel: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: C.ink3,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+      marginBottom: Spacing.xs,
+    },
 
-  grid: { position: 'relative', paddingLeft: 50 },
-});
+    grid: { position: 'relative', paddingLeft: 50 },
+  });
+}
 
-const sheet = StyleSheet.create({
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.hairline,
-  },
-  optionIcon: {
-    width: 40, height: 40, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  optionText:  { flex: 1 },
-  optionLabel: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.ink },
-  optionSub:   { fontSize: FontSize.sm, fontWeight: '500', color: Colors.light.ink3, marginTop: 2 },
+function makeSheetStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    option: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: C.hairline,
+    },
+    optionIcon: {
+      width: 40, height: 40, borderRadius: 12,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    optionText:  { flex: 1 },
+    optionLabel: { fontSize: FontSize.base, fontWeight: '700', color: C.ink },
+    optionSub:   { fontSize: FontSize.sm, fontWeight: '500', color: C.ink3, marginTop: 2 },
 
-  field:      { gap: Spacing.xs, marginTop: Spacing.md },
-  fieldLabel: {
-    fontSize: 11, fontWeight: '700', color: Colors.light.ink3,
-    textTransform: 'uppercase', letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: Colors.light.surfaceSunk,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.base,
-    fontSize: FontSize.base,
-    fontWeight: '500',
-    color: Colors.light.ink,
-  },
-  timeRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
-  timeCard: {
-    backgroundColor: Colors.light.surfaceSunk,
-    borderRadius: Radius.input,
-    paddingHorizontal: Spacing.sm,
-    marginTop: Spacing.xs,
-  },
-  colorRow:      { marginTop: Spacing.xs },
-  swatch: {
-    width: 32, height: 32, borderRadius: 16,
-    marginRight: Spacing.sm,
-    borderWidth: 2, borderColor: 'transparent',
-  },
-  swatchSelected: { borderColor: Colors.light.primary },
+    field:      { gap: Spacing.xs, marginTop: Spacing.md },
+    fieldLabel: {
+      fontSize: 11, fontWeight: '700', color: C.ink3,
+      textTransform: 'uppercase', letterSpacing: 0.5,
+    },
+    input: {
+      backgroundColor: C.surfaceSunk,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.base,
+      fontSize: FontSize.base,
+      fontWeight: '500',
+      color: C.ink,
+    },
+    timeRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md },
+    timeCard: {
+      backgroundColor: C.surfaceSunk,
+      borderRadius: Radius.input,
+      paddingHorizontal: Spacing.sm,
+      marginTop: Spacing.xs,
+    },
+    colorRow:      { marginTop: Spacing.xs },
+    swatch: {
+      width: 32, height: 32, borderRadius: 16,
+      marginRight: Spacing.sm,
+      borderWidth: 2, borderColor: 'transparent',
+    },
+    swatchSelected: { borderColor: C.primary },
 
-  saveBtn: {
-    marginTop: Spacing.lg,
-    backgroundColor: Colors.light.primary,
-    borderRadius: Radius.pill,
-    paddingVertical: Spacing.base,
-    alignItems: 'center',
-  },
-  saveBtnText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.onPrimary },
-});
+    saveBtn: {
+      marginTop: Spacing.lg,
+      backgroundColor: C.primary,
+      borderRadius: Radius.pill,
+      paddingVertical: Spacing.base,
+      alignItems: 'center',
+    },
+    saveBtnText: { fontSize: FontSize.base, fontWeight: '700', color: C.onPrimary },
+  });
+}

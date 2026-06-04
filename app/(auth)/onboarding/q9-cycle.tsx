@@ -8,7 +8,7 @@ import OnboardingShell from '@/components/onboarding/OnboardingShell';
 import { Sheet } from '@/components/ui/Sheet';
 import { Stepper } from '@/components/ui/Stepper';
 import { useUserStore } from '@/store/useUserStore';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
@@ -21,8 +21,10 @@ function dateToISO(d: Date): string {
 }
 
 export default function Q9Cycle() {
-  const setCycle = useUserStore((s) => s.setCycle);
-  const stored   = useUserStore((s) => s.cycle);
+  const C = useColors();
+  const s = makeStyles(C);
+  const setCycle = useUserStore((st) => st.setCycle);
+  const stored   = useUserStore((st) => st.cycle);
 
   const [noMenstruation, setNoMenstruation] = useState(!stored.tracking && stored.tracking !== undefined ? true : false);
   const [lastDate,  setLastDate]  = useState<Date | null>(
@@ -66,19 +68,19 @@ export default function Q9Cycle() {
       onNext={handleNext}
       scrollable
     >
-      <View style={styles.container}>
+      <View style={s.container}>
         {/* No menstruation toggle */}
         <TouchableOpacity
-          style={[styles.checkbox, noMenstruation && styles.checkboxActive]}
+          style={[s.checkbox, noMenstruation && s.checkboxActive]}
           onPress={() => setNoMenstruation(!noMenstruation)}
           accessibilityLabel="Je n'ai pas de menstruation"
           accessibilityRole="checkbox"
           accessibilityState={{ checked: noMenstruation }}
         >
-          <View style={[styles.checkMark, noMenstruation && styles.checkMarkActive]}>
-            {noMenstruation && <Text style={styles.checkIcon}>✓</Text>}
+          <View style={[s.checkMark, noMenstruation && s.checkMarkActive]}>
+            {noMenstruation && <Text style={s.checkIcon}>✓</Text>}
           </View>
-          <Text style={[styles.checkLabel, noMenstruation && styles.checkLabelActive]}>
+          <Text style={[s.checkLabel, noMenstruation && s.checkLabelActive]}>
             Je n'ai pas de menstruation
           </Text>
         </TouchableOpacity>
@@ -86,23 +88,23 @@ export default function Q9Cycle() {
         {!noMenstruation && (
           <>
             {/* Last period date */}
-            <View style={styles.section}>
-              <Text style={styles.fieldLabel}>Date de tes dernières règles</Text>
+            <View style={s.section}>
+              <Text style={s.fieldLabel}>Date de tes dernières règles</Text>
               <TouchableOpacity
-                style={styles.datePill}
+                style={s.datePill}
                 onPress={openDatePicker}
                 accessibilityLabel="Sélectionner la date des dernières règles"
                 accessibilityRole="button"
               >
-                <Text style={[styles.datePillText, !lastDate && styles.datePillPlaceholder]}>
+                <Text style={[s.datePillText, !lastDate && s.datePillPlaceholder]}>
                   {lastDate ? formatDate(lastDate) : 'Touche pour choisir'}
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* Cycle duration */}
-            <View style={styles.section}>
-              <Text style={styles.fieldLabel}>Durée de ton cycle</Text>
+            <View style={s.section}>
+              <Text style={s.fieldLabel}>Durée de ton cycle</Text>
               <Stepper
                 value={cycleDays}
                 setValue={setCycleDays}
@@ -127,91 +129,93 @@ export default function Q9Cycle() {
           maximumDate={new Date()}
           onChange={(_, date) => { if (date) setTempDate(date); }}
           themeVariant="light"
-          style={styles.datePicker}
+          style={s.datePicker}
         />
         <TouchableOpacity
-          style={styles.confirmBtn}
+          style={s.confirmBtn}
           onPress={confirmDate}
           accessibilityLabel="Valider la date"
           accessibilityRole="button"
         >
-          <Text style={styles.confirmText}>Valider</Text>
+          <Text style={s.confirmText}>Valider</Text>
         </TouchableOpacity>
       </Sheet>
     </OnboardingShell>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { gap: Spacing.lg },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    container: { gap: Spacing.lg },
 
-  checkbox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    borderWidth: 1.5,
-    borderColor: Colors.light.hairline,
-    padding: Spacing.base,
-    ...Shadow.sm,
-  },
-  checkboxActive: {
-    backgroundColor: Colors.light.primaryTint,
-    borderColor: Colors.light.primary,
-  },
-  checkMark: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: Colors.light.hairline,
-    backgroundColor: Colors.light.surfaceSunk,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkMarkActive: {
-    backgroundColor: Colors.light.primary,
-    borderColor: Colors.light.primary,
-  },
-  checkIcon:  { fontSize: 13, color: '#fff', fontWeight: '700' },
-  checkLabel: { flex: 1, fontSize: FontSize.base, fontWeight: '600', color: Colors.light.ink2 },
-  checkLabelActive: { color: Colors.light.primaryStrong },
+    checkbox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      borderWidth: 1.5,
+      borderColor: C.hairline,
+      padding: Spacing.base,
+      ...Shadow.sm,
+    },
+    checkboxActive: {
+      backgroundColor: C.primaryTint,
+      borderColor: C.primary,
+    },
+    checkMark: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      borderWidth: 1.5,
+      borderColor: C.hairline,
+      backgroundColor: C.surfaceSunk,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkMarkActive: {
+      backgroundColor: C.primary,
+      borderColor: C.primary,
+    },
+    checkIcon:  { fontSize: 13, color: '#fff', fontWeight: '700' },
+    checkLabel: { flex: 1, fontSize: FontSize.base, fontWeight: '600', color: C.ink2 },
+    checkLabelActive: { color: C.primaryStrong },
 
-  section: { gap: Spacing.sm },
-  fieldLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.light.ink3,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
+    section: { gap: Spacing.sm },
+    fieldLabel: {
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+      color: C.ink3,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
 
-  datePill: {
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    borderWidth: 1.5,
-    borderColor: Colors.light.hairline,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: 14,
-    ...Shadow.sm,
-  },
-  datePillText:        { fontSize: FontSize.base, fontWeight: '500', color: Colors.light.ink },
-  datePillPlaceholder: { color: Colors.light.ink3 },
+    datePill: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      borderWidth: 1.5,
+      borderColor: C.hairline,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: 14,
+      ...Shadow.sm,
+    },
+    datePillText:        { fontSize: FontSize.base, fontWeight: '500', color: C.ink },
+    datePillPlaceholder: { color: C.ink3 },
 
-  datePicker: { width: '100%' as any },
+    datePicker: { width: '100%' as any },
 
-  confirmBtn: {
-    marginTop: Spacing.md,
-    backgroundColor: Colors.light.primary,
-    borderRadius: Radius.pill,
-    paddingVertical: Spacing.base + 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmText: {
-    fontSize: FontSize.base,
-    fontWeight: '700',
-    color: '#fff',
-  },
-});
+    confirmBtn: {
+      marginTop: Spacing.md,
+      backgroundColor: C.primary,
+      borderRadius: Radius.pill,
+      paddingVertical: Spacing.base + 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    confirmText: {
+      fontSize: FontSize.base,
+      fontWeight: '700',
+      color: '#fff',
+    },
+  });
+}

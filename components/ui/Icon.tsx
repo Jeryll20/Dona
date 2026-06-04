@@ -1,5 +1,5 @@
 import Svg, { G, Path, Circle, Rect, Line, Polyline } from 'react-native-svg';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 
 export type IconName =
   | 'today' | 'list' | 'profile' | 'arrow' | 'back' | 'plus' | 'check' | 'x'
@@ -140,10 +140,12 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
 };
 
-export function Icon({ name, size = 24, stroke = Colors.light.ink, sw = 1.8 }: IconProps) {
+export function Icon({ name, size = 24, stroke, sw = 1.8 }: IconProps) {
+  const C = useColors();
+  const strokeColor = stroke ?? C.ink;
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <G stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" fill="none">
+      <G stroke={strokeColor} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" fill="none">
         {ICONS[name]}
       </G>
     </Svg>

@@ -1,45 +1,49 @@
 import { StyleSheet, View, Text } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 
 interface HourGridProps {
   hourHeight: number;
 }
 
 export function HourGrid({ hourHeight }: HourGridProps) {
+  const C = useColors();
+  const s = makeStyles(C);
   return (
     <>
       {Array.from({ length: 25 }, (_, h) => (
-        <View key={h} style={[styles.row, { top: h * hourHeight }]}>
-          <Text style={styles.label} accessibilityElementsHidden>
+        <View key={h} style={[s.row, { top: h * hourHeight }]}>
+          <Text style={s.label} accessibilityElementsHidden>
             {h === 24 ? '00h' : `${String(h).padStart(2, '0')}h`}
           </Text>
-          <View style={styles.line} />
+          <View style={s.line} />
         </View>
       ))}
     </>
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  label: {
-    width: 40,
-    textAlign: 'right',
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.light.ink3,
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.light.hairline,
-    opacity: 0.7,
-  },
-});
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    row: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    label: {
+      width: 40,
+      textAlign: 'right',
+      fontSize: 11,
+      fontWeight: '600',
+      color: C.ink3,
+    },
+    line: {
+      flex: 1,
+      height: 1,
+      backgroundColor: C.hairline,
+      opacity: 0.7,
+    },
+  });
+}

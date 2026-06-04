@@ -7,7 +7,7 @@ import OnboardingShell from '@/components/onboarding/OnboardingShell';
 import { Sheet } from '@/components/ui/Sheet';
 import { TimeField } from '@/components/ui/TimeField';
 import { useUserStore } from '@/store/useUserStore';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import type { MealEntry } from '@/types';
@@ -17,8 +17,10 @@ const DEFAULT_LABELS = [
 ];
 
 export default function Q4Meals() {
-  const setMeals = useUserStore((s) => s.setMeals);
-  const stored   = useUserStore((s) => s.meals);
+  const C = useColors();
+  const s = makeStyles(C);
+  const setMeals = useUserStore((st) => st.setMeals);
+  const stored   = useUserStore((st) => st.meals);
 
   const [entries, setEntries] = useState<MealEntry[]>(
     stored.entries ?? [
@@ -71,28 +73,28 @@ export default function Q4Meals() {
       onNext={handleNext}
       scrollable
     >
-      <View style={styles.list}>
+      <View style={s.list}>
         {entries.map((entry, i) => (
-          <View key={i} style={styles.mealRow}>
-            <View style={styles.mealLeft}>
-              <Text style={styles.mealLabel}>{entry.label}</Text>
+          <View key={i} style={s.mealRow}>
+            <View style={s.mealLeft}>
+              <Text style={s.mealLabel}>{entry.label}</Text>
               <TouchableOpacity
-                style={[styles.timePill, editingIndex === i && styles.timePillActive]}
+                style={[s.timePill, editingIndex === i && s.timePillActive]}
                 onPress={() => openEditor(i)}
                 accessibilityLabel={`Modifier l'heure de ${entry.label}`}
                 accessibilityRole="button"
               >
-                <Text style={styles.timePillText}>{entry.time}</Text>
+                <Text style={s.timePillText}>{entry.time}</Text>
               </TouchableOpacity>
             </View>
             {entries.length > 1 && (
               <TouchableOpacity
-                style={styles.removeBtn}
+                style={s.removeBtn}
                 onPress={() => removeMeal(i)}
                 accessibilityLabel={`Supprimer ${entry.label}`}
                 accessibilityRole="button"
               >
-                <Text style={styles.removeBtnText}>✕</Text>
+                <Text style={s.removeBtnText}>✕</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -100,13 +102,13 @@ export default function Q4Meals() {
 
         {entries.length < 5 && (
           <TouchableOpacity
-            style={styles.addBtn}
+            style={s.addBtn}
             onPress={addMeal}
             accessibilityLabel="Ajouter un repas"
             accessibilityRole="button"
           >
-            <Text style={styles.addBtnIcon}>+</Text>
-            <Text style={styles.addBtnText}>Ajouter un repas</Text>
+            <Text style={s.addBtnIcon}>+</Text>
+            <Text style={s.addBtnText}>Ajouter un repas</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -118,93 +120,95 @@ export default function Q4Meals() {
       >
         <TimeField value={tempTime} onChange={setTempTime} />
         <TouchableOpacity
-          style={styles.confirmBtn}
+          style={s.confirmBtn}
           onPress={confirmEdit}
           accessibilityLabel="Valider l'heure"
           accessibilityRole="button"
         >
-          <Text style={styles.confirmText}>Valider</Text>
+          <Text style={s.confirmText}>Valider</Text>
         </TouchableOpacity>
       </Sheet>
     </OnboardingShell>
   );
 }
 
-const styles = StyleSheet.create({
-  list: { gap: Spacing.sm },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    list: { gap: Spacing.sm },
 
-  mealRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.light.surface,
-    borderRadius: Radius.input,
-    padding: Spacing.base,
-    ...Shadow.sm,
-  },
-  mealLeft: { flex: 1, gap: 6 },
-  mealLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.light.ink3,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
+    mealRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      backgroundColor: C.surface,
+      borderRadius: Radius.input,
+      padding: Spacing.base,
+      ...Shadow.sm,
+    },
+    mealLeft: { flex: 1, gap: 6 },
+    mealLabel: {
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+      color: C.ink3,
+      textTransform: 'uppercase',
+      letterSpacing: 0.3,
+    },
 
-  timePill: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.light.primaryTint,
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.base,
-    paddingVertical: 8,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  timePillActive: { borderColor: Colors.light.primary },
-  timePillText: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.light.primaryStrong,
-    letterSpacing: -0.3,
-  },
+    timePill: {
+      alignSelf: 'flex-start',
+      backgroundColor: C.primaryTint,
+      borderRadius: Radius.pill,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: 8,
+      borderWidth: 1.5,
+      borderColor: 'transparent',
+    },
+    timePillActive: { borderColor: C.primary },
+    timePillText: {
+      fontSize: FontSize.lg,
+      fontWeight: '700',
+      color: C.primaryStrong,
+      letterSpacing: -0.3,
+    },
 
-  removeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.surfaceSunk,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removeBtnText: { fontSize: 12, color: Colors.light.ink3, fontWeight: '600' },
+    removeBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: Radius.pill,
+      backgroundColor: C.surfaceSunk,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    removeBtnText: { fontSize: 12, color: C.ink3, fontWeight: '600' },
 
-  confirmBtn: {
-    marginTop: Spacing.md,
-    backgroundColor: Colors.light.primary,
-    borderRadius: Radius.pill,
-    paddingVertical: Spacing.base + 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmText: {
-    fontSize: FontSize.base,
-    fontWeight: '700',
-    color: '#fff',
-  },
+    confirmBtn: {
+      marginTop: Spacing.md,
+      backgroundColor: C.primary,
+      borderRadius: Radius.pill,
+      paddingVertical: Spacing.base + 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    confirmText: {
+      fontSize: FontSize.base,
+      fontWeight: '700',
+      color: '#fff',
+    },
 
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.base,
-    borderRadius: Radius.input,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: Colors.light.primary,
-    backgroundColor: Colors.light.primaryTint,
-    marginTop: Spacing.xs,
-  },
-  addBtnIcon: { fontSize: 20, fontWeight: '700', color: Colors.light.primary },
-  addBtnText: { fontSize: FontSize.base, fontWeight: '700', color: Colors.light.primaryStrong },
-});
+    addBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.sm,
+      paddingVertical: Spacing.base,
+      borderRadius: Radius.input,
+      borderWidth: 1.5,
+      borderStyle: 'dashed',
+      borderColor: C.primary,
+      backgroundColor: C.primaryTint,
+      marginTop: Spacing.xs,
+    },
+    addBtnIcon: { fontSize: 20, fontWeight: '700', color: C.primary },
+    addBtnText: { fontSize: FontSize.base, fontWeight: '700', color: C.primaryStrong },
+  });
+}

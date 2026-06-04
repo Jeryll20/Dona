@@ -5,8 +5,8 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useUserStore } from '@/store/useUserStore';
 import { scheduleAllNotifications } from '@/lib/notifications';
 import { buildDefaultDay } from '@/lib/optimizer';
-import { Colors } from '@/constants/Colors';
-import { Spacing, Radius, Shadow } from '@/constants/spacing';
+import { useColors } from '@/hooks/useColors';
+import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { CAT } from '@/constants/categories';
 import type { TimelineEvent } from '@/types';
@@ -34,8 +34,10 @@ function buildDayFromProfile(
 const HH = 44; // px per hour in the recap preview
 
 export default function RecapScreen() {
+  const C = useColors();
+  const s = makeStyles(C);
   const { sleep, meals, cycle } = useUserStore();
-  const completeOnboarding = useUserStore((s) => s.completeOnboarding);
+  const completeOnboarding = useUserStore((st) => st.completeOnboarding);
 
   const events = buildDayFromProfile(sleep, meals);
 
@@ -51,29 +53,29 @@ export default function RecapScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        style={s.scroll}
+        contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Ta journée type</Text>
-        <Text style={styles.sub}>
+        <Text style={s.title}>Ta journée type</Text>
+        <Text style={s.sub}>
           Voici un aperçu de ton planning optimisé. Tu pourras tout modifier à tout moment.
         </Text>
 
-        <View style={[styles.preview, { height: 16 * HH }]}>
+        <View style={[s.preview, { height: 16 * HH }]}>
           {events.map((ev, i) => {
             const c      = CAT[ev.cat];
             const top    = Math.max(0, ev.start - 6) * HH;
             const height = Math.max((ev.end - ev.start) * HH, 16);
             if (ev.start < 6 || ev.start > 22) return null;
             return (
-              <View key={i} style={[styles.block, { top, height, backgroundColor: c.bg }]}
+              <View key={i} style={[s.block, { top, height, backgroundColor: c.bg }]}
                 accessibilityLabel={ev.title}>
-                <Text style={[styles.blockTitle, { color: c.ink }]}>{ev.title}</Text>
+                <Text style={[s.blockTitle, { color: c.ink }]}>{ev.title}</Text>
                 {height > 36 && (
-                  <Text style={[styles.blockTime, { color: c.ink }]}>
+                  <Text style={[s.blockTime, { color: c.ink }]}>
                     {fmtHour(ev.start)} – {fmtHour(ev.end)}
                   </Text>
                 )}
@@ -81,45 +83,47 @@ export default function RecapScreen() {
             );
           })}
           {Array.from({ length: 17 }, (_, i) => i + 6).map((h) => (
-            <View key={h} style={[styles.hourRow, { top: (h - 6) * HH }]}>
-              <Text style={styles.hourLabel}>{String(h).padStart(2, '0')}h</Text>
-              <View style={styles.hourLine} />
+            <View key={h} style={[s.hourRow, { top: (h - 6) * HH }]}>
+              <Text style={s.hourLabel}>{String(h).padStart(2, '0')}h</Text>
+              <View style={s.hourLine} />
             </View>
           ))}
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={s.footer}>
         <PrimaryButton onPress={handleStart}>C'est parti !</PrimaryButton>
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe:    { flex: 1, backgroundColor: Colors.light.background },
-  scroll:  { flex: 1 },
-  content: { paddingHorizontal: Spacing.lg, paddingBottom: 120, paddingTop: Spacing.xl, gap: Spacing.xl },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    safe:    { flex: 1, backgroundColor: C.background },
+    scroll:  { flex: 1 },
+    content: { paddingHorizontal: Spacing.lg, paddingBottom: 120, paddingTop: Spacing.xl, gap: Spacing.xl },
 
-  title: { fontSize: 28, fontWeight: '800', color: Colors.light.ink, letterSpacing: -0.6 },
-  sub:   { fontSize: FontSize.base, color: Colors.light.ink2, lineHeight: 22 },
+    title: { fontSize: 28, fontWeight: '800', color: C.ink, letterSpacing: -0.6 },
+    sub:   { fontSize: FontSize.base, color: C.ink2, lineHeight: 22 },
 
-  preview: { position: 'relative', paddingLeft: 46, marginHorizontal: -Spacing.lg + Spacing.base },
+    preview: { position: 'relative', paddingLeft: 46, marginHorizontal: -Spacing.lg + Spacing.base },
 
-  hourRow:   { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  hourLabel: { width: 38, textAlign: 'right', fontSize: 10, fontWeight: '600', color: Colors.light.ink3 },
-  hourLine:  { flex: 1, height: 1, backgroundColor: Colors.light.hairline, opacity: 0.7 },
+    hourRow:   { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
+    hourLabel: { width: 38, textAlign: 'right', fontSize: 10, fontWeight: '600', color: C.ink3 },
+    hourLine:  { flex: 1, height: 1, backgroundColor: C.hairline, opacity: 0.7 },
 
-  block: {
-    position: 'absolute',
-    left: 48,
-    right: 4,
-    borderRadius: 12,
-    padding: Spacing.sm,
-    overflow: 'hidden',
-  },
-  blockTitle: { fontSize: 12, fontWeight: '700', letterSpacing: -0.1 },
-  blockTime:  { fontSize: 11, fontWeight: '600', opacity: 0.8, marginTop: 2 },
+    block: {
+      position: 'absolute',
+      left: 48,
+      right: 4,
+      borderRadius: 12,
+      padding: Spacing.sm,
+      overflow: 'hidden',
+    },
+    blockTitle: { fontSize: 12, fontWeight: '700', letterSpacing: -0.1 },
+    blockTime:  { fontSize: 11, fontWeight: '600', opacity: 0.8, marginTop: 2 },
 
-  footer: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, paddingTop: Spacing.md },
-});
+    footer: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, paddingTop: Spacing.md },
+  });
+}

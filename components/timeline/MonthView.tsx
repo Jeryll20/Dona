@@ -6,7 +6,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, cancelAnimation,
 } from 'react-native-reanimated';
 import { useState, useMemo, useRef } from 'react';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { CAT } from '@/constants/categories';
@@ -58,6 +58,8 @@ interface MonthPanelProps {
 }
 
 function MonthPanel({ year, month, activities, todayStr, panelWidth, onDayPress }: MonthPanelProps) {
+  const C = useColors();
+  const s = makeStyles(C);
   const grid = useMemo(() => buildGrid(year, month), [year, month]);
 
   const catsForDate = (date: Date): CatKey[] => {
@@ -71,33 +73,33 @@ function MonthPanel({ year, month, activities, todayStr, panelWidth, onDayPress 
 
   return (
     <View style={{ width: panelWidth, paddingHorizontal: Spacing.base }}>
-      <View style={styles.colRow}>
+      <View style={s.colRow}>
         {COL_LABELS.map((l, i) => (
-          <Text key={i} style={styles.colLabel}>{l}</Text>
+          <Text key={i} style={s.colLabel}>{l}</Text>
         ))}
       </View>
-      <View style={styles.grid}>
+      <View style={s.grid}>
         {grid.map((date, i) => {
-          if (!date) return <View key={i} style={styles.cell} />;
+          if (!date) return <View key={i} style={s.cell} />;
           const isToday = date.toDateString() === todayStr;
           const cats    = catsForDate(date).slice(0, 3);
           return (
             <Pressable
               key={i}
-              style={styles.cell}
+              style={s.cell}
               onPress={() => onDayPress(date)}
               accessibilityRole="button"
               accessibilityLabel={date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
             >
-              <View style={[styles.numWrap, isToday && styles.numWrapToday]}>
-                <Text style={[styles.dayNum, isToday && styles.dayNumToday]}>
+              <View style={[s.numWrap, isToday && s.numWrapToday]}>
+                <Text style={[s.dayNum, isToday && s.dayNumToday]}>
                   {date.getDate()}
                 </Text>
               </View>
               {cats.length > 0 && (
-                <View style={styles.dotRow}>
+                <View style={s.dotRow}>
                   {cats.map((cat) => (
-                    <View key={cat} style={[styles.dot, { backgroundColor: CAT[cat].ink }]} />
+                    <View key={cat} style={[s.dot, { backgroundColor: CAT[cat].ink }]} />
                   ))}
                 </View>
               )}
@@ -112,13 +114,15 @@ function MonthPanel({ year, month, activities, todayStr, panelWidth, onDayPress 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function MonthView() {
+  const C = useColors();
+  const s = makeStyles(C);
   const now = new Date();
   const [year,  setYear]  = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
 
-  const activities   = useScheduleStore((s) => s.activities);
-  const setViewMode  = useScheduleStore((s) => s.setViewMode);
-  const setDayOffset = useScheduleStore((s) => s.setDayOffset);
+  const activities   = useScheduleStore((st) => st.activities);
+  const setViewMode  = useScheduleStore((st) => st.setViewMode);
+  const setDayOffset = useScheduleStore((st) => st.setDayOffset);
   const todayStr     = now.toDateString();
 
   const handleDayPress = (date: Date) => {
@@ -197,32 +201,32 @@ export function MonthView() {
   const nextData = useMemo(() => shiftMonth(year, month,  1), [year, month]);
 
   return (
-    <View style={styles.container} {...swipe.panHandlers}>
+    <View style={s.container} {...swipe.panHandlers}>
       {/* Navigation header — stays fixed */}
-      <View style={styles.nav}>
+      <View style={s.nav}>
         <TouchableOpacity
           onPress={goPrev}
-          style={styles.navBtn}
+          style={s.navBtn}
           accessibilityLabel="Mois précédent"
           accessibilityRole="button"
         >
-          <Icon name="back" size={18} stroke={Colors.light.primary} />
+          <Icon name="back" size={18} stroke={C.primary} />
         </TouchableOpacity>
-        <Text style={styles.monthTitle}>{MONTHS[month]} {year}</Text>
+        <Text style={s.monthTitle}>{MONTHS[month]} {year}</Text>
         <TouchableOpacity
           onPress={goNext}
-          style={styles.navBtn}
+          style={s.navBtn}
           accessibilityLabel="Mois suivant"
           accessibilityRole="button"
         >
-          <Icon name="arrow" size={18} stroke={Colors.light.primary} />
+          <Icon name="arrow" size={18} stroke={C.primary} />
         </TouchableOpacity>
       </View>
 
       {/* 3-panel sliding area */}
-      <View style={styles.clipper}>
+      <View style={s.clipper}>
         <Animated.View
-          style={[styles.threePanels, { width: width * 3 }, panelsStyle]}
+          style={[s.threePanels, { width: width * 3 }, panelsStyle]}
         >
           {[prevData, { year, month }, nextData].map((m) => (
             <MonthPanel
@@ -241,92 +245,94 @@ export function MonthView() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: Spacing.xs,
-  },
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      paddingTop: Spacing.xs,
+    },
 
-  nav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.lg,
-    paddingHorizontal: Spacing.base,
-  },
-  navBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.primaryTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  monthTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.light.ink,
-    letterSpacing: -0.3,
-  },
+    nav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: Spacing.lg,
+      paddingHorizontal: Spacing.base,
+    },
+    navBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: Radius.pill,
+      backgroundColor: C.primaryTint,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    monthTitle: {
+      fontSize: FontSize.lg,
+      fontWeight: '700',
+      color: C.ink,
+      letterSpacing: -0.3,
+    },
 
-  clipper: {
-    overflow: 'hidden',
-  },
+    clipper: {
+      overflow: 'hidden',
+    },
 
-  threePanels: {
-    flexDirection: 'row',
-  },
+    threePanels: {
+      flexDirection: 'row',
+    },
 
-  colRow: {
-    flexDirection: 'row',
-    marginBottom: Spacing.sm,
-  },
-  colLabel: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    color: Colors.light.ink3,
-    letterSpacing: 0.3,
-  },
+    colRow: {
+      flexDirection: 'row',
+      marginBottom: Spacing.sm,
+    },
+    colLabel: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: FontSize.xs,
+      fontWeight: '700',
+      color: C.ink3,
+      letterSpacing: 0.3,
+    },
 
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  cell: {
-    width: `${100 / 7}%`,
-    alignItems: 'center',
-    paddingVertical: 5,
-    minHeight: 52,
-  },
-  numWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  numWrapToday: {
-    backgroundColor: Colors.light.primary,
-  },
-  dayNum: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.light.ink2,
-  },
-  dayNumToday: {
-    color: Colors.light.onPrimary,
-    fontWeight: '700',
-  },
-  dotRow: {
-    flexDirection: 'row',
-    gap: 3,
-    marginTop: 3,
-  },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-  },
-});
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    cell: {
+      width: `${100 / 7}%`,
+      alignItems: 'center',
+      paddingVertical: 5,
+      minHeight: 52,
+    },
+    numWrap: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    numWrapToday: {
+      backgroundColor: C.primary,
+    },
+    dayNum: {
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+      color: C.ink2,
+    },
+    dayNumToday: {
+      color: C.onPrimary,
+      fontWeight: '700',
+    },
+    dotRow: {
+      flexDirection: 'row',
+      gap: 3,
+      marginTop: 3,
+    },
+    dot: {
+      width: 5,
+      height: 5,
+      borderRadius: 3,
+    },
+  });
+}

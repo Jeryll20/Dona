@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
 } from 'react-native-reanimated';
-import { Colors } from '@/constants/Colors';
+import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
@@ -18,6 +18,7 @@ interface SheetProps {
 }
 
 export function Sheet({ open, onClose, title, children }: SheetProps) {
+  const C      = useColors();
   const insets = useSafeAreaInsets();
   const anim   = useSharedValue(SLIDE_HEIGHT);
 
@@ -34,6 +35,8 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
     transform: [{ translateY: anim.value }],
   }));
 
+  const s = makeStyles(C);
+
   return (
     <Modal
       visible={open}
@@ -42,21 +45,21 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
+      <View style={s.overlay}>
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} accessibilityLabel="Fermer" />
         <Animated.View
           style={[
-            styles.sheet,
+            s.sheet,
             { paddingBottom: insets.bottom + Spacing.lg },
             sheetStyle,
           ]}
         >
-          <View style={styles.handle} />
+          <View style={s.handle} />
           {title && (
-            <View style={styles.header}>
-              <Text style={styles.title}>{title}</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityLabel="Fermer">
-                <Text style={styles.closeX}>✕</Text>
+            <View style={s.header}>
+              <Text style={s.title}>{title}</Text>
+              <TouchableOpacity onPress={onClose} style={s.closeBtn} accessibilityLabel="Fermer">
+                <Text style={s.closeX}>✕</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -67,46 +70,48 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(46,32,72,0.32)' },
-  sheet: {
-    backgroundColor: Colors.light.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.light.hairline,
-    alignSelf: 'center',
-    marginBottom: Spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.md,
-  },
-  title: {
-    fontSize: FontSize.xl,
-    fontWeight: '800',
-    color: Colors.light.ink,
-    letterSpacing: -0.4,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.surfaceSunk,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeX: {
-    fontSize: 13,
-    color: Colors.light.ink2,
-    fontWeight: '600',
-  },
-});
+function makeStyles(C: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: 'rgba(46,32,72,0.32)' },
+    sheet: {
+      backgroundColor: C.background,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingTop: Spacing.sm,
+      paddingHorizontal: Spacing.lg,
+    },
+    handle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: C.hairline,
+      alignSelf: 'center',
+      marginBottom: Spacing.md,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: Spacing.md,
+    },
+    title: {
+      fontSize: FontSize.xl,
+      fontWeight: '800',
+      color: C.ink,
+      letterSpacing: -0.4,
+    },
+    closeBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: Radius.pill,
+      backgroundColor: C.surfaceSunk,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    closeX: {
+      fontSize: 13,
+      color: C.ink2,
+      fontWeight: '600',
+    },
+  });
+}
