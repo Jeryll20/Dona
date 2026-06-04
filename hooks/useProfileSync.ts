@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUserStore } from '@/store/useUserStore';
 import { fetchAndHydrateProfile, pushProfile } from '@/lib/profileSync';
+import { fetchAndHydrateActivities } from '@/lib/activitiesSync';
 
 export function useProfileSync() {
   const session    = useAuthStore((s) => s.session);
@@ -9,16 +10,19 @@ export function useProfileSync() {
   const hydrating  = useRef(false);
   const debounce   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // On login: fetch remote profile and hydrate local store
+  // On login: fetch remote profile + activities and hydrate local stores
   useEffect(() => {
     if (!userId) return;
     hydrating.current = true;
-    fetchAndHydrateProfile(userId).finally(() => {
+    Promise.all([
+      fetchAndHydrateProfile(userId),
+      fetchAndHydrateActivities(userId),
+    ]).finally(() => {
       hydrating.current = false;
     });
   }, [userId]);
 
-  // On any store change: push to Supabase (debounced 2s, skip during hydration)
+  // On any profile store change: push to Supabase (debounced 2s, skip during hydration)
   useEffect(() => {
     if (!userId) return;
 

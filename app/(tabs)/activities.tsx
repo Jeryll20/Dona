@@ -22,7 +22,9 @@ import { TimeField } from '@/components/ui/TimeField';
 import { LocationPicker } from '@/components/ui/LocationPicker';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { getTravelTime } from '@/lib/maps';
+import { upsertActivity, deleteActivityRemote } from '@/lib/activitiesSync';
 import { Colors, COLOR_PALETTE } from '@/constants/Colors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -159,6 +161,7 @@ const cS = StyleSheet.create({
 export default function ActivitiesScreen() {
   const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
   const { setWork, setSport, setOtherActivity, profile } = useUserStore();
+  const userId = useAuthStore((s) => s.session?.user?.id);
   const insets = useSafeAreaInsets();
 
   const { editId } = useLocalSearchParams<{ editId?: string }>();
@@ -276,8 +279,11 @@ export default function ActivitiesScreen() {
       if (editingId === '__work__')  setWork({ employed: true, role: data.title, days: data.days, startTime: data.startTime, endTime: data.endTime });
       if (editingId === '__sport__') setSport({ active: true, interested: false, activity: data.title, days: data.days, startTime: data.startTime, endTime: data.endTime });
       if (editingId === '__other__') setOtherActivity({ active: true, interested: false, title: data.title, days: data.days, startTime: data.startTime, endTime: data.endTime });
+      if (userId) upsertActivity(userId, { id: editingId, ...data } as any);
     } else {
-      addActivity({ id: Date.now().toString(), ...data });
+      const newActivity = { id: Date.now().toString(), ...data };
+      addActivity(newActivity as any);
+      if (userId) upsertActivity(userId, newActivity as any);
     }
     closeSheet();
   }
@@ -365,6 +371,7 @@ export default function ActivitiesScreen() {
                   if (act.id === '__work__')  setWork({ employed: false, role: undefined, days: undefined, startTime: undefined, endTime: undefined });
                   if (act.id === '__sport__') setSport({ active: false, interested: false, activity: undefined, days: undefined, startTime: undefined, endTime: undefined });
                   if (act.id === '__other__') setOtherActivity({ active: false, interested: false, title: undefined, days: undefined, startTime: undefined, endTime: undefined });
+                  if (userId) deleteActivityRemote(userId, act.id);
                 }}
               />
             ))}

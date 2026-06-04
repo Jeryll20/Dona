@@ -25,7 +25,9 @@ import { MonthView } from '@/components/timeline/MonthView';
 import { SuggestionCard } from '@/components/suggestions/SuggestionCard';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useSuggestionsStore } from '@/store/useSuggestionsStore';
+import { upsertOverride, deleteOverrideRemote } from '@/lib/activitiesSync';
 import { buildSuggestions, buildDayEvents } from '@/lib/optimizer';
 import { getCyclePhase } from '@/lib/cycle';
 import type { TimelineEvent, WeekDay, UserActivity, Suggestion, ActivityOverride } from '@/types';
@@ -238,6 +240,7 @@ export default function TodayScreen() {
   const slideStartX = useRef(-width);
 
   const { sleep, meals, cycle, profile } = useUserStore();
+  const userId       = useAuthStore((s) => s.session?.user?.id);
   const activities   = useScheduleStore((s) => s.activities);
   const overrides    = useScheduleStore((s) => s.overrides);
   const setOverride  = useScheduleStore((s) => s.setOverride);
@@ -292,20 +295,24 @@ export default function TodayScreen() {
 
   function cancelOccurrence() {
     if (!choiceTarget) return;
-    setOverride({ activityId: choiceTarget.activityId, date: choiceTarget.date, cancelled: true });
+    const ov = { activityId: choiceTarget.activityId, date: choiceTarget.date, cancelled: true };
+    setOverride(ov);
+    if (userId) upsertOverride(userId, ov);
     setChoiceTarget(null);
   }
 
   function saveSingleEdit() {
     if (!singleEdit) return;
-    setOverride({
+    const ov = {
       activityId: singleEdit.activityId,
       date:       singleEdit.date,
       title:      singleEdit.title,
       startTime:  singleEdit.startTime,
       endTime:    singleEdit.endTime,
       color:      singleEdit.color,
-    });
+    };
+    setOverride(ov);
+    if (userId) upsertOverride(userId, ov);
     setSingleEdit(null);
   }
 
@@ -571,6 +578,7 @@ export default function TodayScreen() {
             onPress={() => {
               if (choiceTarget) {
                 removeOverride(choiceTarget.activityId, choiceTarget.date);
+                if (userId) deleteOverrideRemote(userId, choiceTarget.activityId, choiceTarget.date);
                 setChoiceTarget(null);
               }
             }}
