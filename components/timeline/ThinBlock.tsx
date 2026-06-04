@@ -1,6 +1,5 @@
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { FontSize } from '@/constants/typography';
-import { Colors } from '@/constants/Colors';
 import { CAT } from '@/constants/categories';
 import type { TimelineEvent } from '@/types';
 
@@ -11,23 +10,25 @@ interface ThinBlockProps {
   onPress?: () => void;
 }
 
+const PILL_H = 20;
+
 export function ThinBlock({ event, hourHeight, leftOffset, onPress }: ThinBlockProps) {
   const c = CAT[event.cat];
-  const height = Math.max((event.end - event.start) * hourHeight, 16);
-  // Align bottom of thin block to event.end so it always sits just above the activity block
-  const top    = event.end * hourHeight - height;
+  // Anchor bottom of pill to activity start (event.end), with 2px gap
+  const top = event.end * hourHeight - PILL_H - 2;
 
   return (
     <TouchableOpacity
       activeOpacity={onPress ? 0.75 : 1}
       onPress={onPress}
-      style={[styles.block, { top: top + 2, height: height - 4, left: leftOffset }]}
+      style={[styles.block, { top, left: leftOffset, backgroundColor: c.bg }]}
       accessibilityLabel={`${event.title}${event.dur ? ' · ' + event.dur : ''}`}
       accessibilityRole={onPress ? 'button' : 'none'}
     >
       <View style={[styles.bar, { backgroundColor: c.ink }]} />
-      <Text style={[styles.title, { color: c.ink }]}>{event.title}</Text>
-      {event.dur && <Text style={styles.dur}>· {event.dur}</Text>}
+      <Text style={[styles.label, { color: c.ink }]} numberOfLines={1}>
+        {event.title}{event.dur ? `  ·  ${event.dur}` : ''}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -36,11 +37,14 @@ const styles = StyleSheet.create({
   block: {
     position: 'absolute',
     right: 6,
+    height: PILL_H,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
+    gap: 5,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingLeft: 4,
   },
-  bar:   { width: 4, alignSelf: 'stretch', borderRadius: 999, opacity: 0.5 },
-  title: { fontSize: FontSize.sm, fontWeight: '600', opacity: 0.9 },
-  dur:   { fontSize: FontSize.xs, color: Colors.light.ink3 },
+  bar:   { width: 3, height: 12, borderRadius: 999, opacity: 0.55 },
+  label: { fontSize: 11, fontWeight: '600', opacity: 0.85, flexShrink: 1 },
 });
