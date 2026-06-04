@@ -1,5 +1,4 @@
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { FontSize } from '@/constants/typography';
 import { CAT } from '@/constants/categories';
 import type { TimelineEvent } from '@/types';
 
@@ -14,8 +13,8 @@ const PILL_H = 20;
 
 export function ThinBlock({ event, hourHeight, leftOffset, onPress }: ThinBlockProps) {
   const c = CAT[event.cat];
-  // Anchor bottom of pill to activity start (event.end), with 2px gap
-  const top = event.end * hourHeight - PILL_H - 2;
+  // Anchor bottom of pill flush to activity start (event.end) — no gap
+  const top = event.end * hourHeight - PILL_H;
 
   return (
     <TouchableOpacity
@@ -36,12 +35,15 @@ export function ThinBlock({ event, hourHeight, leftOffset, onPress }: ThinBlockP
 const styles = StyleSheet.create({
   block: {
     position: 'absolute',
-    right: 6,
+    right: 4,
     height: PILL_H,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    borderRadius: 6,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     paddingHorizontal: 6,
     paddingLeft: 4,
   },

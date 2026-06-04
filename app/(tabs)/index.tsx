@@ -185,9 +185,10 @@ function DayPanel({
       <View style={[styles.grid, { minHeight: 24 * HH }]}>
         <HourGrid hourHeight={HH} />
         {isToday && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
-        {events.filter((ev) => !ev.thin).map((ev, i) =>
-          <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getPressHandler(ev as any)} />
-        )}
+        {events.filter((ev) => !ev.thin).map((ev, i) => {
+          const hasTrajetAbove = events.some((t) => t.thin && t.end === ev.start);
+          return <TimelineBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} squareTop={hasTrajetAbove} onPress={getPressHandler(ev as any)} />;
+        })}
         {events.filter((ev) => ev.thin).map((ev, i) =>
           <ThinBlock key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET} onPress={getPressHandler(ev as any)} />
         )}
