@@ -525,11 +525,11 @@ npx expo run:android
 - [x] Phase badge on home screen (color + label per phase)
 - [x] Notifications rescheduled reactively when data changes (activities, cycle, sleep)
 
-### Étape 3 — AI Chat & External integrations (partiel)
+### Étape 3 — AI Chat & External integrations ✅ COMPLET
 - [x] Supabase auth & cloud sync (`useAuthStore`, `lib/profileSync.ts`)
 - [x] AI chat integration (Mistral via Supabase Edge Function)
 - [x] Calendar sync — export activités vers calendrier natif (`lib/calendar.ts`, `app/profile/calendar.tsx`); Health (Apple Health / Google Fit) placeholder "Bientôt"
-- [ ] Google Maps integration (react-native-maps + Places API)
+- [x] Géocodage & temps de trajet — BAN API (autocomplétion adresses FR) + OSRM (calcul itinéraire) ; pas de carte visuelle, suffisant pour le cas d'usage actuel
 
 ### Étape 4 — Expansion
 - [ ] Behavioral analysis & auto-adaptation
