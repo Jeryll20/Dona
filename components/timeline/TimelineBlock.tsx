@@ -10,7 +10,6 @@ interface TimelineBlockProps {
   hourHeight: number;
   leftOffset: number;
   onPress?: () => void;
-  topBarColor?: string; // ink color of a preceding ThinBlock, triggers accent bar
 }
 
 function fmtHour(h: number) {
@@ -29,7 +28,7 @@ function lighten(hex: string, factor: number): string {
   return `#${lr}${lg}${lb}`;
 }
 
-export function TimelineBlock({ event, hourHeight, leftOffset, onPress, topBarColor }: TimelineBlockProps) {
+export function TimelineBlock({ event, hourHeight, leftOffset, onPress }: TimelineBlockProps) {
   const c = event.color ?? CAT[event.cat];
   const top    = event.start * hourHeight;
   const height = Math.max((event.end - event.start) * hourHeight, 16);
@@ -58,14 +57,6 @@ export function TimelineBlock({ event, hourHeight, leftOffset, onPress, topBarCo
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      {topBarColor !== undefined && (
-        <LinearGradient
-          colors={[topBarColor, c.ink]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.topBar}
-        />
-      )}
       <Text
         style={[styles.title, { color: c.ink }, isSmall && styles.titleSmall]}
         numberOfLines={1}
@@ -91,15 +82,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     overflow: 'hidden',
     justifyContent: 'center',
-  },
-  topBar: {
-    position: 'absolute',
-    left: 4,
-    top: 6,
-    width: 3,
-    height: 22,
-    borderRadius: 999,
-    opacity: 0.55,
   },
   blockSmall: {
     paddingVertical: 3,

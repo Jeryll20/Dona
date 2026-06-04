@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, COLOR_PALETTE } from '@/constants/Colors';
 import { CAT } from '@/constants/categories';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
@@ -19,7 +20,6 @@ import { TimeField } from '@/components/ui/TimeField';
 import { HourGrid } from '@/components/timeline/HourGrid';
 import { NowIndicator } from '@/components/timeline/NowIndicator';
 import { TimelineBlock } from '@/components/timeline/TimelineBlock';
-import { ThinBlock } from '@/components/timeline/ThinBlock';
 import { WeekView } from '@/components/timeline/WeekView';
 import { MonthView } from '@/components/timeline/MonthView';
 import { SuggestionCard } from '@/components/suggestions/SuggestionCard';
@@ -187,25 +187,35 @@ function DayPanel({
         <HourGrid hourHeight={HH} />
         {isToday && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
         {events.filter((ev) => ev.thin).map((ev, i) => {
-          const nextActivity = events.find(e => !e.thin && e.start >= ev.end - 0.05);
-          const targetInk = nextActivity ? (nextActivity.color?.ink ?? CAT[nextActivity.cat].ink) : undefined;
+          const following = events.find(e => !e.thin && Math.abs(e.start - ev.end) < 0.05);
+          if (!following) return null;
+          const toBg = following.color?.bg ?? CAT[following.cat].bg;
+          const top = ev.start * HH;
+          const height = (ev.end - ev.start) * HH + 10; // +10 to overlap block so rounded corners mask the strip
           return (
-            <ThinBlock
-              key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
-              onPress={getPressHandler(ev as any)} targetInk={targetInk}
+            <LinearGradient
+              key={i}
+              colors={[toBg + '00', toBg]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={{
+                position: 'absolute',
+                top,
+                left: LEFT_OFFSET,
+                right: 4,
+                height,
+                borderTopLeftRadius: 12,
+                borderTopRightRadius: 12,
+              }}
             />
           );
         })}
-        {events.filter((ev) => !ev.thin).map((ev, i) => {
-          const hasPrecedingThin = events.some(e => e.thin && Math.abs(e.end - ev.start) < 0.05);
-          return (
-            <TimelineBlock
-              key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
-              onPress={getPressHandler(ev as any)}
-              topBarColor={hasPrecedingThin ? Colors.light.transitInk : undefined}
-            />
-          );
-        })}
+        {events.filter((ev) => !ev.thin).map((ev, i) => (
+          <TimelineBlock
+            key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
+            onPress={getPressHandler(ev as any)}
+          />
+        ))}
       </View>
     </ScrollView>
   );
