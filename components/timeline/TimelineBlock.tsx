@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -19,6 +19,16 @@ function fmtHour(h: number) {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
+function lighten(hex: string, factor: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lr = Math.round(r + (255 - r) * factor).toString(16).padStart(2, '0');
+  const lg = Math.round(g + (255 - g) * factor).toString(16).padStart(2, '0');
+  const lb = Math.round(b + (255 - b) * factor).toString(16).padStart(2, '0');
+  return `#${lr}${lg}${lb}`;
+}
+
 export function TimelineBlock({ event, hourHeight, leftOffset, onPress, topBarColor }: TimelineBlockProps) {
   const c = event.color ?? CAT[event.cat];
   const top    = event.start * hourHeight;
@@ -27,18 +37,27 @@ export function TimelineBlock({ event, hourHeight, leftOffset, onPress, topBarCo
   const isSmall  = height < 32;
   const isMedium = height < 52;
 
+  const bgLight = lighten(c.bg, 0.5);
+  const gradColors: [string, string] = [bgLight, c.bg];
+
   return (
     <TouchableOpacity
       activeOpacity={onPress ? 0.75 : 1}
       onPress={onPress}
       style={[
         styles.block,
-        { top, height, left: leftOffset, backgroundColor: c.bg },
+        { top, height, left: leftOffset },
         isSmall && styles.blockSmall,
       ]}
       accessibilityLabel={`${event.title}, ${fmtHour(event.start)} à ${fmtHour(event.end)}`}
       accessibilityRole={onPress ? 'button' : 'none'}
     >
+      <LinearGradient
+        colors={gradColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
       {topBarColor !== undefined && (
         <LinearGradient
           colors={[topBarColor, c.ink]}
