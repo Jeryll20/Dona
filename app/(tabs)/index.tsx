@@ -9,7 +9,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, COLOR_PALETTE } from '@/constants/Colors';
 import { CAT } from '@/constants/categories';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
@@ -17,6 +16,7 @@ import { FontSize } from '@/constants/typography';
 import { Icon } from '@/components/ui/Icon';
 import { Sheet } from '@/components/ui/Sheet';
 import { TimeField } from '@/components/ui/TimeField';
+import { ThinBlock } from '@/components/timeline/ThinBlock';
 import { HourGrid } from '@/components/timeline/HourGrid';
 import { NowIndicator } from '@/components/timeline/NowIndicator';
 import { TimelineBlock } from '@/components/timeline/TimelineBlock';
@@ -188,25 +188,13 @@ function DayPanel({
         {isToday && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
         {events.filter((ev) => ev.thin).map((ev, i) => {
           const following = events.find(e => !e.thin && Math.abs(e.start - ev.end) < 0.05);
-          if (!following) return null;
-          const toBg = following.color?.bg ?? CAT[following.cat].bg;
-          const top = ev.start * HH;
-          const height = (ev.end - ev.start) * HH + 10; // +10 to overlap block so rounded corners mask the strip
+          const targetBg  = following ? (following.color?.bg  ?? CAT[following.cat].bg)  : undefined;
+          const targetInk = following ? (following.color?.ink ?? CAT[following.cat].ink) : undefined;
           return (
-            <LinearGradient
-              key={i}
-              colors={[toBg + '00', toBg]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={{
-                position: 'absolute',
-                top,
-                left: LEFT_OFFSET,
-                right: 4,
-                height,
-                borderTopLeftRadius: 12,
-                borderTopRightRadius: 12,
-              }}
+            <ThinBlock
+              key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
+              onPress={getPressHandler(ev as any)}
+              targetBg={targetBg} targetInk={targetInk}
             />
           );
         })}
