@@ -474,6 +474,14 @@ dona/
 8. **Animations** — use `Animated` API or `react-native-reanimated` for transitions. Match design animations: `fadeUp`, `fadeIn`, `sheetUp`, `spin`, `pulse`.
 9. **File naming** — `PascalCase` for components, `camelCase` for utils/stores.
 10. **Commits** — conventional commits, pushed after every feature (see Git Workflow).
+11. **Supabase sync — règle obligatoire** — tout nouveau champ persisté doit suivre ces 3 étapes :
+    1. **Migration SQL** : ajouter la colonne/table dans `supabase/migrations/` et l'exécuter dans le SQL Editor Supabase.
+    2. **Fichier de sync** : mettre à jour `lib/profileSync.ts` (champ profil) ou créer `lib/xyzSync.ts` sur le modèle de `lib/activitiesSync.ts` (nouvelle entité).
+    3. **Branchement UI** : appeler la fonction de sync après chaque mutation dans le composant concerné (fire-and-forget, pas besoin d'`await`).
+    - Tables existantes : `profiles`, `user_activities`, `activity_overrides`.
+    - Sync activée au login via `hooks/useProfileSync.ts` (fetch + hydrate).
+    - Profil : debounce 2s automatique via `useUserStore.subscribe`.
+    - Activités/overrides : sync immédiate sur chaque mutation.
 
 ---
 
