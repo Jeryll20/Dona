@@ -544,6 +544,7 @@ npx expo run:android
 - [ ] Widget iOS/Android — afficher les 3 prochains blocs du jour sur l'écran d'accueil
 - [ ] Export PDF/image — partager son planning de la semaine en capture propre
 - [ ] Templates de semaine — modèles pré-remplis pour un 2e utilisateur (sans onboarding from scratch)
+- [ ] Onboarding post-inscription — vérifier que le flux first-login → hydration → timeline est fluide end-to-end sur device réel (pas de données stale AsyncStorage, profil Supabase bien restauré)
 - [ ] Tests automatisés — aucune couverture pour l'instant ; priorités : `lib/behaviorAnalysis.ts` (patterns), `lib/optimizer.ts` (créneaux libres + scoring), `lib/cycle.ts` (calcul de phase) — pure JS, testables avec Jest sans dépendance RN
 - [ ] Community features
 - [ ] PWA web version
