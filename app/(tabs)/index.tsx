@@ -32,6 +32,7 @@ import { upsertOverride, deleteOverrideRemote, upsertActivity } from '@/lib/acti
 import { upsertCompletion, deleteCompletionRemote } from '@/lib/completionsSync';
 import { buildSuggestions, buildDayEvents } from '@/lib/optimizer';
 import { isActivityVisibleOn, toLocalISODate } from '@/lib/recurrence';
+import { genId } from '@/lib/id';
 import { getCyclePhase } from '@/lib/cycle';
 import { useBehaviorStore } from '@/store/useBehaviorStore';
 import type { TimelineEvent, WeekDay, UserActivity, Suggestion, ActivityOverride } from '@/types';
@@ -259,7 +260,16 @@ export default function TodayScreen() {
   const C = useColors();
   const s = makeStyles(C);
   const sh = makeSheetStyles(C);
-  const nowHour = new Date().getHours() + new Date().getMinutes() / 60;
+
+  // Re-render every minute so the "now" indicator moves and the date rolls
+  // over at midnight (suggestions, day panels)
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const nowHour  = now.getHours() + now.getMinutes() / 60;
+  const todayStr = toLocalISODate(now);
 
   const { width } = useWindowDimensions();
   const widthRef  = useRef(width);
@@ -341,7 +351,7 @@ export default function TodayScreen() {
     const { suggestion } = suggestEdit;
     const today = new Date();
     const newActivity: UserActivity = {
-      id:         Date.now().toString(),
+      id:         genId(),
       title:      suggestion.title,
       cat:        suggestion.cat === 'sport' ? 'sport' : 'activite',
       startTime:  suggestEdit.startTime,
@@ -351,6 +361,7 @@ export default function TodayScreen() {
       anchorDate: toLocalISODate(today),
     };
     addActivity(newActivity);
+    clearReport(); // schedule changed → cached weekly report is stale
     if (userId) upsertActivity(userId, newActivity);
     acceptSuggestion(suggestion.id);
     setSuggestEdit(null);
@@ -401,6 +412,7 @@ export default function TodayScreen() {
     if (!choiceTarget) return;
     const ov = { activityId: choiceTarget.activityId, date: choiceTarget.date, cancelled: true };
     setOverride(ov);
+    clearReport();
     if (userId) upsertOverride(userId, ov);
     setChoiceTarget(null);
   }
@@ -416,6 +428,7 @@ export default function TodayScreen() {
       color:      singleEdit.color,
     };
     setOverride(ov);
+    clearReport();
     if (userId) upsertOverride(userId, ov);
     setSingleEdit(null);
   }
@@ -514,11 +527,9 @@ export default function TodayScreen() {
   // reappear when adding an activity changes todayEvents.
   useEffect(() => {
     const fresh = buildSuggestions({ events: todayEvents, goal: profile.goal ?? undefined, cyclePhase });
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const blocked = consumedDate === todayStr ? new Set(consumedTitles) : new Set<string>();
     setSuggestions(fresh.filter((sg) => !blocked.has(sg.title)));
-  }, [todayEvents, profile.goal, cyclePhase, setSuggestions, consumedTitles, consumedDate]);
+  }, [todayEvents, profile.goal, cyclePhase, setSuggestions, consumedTitles, consumedDate, todayStr]);
 
   const visibleSuggestions = suggestions.filter((sg) => !sg.accepted && !sg.dismissed);
 

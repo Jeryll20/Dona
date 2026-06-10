@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { useUserStore } from '@/store/useUserStore';
+import { markSyncDirty } from './syncGuard';
 
 interface ProfileRow {
   id:             string;
@@ -48,25 +49,32 @@ export async function fetchAndHydrateProfile(userId: string): Promise<boolean> {
   return true;
 }
 
-export async function pushProfile(userId: string): Promise<void> {
+export async function pushProfile(userId: string): Promise<boolean> {
   const { isOnboarded, profile, sleep, meals, sport, work, otherActivity, cycle } =
     useUserStore.getState();
 
-  await supabase.from('profiles').upsert({
-    id:             userId,
-    is_onboarded:   isOnboarded,
-    first_name:     profile.firstName    ?? null,
-    last_name:      profile.lastName     ?? null,
-    date_of_birth:  profile.dateOfBirth  ?? null,
-    gender:         profile.gender       ?? null,
-    goal:           profile.goal         ?? null,
-    home_location:  profile.homeLocation ?? null,
-    sleep,
-    meals,
-    sport,
-    work,
-    other_activity: otherActivity,
-    cycle,
-    updated_at:     new Date().toISOString(),
-  });
+  try {
+    const { error } = await supabase.from('profiles').upsert({
+      id:             userId,
+      is_onboarded:   isOnboarded,
+      first_name:     profile.firstName    ?? null,
+      last_name:      profile.lastName     ?? null,
+      date_of_birth:  profile.dateOfBirth  ?? null,
+      gender:         profile.gender       ?? null,
+      goal:           profile.goal         ?? null,
+      home_location:  profile.homeLocation ?? null,
+      sleep,
+      meals,
+      sport,
+      work,
+      other_activity: otherActivity,
+      cycle,
+      updated_at:     new Date().toISOString(),
+    });
+    if (error) { await markSyncDirty(); return false; }
+    return true;
+  } catch {
+    await markSyncDirty();
+    return false;
+  }
 }

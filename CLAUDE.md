@@ -536,7 +536,7 @@ npx expo run:android
 - [x] Catégories d'activités personnalisées — créer/supprimer avec couleur custom, sync Supabase (`lib/customCatsSync.ts`, table `custom_categories`)
 - [x] Séparation Sport / Activité — deux catégories built-in distinctes (coral vs bleu), icônes différentes
 - [x] Thème sombre — hook `useColors()` (`hooks/useColors.ts`), refactor 50 fichiers, toggle Auto/Clair/Sombre dans Profil → Mes paramètres
-- [ ] Rappels d'activité — notification X minutes avant chaque activité (infra Expo Notifications déjà en place)
+- [x] Rappels d'activité — notification 15 min avant, par jour et par récurrence (WEEKLY pour hebdo, DATE one-shot renouvelé pour ponctuel/N-semaines) — `scheduleUserActivityReminders` dans `lib/notifications.ts`
 - [ ] Streak hebdo — afficher "N semaines consécutives à +80%" dans le bilan pour gamifier la régularité
 - [ ] Stats multi-semaines — graphe de tendance sur 4 semaines dans le bilan (au lieu d'une seule semaine)
 - [ ] Glisser-déposer sur la timeline — déplacer un bloc directement en le faisant glisser (crée un override startTime/endTime)

@@ -133,6 +133,7 @@ function useProtectedRoute() {
         cycleTracking:  cycle.tracking ?? false,
         lastPeriodDate: cycle.lastPeriodDate,
         cycleDays:      cycle.cycleDays,
+        userActivities: useScheduleStore.getState().activities,
       });
       router.replace('/(tabs)/' as any);
     }

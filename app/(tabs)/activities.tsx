@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TimeField } from '@/components/ui/TimeField';
 import { LocationPicker } from '@/components/ui/LocationPicker';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useBehaviorStore } from '@/store/useBehaviorStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Icon } from '@/components/ui/Icon';
@@ -28,6 +29,7 @@ import { getTravelTime } from '@/lib/maps';
 import { upsertActivity, deleteActivityRemote } from '@/lib/activitiesSync';
 import { upsertCustomCat, deleteCustomCatRemote } from '@/lib/customCatsSync';
 import { toLocalISODate } from '@/lib/recurrence';
+import { genId } from '@/lib/id';
 import { Colors, COLOR_PALETTE } from '@/constants/Colors';
 import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
@@ -181,6 +183,7 @@ export default function ActivitiesScreen() {
   const s = makeStyles(C);
   const { activities, addActivity, updateActivity, removeActivity,
           customCategories, addCustomCategory, removeCustomCategory } = useScheduleStore();
+  const clearReport = useBehaviorStore((s) => s.clearReport);
   const { setWork, setSport, setOtherActivity, profile } = useUserStore();
   const userId = useAuthStore((st) => st.session?.user?.id);
   const insets = useSafeAreaInsets();
@@ -312,6 +315,7 @@ export default function ActivitiesScreen() {
       departureLocation: useHomeAsStart ? undefined : departure,
       trajetMinutesBefore: trajetMinutes,
     };
+    clearReport(); // schedule changed → cached weekly report is stale
     if (editingId) {
       updateActivity(editingId, data);
       if (editingId === '__work__')  setWork({ employed: true, role: data.title, days: data.days, startTime: data.startTime, endTime: data.endTime });
@@ -319,7 +323,7 @@ export default function ActivitiesScreen() {
       if (editingId === '__other__') setOtherActivity({ active: true, interested: false, title: data.title, days: data.days, startTime: data.startTime, endTime: data.endTime });
       if (userId) upsertActivity(userId, { id: editingId, ...data } as any);
     } else {
-      const newActivity = { id: Date.now().toString(), ...data };
+      const newActivity = { id: genId(), ...data };
       addActivity(newActivity as any);
       if (userId) upsertActivity(userId, newActivity as any);
     }
@@ -420,6 +424,7 @@ export default function ActivitiesScreen() {
                 onEdit={() => openSheet(act)}
                 onDelete={() => {
                   removeActivity(act.id);
+                  clearReport();
                   if (act.id === '__work__')  setWork({ employed: false, role: undefined, days: undefined, startTime: undefined, endTime: undefined });
                   if (act.id === '__sport__') setSport({ active: false, interested: false, activity: undefined, days: undefined, startTime: undefined, endTime: undefined });
                   if (act.id === '__other__') setOtherActivity({ active: false, interested: false, title: undefined, days: undefined, startTime: undefined, endTime: undefined });
@@ -588,7 +593,7 @@ export default function ActivitiesScreen() {
                           onPress={() => {
                             if (!newCatLabel.trim()) return;
                             const newCat: CustomCategory = {
-                              id:    `custom_${Date.now()}`,
+                              id:    `custom_${genId()}`,
                               label: newCatLabel.trim(),
                               color: newCatColor,
                             };

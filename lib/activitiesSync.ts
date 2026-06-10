@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { markSyncDirty } from './syncGuard';
 import type { UserActivity, ActivityOverride, CatKey, WeekDay, Recurrence, ActivityLocation } from '@/types';
 
 // ── Converters ────────────────────────────────────────────────────────────────
@@ -72,23 +73,32 @@ function rowToOverride(row: Record<string, unknown>): ActivityOverride {
 
 // ── Push all local data (used on first sync / onboarding completion) ──────────
 
-export async function pushAllActivities(userId: string): Promise<void> {
-  const { activities, overrides } = useScheduleStore.getState();
+export async function pushAllActivities(userId: string): Promise<boolean> {
+  try {
+    const { activities, overrides } = useScheduleStore.getState();
 
-  await Promise.all([
-    supabase.from('user_activities').delete().eq('user_id', userId),
-    supabase.from('activity_overrides').delete().eq('user_id', userId),
-  ]);
+    const [delA, delO] = await Promise.all([
+      supabase.from('user_activities').delete().eq('user_id', userId),
+      supabase.from('activity_overrides').delete().eq('user_id', userId),
+    ]);
+    if (delA.error || delO.error) { await markSyncDirty(); return false; }
 
-  if (activities.length > 0) {
-    await supabase.from('user_activities').insert(
-      activities.map((a) => activityToRow(userId, a)),
-    );
-  }
-  if (overrides.length > 0) {
-    await supabase.from('activity_overrides').insert(
-      overrides.map((o) => overrideToRow(userId, o)),
-    );
+    if (activities.length > 0) {
+      const { error } = await supabase.from('user_activities').insert(
+        activities.map((a) => activityToRow(userId, a)),
+      );
+      if (error) { await markSyncDirty(); return false; }
+    }
+    if (overrides.length > 0) {
+      const { error } = await supabase.from('activity_overrides').insert(
+        overrides.map((o) => overrideToRow(userId, o)),
+      );
+      if (error) { await markSyncDirty(); return false; }
+    }
+    return true;
+  } catch {
+    await markSyncDirty();
+    return false;
   }
 }
 
@@ -125,19 +135,31 @@ export async function fetchAndHydrateActivities(userId: string): Promise<boolean
 
 // ── Individual record mutations ───────────────────────────────────────────────
 
+// All single-record mutations are fire-and-forget from the UI: failures are
+// swallowed but mark the device dirty so the next login re-pushes local state.
+
 export async function upsertActivity(userId: string, activity: UserActivity): Promise<void> {
-  await supabase.from('user_activities').upsert(activityToRow(userId, activity));
+  try {
+    const { error } = await supabase.from('user_activities').upsert(activityToRow(userId, activity));
+    if (error) await markSyncDirty();
+  } catch { await markSyncDirty(); }
 }
 
 export async function deleteActivityRemote(userId: string, activityId: string): Promise<void> {
-  await supabase.from('user_activities').delete()
-    .eq('user_id', userId)
-    .eq('id', activityId);
+  try {
+    const { error } = await supabase.from('user_activities').delete()
+      .eq('user_id', userId)
+      .eq('id', activityId);
+    if (error) await markSyncDirty();
+  } catch { await markSyncDirty(); }
 }
 
 export async function upsertOverride(userId: string, override: ActivityOverride): Promise<void> {
-  await supabase.from('activity_overrides')
-    .upsert(overrideToRow(userId, override), { onConflict: 'user_id,activity_id,date' });
+  try {
+    const { error } = await supabase.from('activity_overrides')
+      .upsert(overrideToRow(userId, override), { onConflict: 'user_id,activity_id,date' });
+    if (error) await markSyncDirty();
+  } catch { await markSyncDirty(); }
 }
 
 export async function deleteOverrideRemote(
@@ -145,8 +167,11 @@ export async function deleteOverrideRemote(
   activityId: string,
   date: string,
 ): Promise<void> {
-  await supabase.from('activity_overrides').delete()
-    .eq('user_id', userId)
-    .eq('activity_id', activityId)
-    .eq('date', date);
+  try {
+    const { error } = await supabase.from('activity_overrides').delete()
+      .eq('user_id', userId)
+      .eq('activity_id', activityId)
+      .eq('date', date);
+    if (error) await markSyncDirty();
+  } catch { await markSyncDirty(); }
 }

@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { markSyncDirty } from './syncGuard';
 import type { CustomCategory } from '@/types';
 
 // ── Converters ────────────────────────────────────────────────────────────────
@@ -48,12 +49,35 @@ export async function fetchAndHydrateCustomCats(userId: string): Promise<boolean
   return true;
 }
 
+// ── Full push (dirty-flag recovery) ───────────────────────────────────────────
+
+export async function pushAllCustomCats(userId: string): Promise<boolean> {
+  try {
+    const local = useScheduleStore.getState().customCategories;
+    if (local.length === 0) return true;
+    const { error } = await supabase
+      .from('custom_categories')
+      .upsert(local.map((c) => catToRow(userId, c)));
+    if (error) { await markSyncDirty(); return false; }
+    return true;
+  } catch {
+    await markSyncDirty();
+    return false;
+  }
+}
+
 // ── Individual mutations ──────────────────────────────────────────────────────
 
 export async function upsertCustomCat(userId: string, cat: CustomCategory): Promise<void> {
-  await supabase.from('custom_categories').upsert(catToRow(userId, cat));
+  try {
+    const { error } = await supabase.from('custom_categories').upsert(catToRow(userId, cat));
+    if (error) await markSyncDirty();
+  } catch { await markSyncDirty(); }
 }
 
 export async function deleteCustomCatRemote(userId: string, catId: string): Promise<void> {
-  await supabase.from('custom_categories').delete().eq('user_id', userId).eq('id', catId);
+  try {
+    const { error } = await supabase.from('custom_categories').delete().eq('user_id', userId).eq('id', catId);
+    if (error) await markSyncDirty();
+  } catch { await markSyncDirty(); }
 }

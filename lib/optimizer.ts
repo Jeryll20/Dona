@@ -133,20 +133,8 @@ function scoreCat(
        + (ci  !== -1 ? (1 - ci)  * 2 : 0);
 }
 
-// ── Cycle phase detection ─────────────────────────────────────────────────────
-
-export function getCyclePhase(lastPeriodDate: string, cycleDays: number): CyclePhase {
-  const last    = new Date(lastPeriodDate);
-  const today   = new Date();
-  const elapsed = Math.floor((today.getTime() - last.getTime()) / 86_400_000) % cycleDays;
-
-  if (elapsed <= 5)  return 'menstrual';
-  if (elapsed <= 13) return 'follicular';
-  if (elapsed <= 16) return 'ovulation';
-  return 'luteal';
-}
-
 // ── Public API ────────────────────────────────────────────────────────────────
+// (cycle phase detection lives in lib/cycle.ts — single source of truth)
 
 export interface OptimizerInput {
   events: TimelineEvent[];

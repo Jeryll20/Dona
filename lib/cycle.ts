@@ -129,7 +129,9 @@ function daysSince(isoDate: string): number {
   const today = new Date();
   past.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
-  return Math.floor((today.getTime() - past.getTime()) / 86_400_000);
+  // Clamp at 0: a (mistakenly) future last-period date would yield a negative
+  // modulo and a wrong phase — treat it as day 1 of the cycle instead
+  return Math.max(0, Math.floor((today.getTime() - past.getTime()) / 86_400_000));
 }
 
 export function getPhaseInfo(phase: CyclePhase): PhaseInfo {

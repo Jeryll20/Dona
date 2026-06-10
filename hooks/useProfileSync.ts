@@ -2,9 +2,10 @@ import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUserStore } from '@/store/useUserStore';
 import { fetchAndHydrateProfile, pushProfile } from '@/lib/profileSync';
-import { fetchAndHydrateActivities } from '@/lib/activitiesSync';
-import { fetchAndHydrateCompletions } from '@/lib/completionsSync';
-import { fetchAndHydrateCustomCats } from '@/lib/customCatsSync';
+import { fetchAndHydrateActivities, pushAllActivities } from '@/lib/activitiesSync';
+import { fetchAndHydrateCompletions, pushAllCompletions } from '@/lib/completionsSync';
+import { fetchAndHydrateCustomCats, pushAllCustomCats } from '@/lib/customCatsSync';
+import { isSyncDirty, clearSyncDirty } from '@/lib/syncGuard';
 
 export function useProfileSync() {
   const session    = useAuthStore((s) => s.session);
@@ -12,16 +13,30 @@ export function useProfileSync() {
   const hydrating  = useRef(false);
   const debounce   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // On login: fetch remote profile + activities + completions
+  // On login: if a previous mutation failed (offline…), local state is newer —
+  // push it instead of letting remote-wins hydration overwrite it.
+  // Otherwise: fetch remote profile + activities + completions.
   useEffect(() => {
     if (!userId) return;
     hydrating.current = true;
-    Promise.all([
-      fetchAndHydrateProfile(userId),
-      fetchAndHydrateActivities(userId),
-      fetchAndHydrateCompletions(userId),
-      fetchAndHydrateCustomCats(userId),
-    ]).finally(() => {
+    (async () => {
+      if (await isSyncDirty()) {
+        const results = await Promise.all([
+          pushProfile(userId),
+          pushAllActivities(userId),
+          pushAllCompletions(userId),
+          pushAllCustomCats(userId),
+        ]);
+        if (results.every(Boolean)) await clearSyncDirty();
+      } else {
+        await Promise.all([
+          fetchAndHydrateProfile(userId),
+          fetchAndHydrateActivities(userId),
+          fetchAndHydrateCompletions(userId),
+          fetchAndHydrateCustomCats(userId),
+        ]);
+      }
+    })().finally(() => {
       hydrating.current = false;
     });
   }, [userId]);

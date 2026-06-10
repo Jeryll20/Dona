@@ -1,6 +1,7 @@
 import * as Notif from 'expo-notifications';
 import { Platform } from 'react-native';
-import type { TimelineEvent } from '@/types';
+import { isActivityVisibleOn, toLocalISODate } from './recurrence';
+import type { TimelineEvent, UserActivity, WeekDay } from '@/types';
 
 // ── Handler global (affiché même app au premier plan) ────────────────────────
 
@@ -119,6 +120,82 @@ export async function cancelActivityReminders(): Promise<void> {
       .filter((n) => n.identifier.startsWith(ID_ACT_PFX))
       .map((n) => Notif.cancelScheduledNotificationAsync(n.identifier)),
   );
+}
+
+// ── 2bis. Rappels des activités utilisateur — par jour et par récurrence ─────
+// A weekly activity gets WEEKLY triggers (one per selected day). One-off and
+// N-weekly activities get one-shot DATE triggers for their next occurrences,
+// renewed every time scheduleAllNotifications runs (each app launch).
+
+const ID_USERACT_PFX = 'dona-useract-';
+const ONE_SHOT_LOOKAHEAD_DAYS = 28;
+const ONE_SHOT_MAX_PER_ACTIVITY = 3; // iOS caps total scheduled notifs at 64
+
+const EXPO_WEEKDAY: Record<WeekDay, number> = {
+  Sun: 1, Mon: 2, Tue: 3, Wed: 4, Thu: 5, Fri: 6, Sat: 7,
+};
+
+function reminderHourMinute(startTime: string): { hour: number; minute: number } | null {
+  const [h, m] = startTime.split(':').map(Number);
+  const total = (h || 0) * 60 + (m || 0) - 15;
+  if (total < 0) return null; // activité trop tôt dans la nuit
+  return { hour: Math.floor(total / 60), minute: total % 60 };
+}
+
+export async function scheduleUserActivityReminders(activities: UserActivity[]): Promise<void> {
+  const scheduled = await Notif.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    scheduled
+      .filter((n) => n.identifier.startsWith(ID_USERACT_PFX))
+      .map((n) => Notif.cancelScheduledNotificationAsync(n.identifier)),
+  );
+
+  const tasks: Promise<unknown>[] = [];
+
+  for (const a of activities) {
+    const t = reminderHourMinute(a.startTime);
+    if (!t) continue;
+    const content = {
+      title: `${a.title} dans 15 min ⏰`,
+      body:  `Ça commence à ${a.startTime} !`,
+    };
+
+    const isPlainWeekly = a.recurrence === 'weekly' || a.recurrence === 'daily' || !a.anchorDate;
+
+    if (isPlainWeekly) {
+      for (const day of a.days) {
+        tasks.push(Notif.scheduleNotificationAsync({
+          identifier: `${ID_USERACT_PFX}${a.id}-${day}`,
+          content,
+          trigger: {
+            type:    Notif.SchedulableTriggerInputTypes.WEEKLY,
+            weekday: EXPO_WEEKDAY[day],
+            hour:    t.hour,
+            minute:  t.minute,
+          },
+        }));
+      }
+    } else {
+      // 'none' / N-weekly: one-shot DATE triggers for the next real occurrences
+      const now = new Date();
+      let scheduledCount = 0;
+      for (let i = 0; i < ONE_SHOT_LOOKAHEAD_DAYS && scheduledCount < ONE_SHOT_MAX_PER_ACTIVITY; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+        if (!isActivityVisibleOn(a, toLocalISODate(d))) continue;
+        const fireAt = new Date(d);
+        fireAt.setHours(t.hour, t.minute, 0, 0);
+        if (fireAt <= now) continue;
+        scheduledCount++;
+        tasks.push(Notif.scheduleNotificationAsync({
+          identifier: `${ID_USERACT_PFX}${a.id}-${toLocalISODate(d)}`,
+          content,
+          trigger: { type: Notif.SchedulableTriggerInputTypes.DATE, date: fireAt },
+        }));
+      }
+    }
+  }
+
+  await Promise.all(tasks);
 }
 
 // ── 3. Bilan hebdomadaire — dimanche 20h ──────────────────────────────────────
@@ -243,6 +320,9 @@ export interface NotifConfig {
   lastPeriodDate?:    string;
   cycleDays?:         number;
   punctualActivities?: { id: string; title: string }[];
+  // When provided, per-activity reminders are (re)scheduled day/recurrence-aware.
+  // Leave undefined to keep existing activity reminders untouched.
+  userActivities?:    UserActivity[];
 }
 
 export async function scheduleAllNotifications({
@@ -251,6 +331,7 @@ export async function scheduleAllNotifications({
   lastPeriodDate,
   cycleDays,
   punctualActivities = [],
+  userActivities,
 }: NotifConfig): Promise<void> {
   const granted = await requestPermissions();
   if (!granted) return;
@@ -261,6 +342,7 @@ export async function scheduleAllNotifications({
       ? schedulePhaseChangeNotification(lastPeriodDate, cycleDays ?? 28)
       : cancelPhaseChangeNotification(),
     scheduleActivityReminders(events),
+    userActivities ? scheduleUserActivityReminders(userActivities) : Promise.resolve(),
     scheduleWeeklyRecap(),
     schedulePunctualWeekEndReminders(punctualActivities),
   ]);

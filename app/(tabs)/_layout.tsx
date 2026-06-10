@@ -5,7 +5,6 @@ import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { buildDefaultDay } from '@/lib/optimizer';
 import { scheduleAllNotifications } from '@/lib/notifications';
-import type { TimelineEvent } from '@/types';
 
 function migrateProfileActivities() {
   const acts = useScheduleStore.getState().activities;
@@ -22,11 +21,6 @@ function migrateProfileActivities() {
   if (o.active && o.startTime && o.endTime && !acts.find((a) => a.id === '__other__')) {
     add({ id: '__other__', title: o.title || 'Autre activité', cat: 'activite', startTime: o.startTime!, endTime: o.endTime!, days: o.days ?? [], recurrence: 'weekly' });
   }
-}
-
-function parseTime(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h + m / 60;
 }
 
 export default function TabLayout() {
@@ -47,23 +41,20 @@ export default function TabLayout() {
         )
       : [];
 
-    const activityEvents: TimelineEvent[] = activities.map((a) => ({
-      cat:   a.cat,
-      title: a.title,
-      start: parseTime(a.startTime),
-      end:   parseTime(a.endTime),
-    }));
-
     const punctualActivities = activities
       .filter((a) => a.recurrence === 'none' && a.notifyWeekEnd)
       .map((a) => ({ id: a.id, title: a.title }));
 
+    // User activities get their own day/recurrence-aware reminders —
+    // mapping them into `events` would create a DAILY trigger for
+    // activities that only happen on certain days
     scheduleAllNotifications({
-      events:              [...baseEvents, ...activityEvents],
+      events:              baseEvents,
       cycleTracking:       cycle.tracking ?? false,
       lastPeriodDate:      cycle.lastPeriodDate,
       cycleDays:           cycle.cycleDays,
       punctualActivities,
+      userActivities:      activities,
     });
   }, [sleep, meals, cycle, activities]);
 

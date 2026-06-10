@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { useBehaviorStore } from '@/store/useBehaviorStore';
+import { markSyncDirty } from './syncGuard';
 import type { ActivityCompletion } from '@/types';
 
 // ── Converters ────────────────────────────────────────────────────────────────
@@ -55,17 +56,39 @@ export async function fetchAndHydrateCompletions(userId: string): Promise<boolea
   return true;
 }
 
+// ── Full push (dirty-flag recovery) ───────────────────────────────────────────
+
+export async function pushAllCompletions(userId: string): Promise<boolean> {
+  try {
+    const local = useBehaviorStore.getState().completions;
+    if (local.length === 0) return true;
+    const { error } = await supabase
+      .from('activity_completions')
+      .upsert(local.map((c) => completionToRow(userId, c)), {
+        onConflict: 'user_id,activity_id,date',
+      });
+    if (error) { await markSyncDirty(); return false; }
+    return true;
+  } catch {
+    await markSyncDirty();
+    return false;
+  }
+}
+
 // ── Individual mutations ──────────────────────────────────────────────────────
 
 export async function upsertCompletion(
   userId: string,
   completion: ActivityCompletion,
 ): Promise<void> {
-  await supabase
-    .from('activity_completions')
-    .upsert(completionToRow(userId, completion), {
-      onConflict: 'user_id,activity_id,date',
-    });
+  try {
+    const { error } = await supabase
+      .from('activity_completions')
+      .upsert(completionToRow(userId, completion), {
+        onConflict: 'user_id,activity_id,date',
+      });
+    if (error) await markSyncDirty();
+  } catch { await markSyncDirty(); }
 }
 
 export async function deleteCompletionRemote(
@@ -73,10 +96,13 @@ export async function deleteCompletionRemote(
   activityId: string,
   date: string,
 ): Promise<void> {
-  await supabase
-    .from('activity_completions')
-    .delete()
-    .eq('user_id', userId)
-    .eq('activity_id', activityId)
-    .eq('date', date);
+  try {
+    const { error } = await supabase
+      .from('activity_completions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('activity_id', activityId)
+      .eq('date', date);
+    if (error) await markSyncDirty();
+  } catch { await markSyncDirty(); }
 }
