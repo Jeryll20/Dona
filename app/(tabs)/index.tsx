@@ -28,7 +28,7 @@ import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSuggestionsStore } from '@/store/useSuggestionsStore';
-import { upsertOverride, deleteOverrideRemote } from '@/lib/activitiesSync';
+import { upsertOverride, deleteOverrideRemote, upsertActivity } from '@/lib/activitiesSync';
 import { upsertCompletion, deleteCompletionRemote } from '@/lib/completionsSync';
 import { buildSuggestions, buildDayEvents } from '@/lib/optimizer';
 import { getCyclePhase } from '@/lib/cycle';
@@ -73,6 +73,13 @@ function offsetToDateStr(offset: number): string {
 function parseTime(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number);
   return h + m / 60;
+}
+
+function hourToHHMM(h: number): string {
+  const total = Math.round(h * 60);
+  const hh = Math.floor(total / 60) % 24;
+  const mm = total % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
 export const HH = 58;
@@ -263,6 +270,7 @@ export default function TodayScreen() {
   const { sleep, meals, cycle, profile } = useUserStore();
   const userId       = useAuthStore((st) => st.session?.user?.id);
   const activities   = useScheduleStore((st) => st.activities);
+  const addActivity  = useScheduleStore((st) => st.addActivity);
   const overrides    = useScheduleStore((st) => st.overrides);
   const setOverride  = useScheduleStore((st) => st.setOverride);
   const removeOverride = useScheduleStore((st) => st.removeOverride);
@@ -308,6 +316,43 @@ export default function TodayScreen() {
   const existingCompletion = completionTarget
     ? completions.find((c) => c.activityId === completionTarget.activityId && c.date === completionTarget.date)
     : undefined;
+
+  // ── Suggestion accept state: confirm / adjust the proposed slot ──────────────
+  const [suggestEdit, setSuggestEdit] = useState<{
+    suggestion: Suggestion;
+    startTime: string;
+    endTime: string;
+  } | null>(null);
+
+  function openSuggestionAccept(id: string) {
+    const sg = suggestions.find((x) => x.id === id);
+    if (!sg) return;
+    const start = sg.startHour ?? 18;
+    setSuggestEdit({
+      suggestion: sg,
+      startTime: hourToHHMM(start),
+      endTime:   hourToHHMM(start + sg.durationMinutes / 60),
+    });
+  }
+
+  function confirmSuggestion() {
+    if (!suggestEdit) return;
+    const { suggestion } = suggestEdit;
+    const today = new Date();
+    const newActivity: UserActivity = {
+      id:         Date.now().toString(),
+      title:      suggestion.title,
+      cat:        suggestion.cat === 'sport' ? 'sport' : 'activite',
+      startTime:  suggestEdit.startTime,
+      endTime:    suggestEdit.endTime,
+      days:       [DAY_MAP[today.getDay()]],
+      recurrence: 'none',
+    };
+    addActivity(newActivity);
+    if (userId) upsertActivity(userId, newActivity);
+    acceptSuggestion(suggestion.id);
+    setSuggestEdit(null);
+  }
 
   // ── Single-occurrence edit state ─────────────────────────────────────────────
   const [choiceTarget, setChoiceTarget] = useState<{
@@ -572,7 +617,7 @@ export default function TodayScreen() {
                 onActivityPress={handleActivityPress}
                 onActivityLongPress={handleActivityLongPress}
                 visibleSuggestions={visibleSuggestions}
-                onAccept={acceptSuggestion}
+                onAccept={openSuggestionAccept}
                 onDismiss={dismissSuggestion}
                 nowHour={nowHour}
                 panelWidth={width}
@@ -760,6 +805,46 @@ export default function TodayScreen() {
           </>
         )}
       </Sheet>
+
+      {/* ── Suggestion accept sheet: adjust the proposed slot ─────────────────── */}
+      <Sheet
+        open={!!suggestEdit}
+        onClose={() => setSuggestEdit(null)}
+        title={suggestEdit?.suggestion.title ?? 'Suggestion'}
+      >
+        {suggestEdit && (
+          <>
+            <Text style={sh.suggestHint}>
+              Ajuste le créneau si besoin, puis ajoute l'activité à ton planning du jour.
+            </Text>
+
+            <View style={sh.timeRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={sh.fieldLabel}>Début</Text>
+                <View style={sh.timeCard}>
+                  <TimeField
+                    value={suggestEdit.startTime}
+                    onChange={(v) => setSuggestEdit((st) => st ? { ...st, startTime: v } : st)}
+                  />
+                </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={sh.fieldLabel}>Fin</Text>
+                <View style={sh.timeCard}>
+                  <TimeField
+                    value={suggestEdit.endTime}
+                    onChange={(v) => setSuggestEdit((st) => st ? { ...st, endTime: v } : st)}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity style={sh.saveBtn} onPress={confirmSuggestion} accessibilityRole="button" accessibilityLabel="Ajouter au planning">
+              <Text style={sh.saveBtnText}>Ajouter au planning</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </Sheet>
     </SafeAreaView>
   );
 }
@@ -893,6 +978,7 @@ function makeSheetStyles(C: ReturnType<typeof useColors>) {
     },
     optionText:  { flex: 1 },
     optionLabel: { fontSize: FontSize.base, fontWeight: '700', color: C.ink },
+    suggestHint: { fontSize: FontSize.sm, color: C.ink2, lineHeight: 20, marginTop: Spacing.xs },
     optionSub:   { fontSize: FontSize.sm, fontWeight: '500', color: C.ink3, marginTop: 2 },
 
     field:      { gap: Spacing.xs, marginTop: Spacing.md },

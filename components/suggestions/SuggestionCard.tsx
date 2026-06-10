@@ -29,11 +29,22 @@ interface SuggestionCardProps {
   onDismiss: () => void;
 }
 
+function hourToHHMM(h: number): string {
+  const total = Math.round(h * 60);
+  const hh = Math.floor(total / 60) % 24;
+  const mm = total % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
 export function SuggestionCard({ suggestion, onAccept, onDismiss }: SuggestionCardProps) {
   const C = useColors();
   const s = makeStyles(C);
 
   if (suggestion.accepted || suggestion.dismissed) return null;
+
+  const slotLabel = suggestion.startHour !== undefined
+    ? `Vers ${hourToHHMM(suggestion.startHour)} · `
+    : '';
 
   return (
     <View style={s.card} accessibilityLabel={`Suggestion : ${suggestion.title}`}>
@@ -44,7 +55,7 @@ export function SuggestionCard({ suggestion, onAccept, onDismiss }: SuggestionCa
         <View style={s.body}>
           <Text style={s.label}>{CAT_LABEL[suggestion.cat]}</Text>
           <Text style={s.title}>{suggestion.title}</Text>
-          <Text style={s.meta}>{suggestion.durationMinutes} min</Text>
+          <Text style={s.meta}>{slotLabel}{suggestion.durationMinutes} min</Text>
         </View>
         <View style={s.actions}>
           <TouchableOpacity
