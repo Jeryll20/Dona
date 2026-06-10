@@ -10,7 +10,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { LocationPicker } from '@/components/ui/LocationPicker';
-import { useColors } from '@/hooks/useColors';
+import { useColors, useIsDark } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import type { ActivityLocation } from '@/types';
@@ -33,6 +33,7 @@ function formatDate(iso: string): string {
 
 export default function AccountScreen() {
   const C = useColors();
+  const isDark = useIsDark();
   const s = makeStyles(C);
   const { profile, setProfile } = useUserStore();
   const email = useAuthStore((st) => st.session?.user?.email ?? '');
@@ -200,7 +201,7 @@ export default function AccountScreen() {
           >
             <Ionicons name="calendar-outline" size={18} color={C.primary} />
             <Text style={[s.dateText, !dateOfBirth && s.datePlaceholder]}>
-              {dateOfBirth ? formatDate(dateOfBirth.toISOString().split('T')[0]) : 'Non renseignée'}
+              {dateOfBirth ? formatDate(toLocalISODate(dateOfBirth)) : 'Non renseignée'}
             </Text>
             {dateOfBirth && (
               <TouchableOpacity
@@ -223,7 +224,7 @@ export default function AccountScreen() {
                 setShowPicker(Platform.OS === 'ios');
                 if (date) setDateOfBirth(date);
               }}
-              themeVariant="light"
+              themeVariant={isDark ? 'dark' : 'light'}
               accentColor={C.primary}
             />
           )}

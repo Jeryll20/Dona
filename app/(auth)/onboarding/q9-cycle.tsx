@@ -8,7 +8,7 @@ import OnboardingShell from '@/components/onboarding/OnboardingShell';
 import { Sheet } from '@/components/ui/Sheet';
 import { Stepper } from '@/components/ui/Stepper';
 import { useUserStore } from '@/store/useUserStore';
-import { useColors } from '@/hooks/useColors';
+import { useColors, useIsDark } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
@@ -17,11 +17,15 @@ function formatDate(d: Date): string {
 }
 
 function dateToISO(d: Date): string {
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`; // local date — avoids UTC previous-day shift
 }
 
 export default function Q9Cycle() {
   const C = useColors();
+  const isDark = useIsDark();
   const s = makeStyles(C);
   const setCycle = useUserStore((st) => st.setCycle);
   const stored   = useUserStore((st) => st.cycle);
@@ -128,7 +132,7 @@ export default function Q9Cycle() {
           display="spinner"
           maximumDate={new Date()}
           onChange={(_, date) => { if (date) setTempDate(date); }}
-          themeVariant="light"
+          themeVariant={isDark ? 'dark' : 'light'}
           style={s.datePicker}
         />
         <TouchableOpacity

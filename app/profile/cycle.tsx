@@ -10,12 +10,13 @@ import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { scheduleAllNotifications, cancelCycleReminder } from '@/lib/notifications';
 import { getCycleStatus, toISODate } from '@/lib/cycle';
-import { useColors } from '@/hooks/useColors';
+import { useColors, useIsDark } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
 export default function CycleScreen() {
   const C = useColors();
+  const isDark = useIsDark();
   const s = makeStyles(C);
   const { cycle, setCycle } = useUserStore();
   const todayEvents = useScheduleStore((st) => st.todayEvents);
@@ -129,7 +130,7 @@ export default function CycleScreen() {
                     locale="fr-FR"
                     accentColor={C.primary}
                     textColor={C.ink}
-                    themeVariant="light"
+                    themeVariant={isDark ? 'dark' : 'light'}
                     accessibilityLabel="Sélecteur de date"
                   />
                 </View>

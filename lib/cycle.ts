@@ -141,7 +141,10 @@ export function formatDate(d: Date): string {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// Formate une Date en ISO "YYYY-MM-DD"
+// Formate une Date en ISO "YYYY-MM-DD" (date locale — pas de décalage UTC)
 export function toISODate(d: Date): string {
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }

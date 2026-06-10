@@ -7,7 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import OnboardingShell from '@/components/onboarding/OnboardingShell';
 import { Sheet } from '@/components/ui/Sheet';
 import { useUserStore } from '@/store/useUserStore';
-import { useColors } from '@/hooks/useColors';
+import { useColors, useIsDark } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 
@@ -16,11 +16,15 @@ function formatDate(d: Date): string {
 }
 
 function dateToISO(d: Date): string {
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`; // local date — avoids UTC previous-day shift
 }
 
 export default function PersonalInfo() {
   const C = useColors();
+  const isDark = useIsDark();
   const s = makeStyles(C);
   const setProfile = useUserStore((st) => st.setProfile);
   const stored     = useUserStore((st) => st.profile);
@@ -174,7 +178,7 @@ export default function PersonalInfo() {
           maximumDate={new Date()}
           minimumDate={new Date(1920, 0, 1)}
           onChange={(_, date) => { if (date) setTempDob(date); }}
-          themeVariant="light"
+          themeVariant={isDark ? 'dark' : 'light'}
           style={s.datePicker}
         />
         <TouchableOpacity

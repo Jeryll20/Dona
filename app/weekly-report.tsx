@@ -8,7 +8,7 @@ import { useColors } from '@/hooks/useColors';
 import { FontSize } from '@/constants/typography';
 import { Spacing, Shadow, Radius } from '@/constants/spacing';
 import { CAT } from '@/constants/categories';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, type IconName } from '@/components/ui/Icon';
 import { TopSafe } from '@/components/ui/TopSafe';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useBehaviorStore } from '@/store/useBehaviorStore';
@@ -50,7 +50,7 @@ function RingProgress({ value, size = 60 }: { value: number; size?: number }) {
 function PatternCard({ insight, onAccept }: { insight: PatternInsight; onAccept: () => void }) {
   const C = useColors();
   const s = makeStyles(C);
-  const iconMap: Record<string, string> = {
+  const iconMap: Record<string, IconName> = {
     low_completion: 'target',
     day_skip:       'calendar',
     time_drift:     'clock',
