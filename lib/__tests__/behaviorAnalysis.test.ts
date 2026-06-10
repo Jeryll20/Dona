@@ -1,4 +1,4 @@
-import { analyzePatterns, computeWeekStats, getLastMondayISO } from '../behaviorAnalysis';
+import { analyzePatterns, computeWeekStats, computeWeekStreak, getLastMondayISO } from '../behaviorAnalysis';
 import type { UserActivity, ActivityCompletion, ActivityOverride, CustomCategory } from '@/types';
 
 function makeActivity(partial: Partial<UserActivity>): UserActivity {
@@ -67,6 +67,86 @@ describe('computeWeekStats', () => {
     ];
     const { completionRate } = computeWeekStats([activity], completions, weekStart);
     expect(completionRate).toBe(0);
+  });
+});
+
+describe('computeWeekStreak', () => {
+  // Today frozen at Wednesday June 10, 2026 → current week starts Monday 06-08,
+  // the streak is evaluated from the week of 06-01 backwards
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 5, 10, 12));
+  });
+  afterEach(() => jest.useRealTimers());
+
+  const weeklyMonday = makeActivity({ days: ['Mon'] });
+
+  it('returns 0 without any completions', () => {
+    expect(computeWeekStreak([weeklyMonday], [])).toBe(0);
+  });
+
+  it('counts one fully completed past week', () => {
+    const completions: ActivityCompletion[] = [
+      { activityId: 'a1', date: '2026-06-01', completed: true },
+    ];
+    expect(computeWeekStreak([weeklyMonday], completions)).toBe(1);
+  });
+
+  it('counts consecutive completed weeks', () => {
+    const completions: ActivityCompletion[] = [
+      { activityId: 'a1', date: '2026-06-01', completed: true },
+      { activityId: 'a1', date: '2026-05-25', completed: true },
+      { activityId: 'a1', date: '2026-05-18', completed: true },
+    ];
+    expect(computeWeekStreak([weeklyMonday], completions)).toBe(3);
+  });
+
+  it('breaks at the first week under the threshold', () => {
+    const completions: ActivityCompletion[] = [
+      { activityId: 'a1', date: '2026-06-01', completed: true },
+      // 2026-05-25 missing → streak stops even though 05-18 was done
+      { activityId: 'a1', date: '2026-05-18', completed: true },
+    ];
+    expect(computeWeekStreak([weeklyMonday], completions)).toBe(1);
+  });
+
+  it('returns 0 when last week failed, regardless of earlier weeks', () => {
+    const completions: ActivityCompletion[] = [
+      { activityId: 'a1', date: '2026-06-01', completed: false },
+      { activityId: 'a1', date: '2026-05-25', completed: true },
+    ];
+    expect(computeWeekStreak([weeklyMonday], completions)).toBe(0);
+  });
+
+  it('accepts exactly 80% (4 done out of 5)', () => {
+    const weekdaysActivity = makeActivity({ days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] });
+    const completions: ActivityCompletion[] = [
+      { activityId: 'a1', date: '2026-06-01', completed: true },
+      { activityId: 'a1', date: '2026-06-02', completed: true },
+      { activityId: 'a1', date: '2026-06-03', completed: true },
+      { activityId: 'a1', date: '2026-06-04', completed: true },
+      { activityId: 'a1', date: '2026-06-05', completed: false }, // 4/5 = 80%
+    ];
+    expect(computeWeekStreak([weekdaysActivity], completions)).toBe(1);
+  });
+
+  it('ignores the in-progress week entirely', () => {
+    // Only the current week is completed — past week empty → streak 0
+    const completions: ActivityCompletion[] = [
+      { activityId: 'a1', date: '2026-06-08', completed: true },
+    ];
+    expect(computeWeekStreak([weeklyMonday], completions)).toBe(0);
+  });
+});
+
+describe('computeWeekStats — recurrence awareness', () => {
+  it('does not count one-off activities outside their creation week', () => {
+    const oneOff = makeActivity({ recurrence: 'none', anchorDate: '2026-06-01', days: ['Mon'] });
+    // Week of June 8: the one-off (anchored June 1) is gone
+    const { completionRate } = computeWeekStats([oneOff], [], '2026-06-08');
+    expect(completionRate).toBe(0); // nothing scheduled → rate 0, not penalized by a ghost activity
+    const stats = computeWeekStats([oneOff], [], '2026-06-01');
+    expect(stats.categoryStats.sport).toEqual({ planned: 1, done: 0 }); // counted in its own week
   });
 });
 

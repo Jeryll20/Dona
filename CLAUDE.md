@@ -537,7 +537,7 @@ npx expo run:android
 - [x] Séparation Sport / Activité — deux catégories built-in distinctes (coral vs bleu), icônes différentes
 - [x] Thème sombre — hook `useColors()` (`hooks/useColors.ts`), refactor 50 fichiers, toggle Auto/Clair/Sombre dans Profil → Mes paramètres
 - [x] Rappels d'activité — notification 15 min avant, par jour et par récurrence (WEEKLY pour hebdo, DATE one-shot renouvelé pour ponctuel/N-semaines) — `scheduleUserActivityReminders` dans `lib/notifications.ts`
-- [ ] Streak hebdo — afficher "N semaines consécutives à +80%" dans le bilan pour gamifier la régularité
+- [x] Streak hebdo — "🔥 N semaines consécutives à +80 %" dans le bilan (`computeWeekStreak` dans `lib/behaviorAnalysis.ts`, semaines complètes uniquement, seuil 80 %) ; `computeWeekStats` rendu recurrence-aware au passage
 - [ ] Stats multi-semaines — graphe de tendance sur 4 semaines dans le bilan (au lieu d'une seule semaine)
 - [ ] Glisser-déposer sur la timeline — déplacer un bloc directement en le faisant glisser (crée un override startTime/endTime)
 - [ ] Objectifs quantifiables — "3 sessions de sport/semaine" avec barre de progression dans les activités

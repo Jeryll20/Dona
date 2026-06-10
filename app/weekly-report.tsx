@@ -13,7 +13,7 @@ import { TopSafe } from '@/components/ui/TopSafe';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useBehaviorStore } from '@/store/useBehaviorStore';
 import { useUserStore } from '@/store/useUserStore';
-import { analyzePatterns, computeWeekStats, getLastMondayISO } from '@/lib/behaviorAnalysis';
+import { analyzePatterns, computeWeekStats, computeWeekStreak, getLastMondayISO } from '@/lib/behaviorAnalysis';
 import { generateWeeklyInsights } from '@/lib/ai';
 import type { PatternInsight, CatKey, WeeklyReport } from '@/types';
 
@@ -100,6 +100,7 @@ export default function WeeklyReportScreen() {
     try {
       const weekStart = getLastMondayISO();
       const { completionRate, categoryStats, customCatStats } = computeWeekStats(activities, completions, weekStart, customCategories);
+      const streak    = computeWeekStreak(activities, completions);
       const patterns  = analyzePatterns(activities, completions, overrides);
 
       const mistralInsights = await generateWeeklyInsights({
@@ -118,6 +119,7 @@ export default function WeeklyReportScreen() {
         completionRate,
         categoryStats,
         customCatStats,
+        streak,
         patterns,
         mistralInsights,
         generatedAt: new Date().toISOString(),
@@ -185,6 +187,23 @@ export default function WeeklyReportScreen() {
               <Text style={s.completionWeek}>Semaine du {formatWeekDate(report.weekStart)}</Text>
             </View>
           </View>
+
+          {/* Weekly streak */}
+          {(report.streak ?? 0) >= 1 && (
+            <View style={s.streakCard}>
+              <Text style={s.streakEmoji}>🔥</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.streakTitle}>
+                  {report.streak} {report.streak === 1 ? 'semaine consécutive' : 'semaines consécutives'} à +80 %
+                </Text>
+                <Text style={s.streakSub}>
+                  {report.completionRate >= 0.8
+                    ? 'Continue comme ça pour prolonger ta série !'
+                    : 'Termine cette semaine à +80 % pour la prolonger !'}
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* AI insights */}
           {report.mistralInsights ? (
@@ -318,6 +337,20 @@ function makeStyles(C: ReturnType<typeof useColors>) {
     completionLabel:  { fontSize: FontSize.sm, color: C.ink3, fontWeight: '600' },
     completionSub:    { fontSize: FontSize.base, color: C.ink, fontWeight: '700', marginTop: 2 },
     completionWeek:   { fontSize: FontSize.xs, color: C.ink3, marginTop: 4 },
+
+    // Weekly streak card
+    streakCard: {
+      backgroundColor: C.surface,
+      borderRadius:    Radius.block,
+      padding:         Spacing.md,
+      flexDirection:   'row',
+      alignItems:      'center',
+      gap:             Spacing.md,
+      ...Shadow.sm,
+    },
+    streakEmoji: { fontSize: 28 },
+    streakTitle: { fontSize: FontSize.base, fontWeight: '800', color: C.ink, letterSpacing: -0.2 },
+    streakSub:   { fontSize: FontSize.sm, color: C.ink3, marginTop: 2 },
 
     // AI insights card
     insightsCard: {

@@ -180,6 +180,7 @@ export interface WeeklyReport {
   completionRate:  number;  // 0–1
   categoryStats:   Partial<Record<CatKey, CategoryStat>>;
   customCatStats:  Record<string, CustomCatStat>;  // keyed by customCatId
+  streak:          number;  // consecutive past weeks ≥ 80% completion
   patterns:        PatternInsight[];
   mistralInsights: string;  // AI-generated text
   generatedAt:     string;  // ISO timestamp

@@ -1,3 +1,4 @@
+import { isActivityVisibleOn } from './recurrence';
 import type {
   ActivityCompletion,
   ActivityOverride,
@@ -188,16 +189,15 @@ export function computeWeekStats(
     dates.push(toLocalISODate(d));
   }
 
-  const JS_TO_WEEKDAY: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
   let totalScheduled = 0;
   let totalDone      = 0;
   const catStats: Partial<Record<CatKey, CategoryStat>> = {};
   const customCatStats: Record<string, CustomCatStat>   = {};
 
   for (const date of dates) {
-    const wd  = JS_TO_WEEKDAY[parseLocalDate(date).getDay()];
-    const dayActivities = activities.filter((a) => a.days.includes(wd));
+    // Recurrence-aware: one-off activities only count during their creation
+    // week, N-weekly only on their active weeks (legacy data: weekly behavior)
+    const dayActivities = activities.filter((a) => isActivityVisibleOn(a, date));
 
     for (const act of dayActivities) {
       const dur  = durationHours(act.startTime, act.endTime);
@@ -227,6 +227,34 @@ export function computeWeekStats(
 
   const completionRate = totalScheduled > 0 ? totalDone / totalScheduled : 0;
   return { completionRate, categoryStats: catStats, customCatStats };
+}
+
+// ── Weekly streak ─────────────────────────────────────────────────────────────
+
+export const STREAK_THRESHOLD = 0.8;
+const STREAK_MAX_WEEKS = 52;
+
+/**
+ * Number of consecutive FULLY ELAPSED weeks (ending last week) whose
+ * completion rate is ≥ 80%. The in-progress week never counts — its unmarked
+ * future occurrences would unfairly deflate the rate.
+ */
+export function computeWeekStreak(
+  activities:  UserActivity[],
+  completions: ActivityCompletion[],
+): number {
+  let streak = 0;
+  const monday = parseLocalDate(getLastMondayISO());
+  monday.setDate(monday.getDate() - 7); // start at last week's Monday
+
+  for (let i = 0; i < STREAK_MAX_WEEKS; i++) {
+    const { completionRate } = computeWeekStats(activities, completions, toLocalISODate(monday));
+    if (completionRate < STREAK_THRESHOLD) break;
+    streak++;
+    monday.setDate(monday.getDate() - 7);
+  }
+
+  return streak;
 }
 
 // ── Week start helper ─────────────────────────────────────────────────────────
