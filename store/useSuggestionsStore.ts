@@ -3,35 +3,53 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Suggestion } from '../types';
 
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 interface SuggestionsState {
   suggestions: Suggestion[];
+  // Titles accepted/dismissed today — excluded from regeneration so they
+  // don't reappear when the schedule changes. Resets each day.
+  consumedTitles: string[];
+  consumedDate: string;
 
   setSuggestions: (suggestions: Suggestion[]) => void;
   acceptSuggestion: (id: string) => void;
   dismissSuggestion: (id: string) => void;
 }
 
+function consume(s: SuggestionsState, id: string, flag: 'accepted' | 'dismissed') {
+  const target = s.suggestions.find((sg) => sg.id === id);
+  const today  = todayISO();
+  const base   = s.consumedDate === today ? s.consumedTitles : [];
+  return {
+    suggestions: s.suggestions.map((sg) =>
+      sg.id === id
+        ? { ...sg, accepted: flag === 'accepted', dismissed: flag === 'dismissed' }
+        : sg
+    ),
+    consumedTitles: target && !base.includes(target.title) ? [...base, target.title] : base,
+    consumedDate: today,
+  };
+}
+
 export const useSuggestionsStore = create<SuggestionsState>()(
   persist(
     (set) => ({
       suggestions: [],
+      consumedTitles: [],
+      consumedDate: '',
 
       setSuggestions: (suggestions) =>
         set({ suggestions }),
 
       acceptSuggestion: (id) =>
-        set((s) => ({
-          suggestions: s.suggestions.map((sg) =>
-            sg.id === id ? { ...sg, accepted: true, dismissed: false } : sg
-          ),
-        })),
+        set((s) => consume(s, id, 'accepted')),
 
       dismissSuggestion: (id) =>
-        set((s) => ({
-          suggestions: s.suggestions.map((sg) =>
-            sg.id === id ? { ...sg, dismissed: true, accepted: false } : sg
-          ),
-        })),
+        set((s) => consume(s, id, 'dismissed')),
     }),
     {
       name:    'dona-suggestions',

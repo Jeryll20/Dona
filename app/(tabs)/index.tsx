@@ -278,8 +278,8 @@ export default function TodayScreen() {
   const setViewMode  = useScheduleStore((st) => st.setViewMode);
   const dayOffset    = useScheduleStore((st) => st.dayOffset);
   const setDayOffset = useScheduleStore((st) => st.setDayOffset);
-  const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion } =
-    useSuggestionsStore();
+  const { suggestions, setSuggestions, acceptSuggestion, dismissSuggestion,
+          consumedTitles, consumedDate } = useSuggestionsStore();
   const { completions, setCompletion, removeCompletion, clearReport } = useBehaviorStore();
 
   // ── Completion state ──────────────────────────────────────────────────────────
@@ -507,10 +507,16 @@ export default function TodayScreen() {
     return getCyclePhase(cycle.lastPeriodDate, cycle.cycleDays ?? 28);
   }, [cycle.tracking, cycle.lastPeriodDate, cycle.cycleDays]);
 
-  // Regenerate suggestions on mount and whenever inputs change
+  // Regenerate suggestions on mount and whenever inputs change.
+  // Titles already accepted/dismissed today are excluded so they don't
+  // reappear when adding an activity changes todayEvents.
   useEffect(() => {
-    setSuggestions(buildSuggestions({ events: todayEvents, goal: profile.goal ?? undefined, cyclePhase }));
-  }, [todayEvents, profile.goal, cyclePhase, setSuggestions]);
+    const fresh = buildSuggestions({ events: todayEvents, goal: profile.goal ?? undefined, cyclePhase });
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const blocked = consumedDate === todayStr ? new Set(consumedTitles) : new Set<string>();
+    setSuggestions(fresh.filter((sg) => !blocked.has(sg.title)));
+  }, [todayEvents, profile.goal, cyclePhase, setSuggestions, consumedTitles, consumedDate]);
 
   const visibleSuggestions = suggestions.filter((sg) => !sg.accepted && !sg.dismissed);
 
