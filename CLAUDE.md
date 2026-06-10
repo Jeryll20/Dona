@@ -545,7 +545,7 @@ npx expo run:android
 - [ ] Export PDF/image — partager son planning de la semaine en capture propre
 - [ ] Templates de semaine — modèles pré-remplis pour un 2e utilisateur (sans onboarding from scratch)
 - [ ] Onboarding post-inscription — vérifier que le flux first-login → hydration → timeline est fluide end-to-end sur device réel (pas de données stale AsyncStorage, profil Supabase bien restauré)
-- [ ] Tests automatisés — aucune couverture pour l'instant ; priorités : `lib/behaviorAnalysis.ts` (patterns), `lib/optimizer.ts` (créneaux libres + scoring), `lib/cycle.ts` (calcul de phase) — pure JS, testables avec Jest sans dépendance RN
+- [x] Tests automatisés — Jest + ts-jest (`npm test`), 47 tests sur `lib/recurrence.ts` (dates locales + visibilité), `lib/cycle.ts` (bornes de phases), `lib/behaviorAnalysis.ts` (stats semaine + patterns), `lib/optimizer.ts` (créneaux libres + suggestions) — `lib/__tests__/`
 - [ ] Community features
 - [ ] PWA web version
 - [ ] Multilingual support
