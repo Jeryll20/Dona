@@ -24,6 +24,7 @@ interface ScheduleState {
   addCustomCategory:   (cat: CustomCategory)                      => void;
   updateCustomCategory:(id: string, patch: Partial<CustomCategory>) => void;
   removeCustomCategory:(id: string)                               => void;
+  reset:               ()                                         => void;
 }
 
 export const useScheduleStore = create<ScheduleState>()(
@@ -86,6 +87,12 @@ export const useScheduleStore = create<ScheduleState>()(
             a.customCatId === id ? { ...a, customCatId: undefined } : a,
           ),
         })),
+
+      reset: () =>
+        set({
+          todayEvents: [], activities: [], overrides: [],
+          customCategories: [], viewMode: 'day', dayOffset: 0,
+        }),
     }),
     {
       name:    'dona-schedule',

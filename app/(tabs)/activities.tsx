@@ -27,6 +27,7 @@ import { Icon } from '@/components/ui/Icon';
 import { getTravelTime } from '@/lib/maps';
 import { upsertActivity, deleteActivityRemote } from '@/lib/activitiesSync';
 import { upsertCustomCat, deleteCustomCatRemote } from '@/lib/customCatsSync';
+import { toLocalISODate } from '@/lib/recurrence';
 import { Colors, COLOR_PALETTE } from '@/constants/Colors';
 import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
@@ -292,6 +293,10 @@ export default function ActivitiesScreen() {
   function handleSave() {
     const customCat = customCatId ? customCategories.find((c) => c.id === customCatId) : undefined;
     const builtinCat = CATEGORIES.find((c) => c.key === catKey) ?? CATEGORIES[1];
+    // Keep the original anchor when editing; new (or legacy) activities anchor to today
+    const existingAnchor = editingId
+      ? activities.find((a) => a.id === editingId)?.anchorDate
+      : undefined;
     const data = {
       title: name.trim() || customCat?.label || builtinCat.label,
       cat: catKey ?? 'activite' as CatKey,
@@ -300,6 +305,7 @@ export default function ActivitiesScreen() {
       endTime,
       days: [...days] as WeekDay[],
       recurrence,
+      anchorDate: existingAnchor ?? toLocalISODate(new Date()),
       color,
       notifyWeekEnd: recurrence === 'none' ? notifyWeekEnd : undefined,
       location,

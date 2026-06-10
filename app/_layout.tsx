@@ -17,6 +17,9 @@ import * as Linking from 'expo-linking';
 import * as Notif from 'expo-notifications';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
+import { useBehaviorStore } from '@/store/useBehaviorStore';
+import { useSuggestionsStore } from '@/store/useSuggestionsStore';
 import { supabase } from '@/lib/supabase';
 import { buildDefaultDay } from '@/lib/optimizer';
 import { scheduleAllNotifications } from '@/lib/notifications';
@@ -76,11 +79,16 @@ function useProtectedRoute() {
   useEffect(() => {
     if (authLoading || !storeHydrated) return;
 
-    // If a different user logged in, reset the profile store before routing
+    // If a different user logged in, reset ALL persisted stores before routing —
+    // otherwise the previous user's activities/completions leak into the new
+    // account (and get pushed to their Supabase rows by the first-sync logic)
     if (session) {
       const { userId, resetForUser } = useUserStore.getState();
       if (userId !== null && userId !== session.user.id) {
         resetForUser(session.user.id);
+        useScheduleStore.getState().reset();
+        useBehaviorStore.getState().reset();
+        useSuggestionsStore.getState().reset();
         return; // effect re-runs after reset
       }
       if (userId === null) {

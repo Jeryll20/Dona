@@ -36,6 +36,7 @@ export interface UserActivity {
   endTime: string;     // "HH:MM"
   days: WeekDay[];
   recurrence: Recurrence;
+  anchorDate?: string; // local "YYYY-MM-DD" of creation — anchors 'none' and N-weekly recurrences
   color?: { bg: string; ink: string };
   notifyWeekEnd?: boolean;
   location?: ActivityLocation;

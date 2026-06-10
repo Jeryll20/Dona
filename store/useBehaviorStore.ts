@@ -11,6 +11,7 @@ interface BehaviorState {
   removeCompletion: (activityId: string, date: string) => void;
   setWeeklyReport:  (report: WeeklyReport) => void;
   clearReport:      () => void;
+  reset:            () => void;
 }
 
 export const useBehaviorStore = create<BehaviorState>()(
@@ -38,6 +39,7 @@ export const useBehaviorStore = create<BehaviorState>()(
 
       setWeeklyReport: (report) => set({ weeklyReport: report }),
       clearReport:     ()       => set({ weeklyReport: null }),
+      reset:           ()       => set({ completions: [], weeklyReport: null }),
     }),
     {
       name:    'dona-behavior',

@@ -1,4 +1,5 @@
 import * as Notif from 'expo-notifications';
+import { Platform } from 'react-native';
 import type { TimelineEvent } from '@/types';
 
 // ── Handler global (affiché même app au premier plan) ────────────────────────
@@ -32,12 +33,30 @@ export async function requestPermissions(): Promise<boolean> {
 
 export async function scheduleCycleReminder(): Promise<void> {
   await Notif.cancelScheduledNotificationAsync(ID_CYCLE).catch(() => null);
+
+  const content = {
+    title: 'Mise à jour du cycle 🌸',
+    body:  'Un nouveau mois commence ! Pense à mettre à jour la date de tes dernières règles.',
+  };
+
+  if (Platform.OS === 'android') {
+    // CALENDAR triggers are iOS-only — Android throws "Trigger of type:
+    // calendar is not supported". Schedule a one-shot DATE trigger for the
+    // next 1st of month instead; scheduleAllNotifications re-runs at every
+    // app launch, which renews it month after month.
+    const now  = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth() + 1, 1, 9, 0, 0);
+    await Notif.scheduleNotificationAsync({
+      identifier: ID_CYCLE,
+      content,
+      trigger: { type: Notif.SchedulableTriggerInputTypes.DATE, date: next },
+    });
+    return;
+  }
+
   await Notif.scheduleNotificationAsync({
     identifier: ID_CYCLE,
-    content: {
-      title: 'Mise à jour du cycle 🌸',
-      body:  'Un nouveau mois commence ! Pense à mettre à jour la date de tes dernières règles.',
-    },
+    content,
     trigger: {
       type:    Notif.SchedulableTriggerInputTypes.CALENDAR,
       day:     1,

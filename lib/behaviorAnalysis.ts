@@ -28,9 +28,24 @@ function toDecimalHours(hhmm: string): number {
   return (h || 0) + (m || 0) / 60;
 }
 
+// Parse "YYYY-MM-DD" as a LOCAL date — new Date(str) would parse it as UTC
+// midnight, shifting the weekday in non-UTC timezones.
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// Format a Date as local "YYYY-MM-DD" — toISOString() converts to UTC and
+// can return the previous day (e.g. French midnight = 22:00/23:00 UTC).
+function toLocalISODate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function dayOfWeek(dateStr: string): WeekDay {
-  const d = new Date(dateStr);
-  const js = d.getDay(); // 0=Sun
+  const js = parseLocalDate(dateStr).getDay(); // 0=Sun
   const map: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   return map[js];
 }
@@ -164,13 +179,13 @@ export function computeWeekStats(
   categoryStats:   Partial<Record<CatKey, CategoryStat>>;
   customCatStats:  Record<string, CustomCatStat>;
 } {
-  // Build the 7 dates of the week
+  // Build the 7 dates of the week (local — no UTC conversion)
   const dates: string[] = [];
-  const base = new Date(weekStart);
+  const base = parseLocalDate(weekStart);
   for (let i = 0; i < 7; i++) {
     const d = new Date(base);
     d.setDate(base.getDate() + i);
-    dates.push(d.toISOString().slice(0, 10));
+    dates.push(toLocalISODate(d));
   }
 
   const JS_TO_WEEKDAY: WeekDay[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -181,7 +196,7 @@ export function computeWeekStats(
   const customCatStats: Record<string, CustomCatStat>   = {};
 
   for (const date of dates) {
-    const wd  = JS_TO_WEEKDAY[new Date(date).getDay()];
+    const wd  = JS_TO_WEEKDAY[parseLocalDate(date).getDay()];
     const dayActivities = activities.filter((a) => a.days.includes(wd));
 
     for (const act of dayActivities) {
@@ -218,9 +233,8 @@ export function computeWeekStats(
 
 export function getLastMondayISO(): string {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
   const day = today.getDay(); // 0=Sun
   const diff = day === 0 ? 6 : day - 1;
   today.setDate(today.getDate() - diff);
-  return today.toISOString().slice(0, 10);
+  return toLocalISODate(today); // NOT toISOString(): French Monday 00:00 is Sunday in UTC
 }

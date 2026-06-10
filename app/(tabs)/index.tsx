@@ -31,6 +31,7 @@ import { useSuggestionsStore } from '@/store/useSuggestionsStore';
 import { upsertOverride, deleteOverrideRemote, upsertActivity } from '@/lib/activitiesSync';
 import { upsertCompletion, deleteCompletionRemote } from '@/lib/completionsSync';
 import { buildSuggestions, buildDayEvents } from '@/lib/optimizer';
+import { isActivityVisibleOn, toLocalISODate } from '@/lib/recurrence';
 import { getCyclePhase } from '@/lib/cycle';
 import { useBehaviorStore } from '@/store/useBehaviorStore';
 import type { TimelineEvent, WeekDay, UserActivity, Suggestion, ActivityOverride } from '@/types';
@@ -67,7 +68,7 @@ function profileEventPress(ev: TimelineEvent): (() => void) | undefined {
 function offsetToDateStr(offset: number): string {
   const d = new Date();
   d.setDate(d.getDate() + offset);
-  return d.toISOString().split('T')[0];
+  return toLocalISODate(d); // local — toISOString() returns the previous day before 1-2am French time
 }
 
 function parseTime(hhmm: string): number {
@@ -114,7 +115,7 @@ function DayPanel({
   const d = new Date();
   d.setDate(d.getDate() + absOffset);
   const weekDay = DAY_MAP[d.getDay()];
-  const dateStr = d.toISOString().split('T')[0];
+  const dateStr = toLocalISODate(d);
   const isToday = absOffset === 0;
 
   const profileEvents = useMemo<TimelineEvent[]>(() => {
@@ -132,7 +133,7 @@ function DayPanel({
     const result: (TimelineEvent & { activityId?: string })[] = [];
 
     for (const a of activities) {
-      if (!a.days.includes(weekDay)) continue;
+      if (!isActivityVisibleOn(a, dateStr)) continue;
       const ov = getOverride(a.id);
       if (ov?.cancelled) continue;
 
@@ -347,6 +348,7 @@ export default function TodayScreen() {
       endTime:    suggestEdit.endTime,
       days:       [DAY_MAP[today.getDay()]],
       recurrence: 'none',
+      anchorDate: toLocalISODate(today),
     };
     addActivity(newActivity);
     if (userId) upsertActivity(userId, newActivity);
@@ -493,9 +495,9 @@ export default function TodayScreen() {
 
   const todayActivityEvents = useMemo(() => (
     activities
-      .filter((a) => a.days.includes(selectedWeekDay))
+      .filter((a) => isActivityVisibleOn(a, toLocalISODate(selectedDate)))
       .map((a) => ({ cat: a.cat, title: a.title, start: parseTime(a.startTime), end: parseTime(a.endTime) }))
-  ), [activities, selectedWeekDay]);
+  ), [activities, selectedDate]);
 
   const todayEvents = useMemo<TimelineEvent[]>(
     () => [...todayProfileEvents, ...todayActivityEvents].sort((a, b) => a.start - b.start),

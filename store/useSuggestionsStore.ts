@@ -18,6 +18,7 @@ interface SuggestionsState {
   setSuggestions: (suggestions: Suggestion[]) => void;
   acceptSuggestion: (id: string) => void;
   dismissSuggestion: (id: string) => void;
+  reset: () => void;
 }
 
 function consume(s: SuggestionsState, id: string, flag: 'accepted' | 'dismissed') {
@@ -50,6 +51,9 @@ export const useSuggestionsStore = create<SuggestionsState>()(
 
       dismissSuggestion: (id) =>
         set((s) => consume(s, id, 'dismissed')),
+
+      reset: () =>
+        set({ suggestions: [], consumedTitles: [], consumedDate: '' }),
     }),
     {
       name:    'dona-suggestions',
