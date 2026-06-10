@@ -3,6 +3,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { useUserStore } from '@/store/useUserStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { pushProfile } from '@/lib/profileSync';
 import { scheduleAllNotifications } from '@/lib/notifications';
 import { buildDefaultDay } from '@/lib/optimizer';
 import { useColors } from '@/hooks/useColors';
@@ -38,11 +40,16 @@ export default function RecapScreen() {
   const s = makeStyles(C);
   const { sleep, meals, cycle } = useUserStore();
   const completeOnboarding = useUserStore((st) => st.completeOnboarding);
+  const userId = useAuthStore((st) => st.session?.user?.id);
 
   const events = buildDayFromProfile(sleep, meals);
 
   function handleStart() {
     completeOnboarding();
+    // Push immediately — the 2s-debounced auto-push would lose the profile
+    // row if the app is killed right after onboarding (fire-and-forget,
+    // failures set the dirty flag and are retried at next login)
+    if (userId) pushProfile(userId);
     scheduleAllNotifications({
       events,
       cycleTracking:  cycle.tracking ?? false,

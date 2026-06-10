@@ -12,15 +12,42 @@ import { FontSize } from '@/constants/typography';
 export default function VerifyEmailScreen() {
   const C = useColors();
   const s = makeStyles(C);
-  const { email } = useLocalSearchParams<{ email: string }>();
+  const { email, pw } = useLocalSearchParams<{ email: string; pw?: string }>();
   const session   = useAuthStore((st) => st.session);
   const [resending, setResending] = useState(false);
   const [resent,    setResent]    = useState(false);
+  const [checking,  setChecking]  = useState(false);
 
   // Session set = email confirmed → _layout.tsx routing takes over
   useEffect(() => {
     if (session) router.replace('/(auth)/welcome');
   }, [session]);
+
+  // The dona:// deep link only works in standalone builds. In Expo Go the
+  // session never arrives by itself, so poll a silent sign-in: it fails until
+  // the email is confirmed, then succeeds and sets the session.
+  async function trySignIn(): Promise<boolean> {
+    if (!email || !pw) return false;
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
+    return !error;
+  }
+
+  useEffect(() => {
+    if (!email || !pw) return;
+    const id = setInterval(trySignIn, 20_000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email, pw]);
+
+  async function handleConfirmed() {
+    setChecking(true);
+    const ok = await trySignIn();
+    setChecking(false);
+    if (!ok) {
+      // Not confirmed yet (or no password param) — fall back to login
+      if (!pw) router.replace('/(auth)/login' as any);
+    }
+  }
 
   async function handleResend() {
     if (!email) return;
@@ -58,6 +85,19 @@ export default function VerifyEmailScreen() {
           <ActivityIndicator size="small" color={C.primary} />
           <Text style={s.waitingText}>En attente de confirmation…</Text>
         </View>
+
+        <TouchableOpacity
+          style={[s.confirmedBtn, checking && s.resendOff]}
+          onPress={handleConfirmed}
+          disabled={checking}
+          accessibilityRole="button"
+          accessibilityLabel="J'ai confirmé mon email"
+        >
+          {checking
+            ? <ActivityIndicator size="small" color={C.onPrimary} />
+            : <Text style={s.confirmedText}>J'ai confirmé mon email</Text>
+          }
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[s.resendBtn, resending && s.resendOff]}
@@ -124,6 +164,17 @@ function makeStyles(C: ReturnType<typeof useColors>) {
       gap: Spacing.sm, marginBottom: Spacing.xl,
     },
     waitingText: { fontSize: FontSize.sm, color: C.ink3, fontWeight: '600' },
+
+    confirmedBtn: {
+      backgroundColor: C.primary,
+      borderRadius: Radius.pill,
+      paddingVertical: Spacing.base,
+      paddingHorizontal: Spacing.xl,
+      marginBottom: Spacing.md,
+      alignItems: 'center',
+      ...Shadow.sm,
+    },
+    confirmedText: { fontSize: FontSize.base, fontWeight: '700', color: C.onPrimary },
 
     resendBtn: {
       backgroundColor: C.surface,

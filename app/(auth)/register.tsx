@@ -51,7 +51,10 @@ export default function RegisterScreen() {
       return;
     }
 
-    router.replace({ pathname: '/(auth)/verify-email' as any, params: { email: email.trim() } });
+    // Password travels as a nav param (memory only, never persisted) so
+    // verify-email can poll sign-in — the dona:// deep link that would set
+    // the session automatically doesn't work in Expo Go
+    router.replace({ pathname: '/(auth)/verify-email' as any, params: { email: email.trim(), pw: password } });
   }
 
   return (

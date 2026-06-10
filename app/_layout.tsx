@@ -24,6 +24,7 @@ import { supabase } from '@/lib/supabase';
 import { buildDefaultDay } from '@/lib/optimizer';
 import { scheduleAllNotifications } from '@/lib/notifications';
 import { useProfileSync } from '@/hooks/useProfileSync';
+import { clearSyncDirty } from '@/lib/syncGuard';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -89,6 +90,10 @@ function useProtectedRoute() {
         useScheduleStore.getState().reset();
         useBehaviorStore.getState().reset();
         useSuggestionsStore.getState().reset();
+        // The dirty flag belonged to the previous user's unsynced changes —
+        // keeping it would push the freshly reset (empty) state over the new
+        // user's remote data on hydration
+        clearSyncDirty();
         return; // effect re-runs after reset
       }
       if (userId === null) {

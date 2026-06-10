@@ -3,23 +3,36 @@ import { useEffect } from 'react';
 import { TabBar } from '@/components/ui/TabBar';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { buildDefaultDay } from '@/lib/optimizer';
+import { upsertActivity } from '@/lib/activitiesSync';
 import { scheduleAllNotifications } from '@/lib/notifications';
+import type { UserActivity } from '@/types';
 
 function migrateProfileActivities() {
   const acts = useScheduleStore.getState().activities;
   const add   = useScheduleStore.getState().addActivity;
+  const userId = useAuthStore.getState().session?.user?.id;
   const w = useUserStore.getState().work;
   const s = useUserStore.getState().sport;
   const o = useUserStore.getState().otherActivity;
+
+  // Also push to Supabase: this runs AFTER the login first-sync, so these
+  // onboarding-derived activities would otherwise never reach the cloud
+  // (empty planning on a second device)
+  const addAndSync = (activity: UserActivity) => {
+    add(activity);
+    if (userId) upsertActivity(userId, activity);
+  };
+
   if (w.employed && w.startTime && w.endTime && !acts.find((a) => a.id === '__work__')) {
-    add({ id: '__work__', title: w.role || 'Emploi', cat: 'travail', startTime: w.startTime!, endTime: w.endTime!, days: w.days ?? [], recurrence: 'weekly' });
+    addAndSync({ id: '__work__', title: w.role || 'Emploi', cat: 'travail', startTime: w.startTime!, endTime: w.endTime!, days: w.days ?? [], recurrence: 'weekly' });
   }
   if (s.active && s.startTime && s.endTime && !acts.find((a) => a.id === '__sport__')) {
-    add({ id: '__sport__', title: s.activity || 'Sport & Activité', cat: 'activite', startTime: s.startTime!, endTime: s.endTime!, days: s.days ?? [], recurrence: 'weekly' });
+    addAndSync({ id: '__sport__', title: s.activity || 'Sport', cat: 'sport', startTime: s.startTime!, endTime: s.endTime!, days: s.days ?? [], recurrence: 'weekly' });
   }
   if (o.active && o.startTime && o.endTime && !acts.find((a) => a.id === '__other__')) {
-    add({ id: '__other__', title: o.title || 'Autre activité', cat: 'activite', startTime: o.startTime!, endTime: o.endTime!, days: o.days ?? [], recurrence: 'weekly' });
+    addAndSync({ id: '__other__', title: o.title || 'Autre activité', cat: 'activite', startTime: o.startTime!, endTime: o.endTime!, days: o.days ?? [], recurrence: 'weekly' });
   }
 }
 
