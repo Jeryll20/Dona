@@ -19,6 +19,7 @@ export function useProfileSync() {
   useEffect(() => {
     if (!userId) return;
     hydrating.current = true;
+    useAuthStore.getState().setHydrating(true);
     (async () => {
       if (await isSyncDirty()) {
         const results = await Promise.all([
@@ -38,6 +39,7 @@ export function useProfileSync() {
       }
     })().finally(() => {
       hydrating.current = false;
+      useAuthStore.getState().setHydrating(false);
     });
   }, [userId]);
 

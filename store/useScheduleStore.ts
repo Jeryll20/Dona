@@ -44,7 +44,11 @@ export const useScheduleStore = create<ScheduleState>()(
       })),
 
       addActivity: (activity) =>
-        set((s) => ({ activities: [activity, ...s.activities] })),
+        // Idempotent by id: double-taps or hydration races must never
+        // produce two activities with the same id
+        set((s) => ({
+          activities: [activity, ...s.activities.filter((a) => a.id !== activity.id)],
+        })),
 
       removeActivity: (id) =>
         set((s) => ({ activities: s.activities.filter((a) => a.id !== id) })),

@@ -9,6 +9,8 @@ import { Sheet } from '@/components/ui/Sheet';
 import { TimeField } from '@/components/ui/TimeField';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { upsertActivity, deleteActivityRemote } from '@/lib/activitiesSync';
 import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -156,7 +158,8 @@ export default function Q8Other() {
   const s = makeStyles(C);
   const setOtherActivity = useUserStore((st) => st.setOtherActivity);
   const stored           = useUserStore((st) => st.otherActivity);
-  const { activities, addActivity, updateActivity, removeActivity } = useScheduleStore();
+  const { activities, addActivity, removeActivity } = useScheduleStore();
+  const userId = useAuthStore((st) => st.session?.user?.id);
 
   const [status, setStatus] = useState<ActivityStatus>(
     stored.active ? 'yes' : stored.interested ? 'interested' : stored.active === false ? 'no' : null,
@@ -204,31 +207,37 @@ export default function Q8Other() {
     });
 
     if (status === 'yes' && startTime && endTime) {
-      // First activity — stable ID __other__
-      const firstData = {
+      // First activity — stable ID __other__ (addActivity is idempotent by id)
+      const firstActivity = {
+        id: '__other__',
         title: title || 'Autre activité',
         cat: 'activite' as const,
         startTime, endTime, days,
         recurrence: 'weekly' as const,
       };
-      if (activities.find((a) => a.id === '__other__')) updateActivity('__other__', firstData);
-      else addActivity({ id: '__other__', ...firstData });
+      addActivity(firstActivity);
+      if (userId) upsertActivity(userId, firstActivity);
 
       // Remove stale extras then re-add
       activities
         .filter((a) => a.id.startsWith('__other_extra_'))
-        .forEach((a) => removeActivity(a.id));
+        .forEach((a) => {
+          removeActivity(a.id);
+          if (userId) deleteActivityRemote(userId, a.id);
+        });
 
       extras.forEach((extra, i) => {
-        addActivity({
+        const extraActivity = {
           id:         `__other_extra_${i}`,
           title:      extra.title || 'Autre activité',
-          cat:        'activite',
+          cat:        'activite' as const,
           startTime:  extra.startTime,
           endTime:    extra.endTime,
           days:       extra.days,
-          recurrence: 'weekly',
-        });
+          recurrence: 'weekly' as const,
+        };
+        addActivity(extraActivity);
+        if (userId) upsertActivity(userId, extraActivity);
       });
     }
 

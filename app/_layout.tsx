@@ -39,7 +39,7 @@ function useProtectedRoute() {
   const segments = useSegments();
 
   const isOnboarded = useUserStore((s) => s.isOnboarded);
-  const { session, loading: authLoading, setSession } = useAuthStore();
+  const { session, loading: authLoading, hydrating, setSession } = useAuthStore();
 
   const [storeHydrated, setStoreHydrated] = useState(false);
 
@@ -115,6 +115,11 @@ function useProtectedRoute() {
       return;
     }
 
+    // While the remote profile is being restored, isOnboarded is the freshly
+    // reset local value — routing on it would flash the onboarding welcome
+    // screen. Stay put until hydration settles.
+    if (hydrating) return;
+
     if (!isOnboarded) {
       // On verify-email with a session = just confirmed → go to welcome
       const awaitingScreens = ['login', 'register', 'verify-email'];
@@ -142,7 +147,7 @@ function useProtectedRoute() {
       });
       router.replace('/(tabs)/' as any);
     }
-  }, [authLoading, storeHydrated, session, isOnboarded, segments]);
+  }, [authLoading, storeHydrated, session, isOnboarded, segments, hydrating]);
 }
 
 export default function RootLayout() {

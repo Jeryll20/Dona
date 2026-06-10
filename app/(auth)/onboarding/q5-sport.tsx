@@ -4,12 +4,15 @@ import OnboardingShell from '@/components/onboarding/OnboardingShell';
 import { ActivityBlock, type ActivityStatus } from '@/components/onboarding/ActivityBlock';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { upsertActivity } from '@/lib/activitiesSync';
 import type { WeekDay } from '@/types';
 
 export default function Q5Sport() {
   const setSport = useUserStore((s) => s.setSport);
   const stored   = useUserStore((s) => s.sport);
-  const { activities, addActivity, updateActivity } = useScheduleStore();
+  const { addActivity } = useScheduleStore();
+  const userId = useAuthStore((s) => s.session?.user?.id);
 
   const [status, setStatus] = useState<ActivityStatus>(
     stored.active ? 'yes' : stored.interested ? 'interested' : stored.active === false ? 'no' : null,
@@ -29,9 +32,10 @@ export default function Q5Sport() {
       endTime:    status === 'yes' ? endTime : undefined,
     });
     if (status === 'yes' && startTime && endTime) {
-      const data = { title: activity || 'Sport & Activité', cat: 'activite' as const, startTime, endTime, days, recurrence: 'weekly' as const };
-      if (activities.find((a) => a.id === '__sport__')) updateActivity('__sport__', data);
-      else addActivity({ id: '__sport__', ...data });
+      // addActivity is idempotent by id (replaces any existing __sport__)
+      const sportActivity = { id: '__sport__', title: activity || 'Sport', cat: 'sport' as const, startTime, endTime, days, recurrence: 'weekly' as const };
+      addActivity(sportActivity);
+      if (userId) upsertActivity(userId, sportActivity);
     }
     router.push('/(auth)/onboarding/q7-work');
   }
