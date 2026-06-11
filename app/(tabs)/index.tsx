@@ -234,8 +234,14 @@ function DayPanel({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Baseline needs (sleep, prep, meals, commute) don't count as "planned"
+// hours — only what the user actively scheduled does
+const BASELINE_CATS = new Set<TimelineEvent['cat']>(['sommeil', 'prep', 'repas', 'trajet']);
+
 function scheduledHours(events: TimelineEvent[]) {
-  return events.filter((e) => !e.thin).reduce((sum, e) => sum + (e.end - e.start), 0);
+  return events
+    .filter((e) => !e.thin && !BASELINE_CATS.has(e.cat))
+    .reduce((sum, e) => sum + (e.end - e.start), 0);
 }
 
 const PHASE_LABEL: Record<string, string> = {
