@@ -5,13 +5,14 @@ import {
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, cancelAnimation,
 } from 'react-native-reanimated';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { CAT } from '@/constants/categories';
 import { Icon } from '@/components/ui/Icon';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { isActivityVisibleOn, toLocalISODate } from '@/lib/recurrence';
 import type { WeekDay, CatKey } from '@/types';
 
 const WEEK_KEYS: WeekDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -63,10 +64,10 @@ function MonthPanel({ year, month, activities, todayStr, panelWidth, onDayPress 
   const grid = useMemo(() => buildGrid(year, month), [year, month]);
 
   const catsForDate = (date: Date): CatKey[] => {
-    const wday = weekKey(date);
+    const dateStr = toLocalISODate(date);
     const seen = new Set<CatKey>();
     for (const a of activities) {
-      if (a.days.includes(wday)) seen.add(a.cat);
+      if (isActivityVisibleOn(a, dateStr)) seen.add(a.cat);
     }
     return [...seen];
   };
@@ -142,13 +143,19 @@ export function MonthView() {
   const slideStartX = useRef(-width);
 
   function goPrevMonth() {
-    slideX.value = -widthRef.current;
     setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; });
   }
   function goNextMonth() {
-    slideX.value = -widthRef.current;
     setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; });
   }
+
+  // Recenter in the same frame as the re-rendered panels (see index.tsx —
+  // resetting slideX before the React commit flashes the old month)
+  useLayoutEffect(() => {
+    cancelAnimation(slideX);
+    slideX.value = -widthRef.current;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [month, year]);
 
   const goPrev = () => {
     slideX.value = withTiming(0, { duration: 280 }, () => {

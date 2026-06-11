@@ -6,7 +6,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, cancelAnimation,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLOR_PALETTE } from '@/constants/Colors';
@@ -441,13 +441,20 @@ export default function TodayScreen() {
   const selectedWeekDay = DAY_MAP[selectedDate.getDay()];
 
   function goPrevDay() {
-    slideX.value = -widthRef.current;
     setDayOffset((o: number) => o - 1);
   }
   function goNextDay() {
-    slideX.value = -widthRef.current;
     setDayOffset((o: number) => o + 1);
   }
+
+  // Recenter on the new day in the SAME frame as the re-rendered panels
+  // (resetting slideX inside the animation callback applied it on the UI
+  // thread one frame before React committed → visible flash of the old day)
+  useLayoutEffect(() => {
+    cancelAnimation(slideX);
+    slideX.value = -widthRef.current;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayOffset]);
 
   const swipe = useRef(
     PanResponder.create({

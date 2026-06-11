@@ -5,7 +5,7 @@ import {
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS, cancelAnimation,
 } from 'react-native-reanimated';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
@@ -14,6 +14,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useUserStore } from '@/store/useUserStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { buildDefaultDay } from '@/lib/optimizer';
+import { isActivityVisibleOn, toLocalISODate } from '@/lib/recurrence';
 import type { TimelineEvent, WeekDay } from '@/types';
 
 const WEEK_ORDER: WeekDay[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -90,7 +91,7 @@ function WeekPanel({
         const isToday = date.toDateString() === todayStr;
 
         const dayActivities: TimelineEvent[] = activities
-          .filter((a) => a.days.includes(day))
+          .filter((a) => isActivityVisibleOn(a, toLocalISODate(date)))
           .map((a) => ({
             cat:   a.cat,
             title: a.title,
@@ -191,13 +192,19 @@ export function WeekView() {
   };
 
   function goPrevWeek() {
-    slideX.value = -widthRef.current;
     setWeekOffset((o: number) => o - 1);
   }
   function goNextWeek() {
-    slideX.value = -widthRef.current;
     setWeekOffset((o: number) => o + 1);
   }
+
+  // Recenter in the same frame as the re-rendered panels (see index.tsx —
+  // resetting slideX before the React commit flashes the old week)
+  useLayoutEffect(() => {
+    cancelAnimation(slideX);
+    slideX.value = -widthRef.current;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekOffset]);
 
   const goPrev = () => {
     slideX.value = withTiming(0, { duration: 280 }, () => {
