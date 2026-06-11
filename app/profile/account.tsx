@@ -9,11 +9,9 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { LocationPicker } from '@/components/ui/LocationPicker';
 import { useColors, useIsDark } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
-import type { ActivityLocation } from '@/types';
 
 function parseLocalDate(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
@@ -44,18 +42,7 @@ export default function AccountScreen() {
     profile.dateOfBirth ? parseLocalDate(profile.dateOfBirth) : null,
   );
   const [showPicker,  setShowPicker]  = useState(false);
-  const [homeLocation, setHomeLocation] = useState<ActivityLocation | undefined>(
-    profile.homeLocation,
-  );
   const [keyboardH, setKeyboardH] = useState(0);
-
-  // Re-sync if Zustand finishes hydrating from AsyncStorage after this component mounts
-  useEffect(() => {
-    if (homeLocation === undefined && profile.homeLocation !== undefined) {
-      setHomeLocation(profile.homeLocation);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile.homeLocation]);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -90,7 +77,6 @@ export default function AccountScreen() {
       lastName:     lastName.trim() || undefined,
       dateOfBirth:  dateOfBirth ? toLocalISODate(dateOfBirth) : undefined,
       gender,
-      homeLocation: homeLocation ?? profile.homeLocation,
     });
     router.back();
   }
@@ -228,14 +214,6 @@ export default function AccountScreen() {
               accentColor={C.primary}
             />
           )}
-        </View>
-
-        <View style={s.section}>
-          <Text style={s.sectionLabel}>Domicile</Text>
-          <Text style={s.hint}>
-            Utilisée pour calculer les temps de trajet vers tes activités.
-          </Text>
-          <LocationPicker value={homeLocation} onChange={setHomeLocation} placeholder="Adresse de ton domicile…" />
         </View>
 
         <View style={s.section}>

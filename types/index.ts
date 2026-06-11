@@ -40,7 +40,7 @@ export interface UserActivity {
   color?: { bg: string; ink: string };
   notifyWeekEnd?: boolean;
   location?: ActivityLocation;
-  departureLocation?: ActivityLocation; // undefined = use homeLocation
+  departureLocation?: ActivityLocation;
   trajetMinutesBefore?: number;
 }
 
@@ -87,6 +87,9 @@ export interface UserProfile {
   dateOfBirth?: string;   // ISO date "YYYY-MM-DD"
   gender?:      string;   // 'homme' | 'femme' | free text (inclusivité)
   goal?:        string;   // onboarding goal key: 'organise' | 'activite' | 'routine'
+  // Default departure address = last one used in an activity. Kept out of the
+  // profile UI on purpose (privacy) — only surfaced as the prefilled
+  // "Départ depuis" field in the activity form.
   homeLocation?: ActivityLocation;
 }
 
