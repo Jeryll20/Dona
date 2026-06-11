@@ -328,6 +328,17 @@ export default function WeeklyReportScreen() {
             </View>
           )}
 
+          {/* Interactive planning session in the chat */}
+          <TouchableOpacity
+            style={s.planBtn}
+            onPress={() => router.push('/chat?plan=1' as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Adapter ma semaine avec Dona"
+          >
+            <Icon name="spark" size={18} stroke={C.onPrimary} sw={2} />
+            <Text style={s.planBtnText}>Adapter ma semaine avec Dona</Text>
+          </TouchableOpacity>
+
           <View style={{ height: 40 }} />
         </ScrollView>
       ) : (
@@ -462,6 +473,19 @@ function makeStyles(C: ReturnType<typeof useColors>) {
       alignItems: 'center', justifyContent: 'center',
     },
     customCatDot: { width: 10, height: 10, borderRadius: 5 },
+
+    planBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.sm,
+      backgroundColor: C.primary,
+      borderRadius: Radius.pill,
+      paddingVertical: Spacing.base,
+      marginTop: Spacing.md,
+      ...Shadow.sm,
+    },
+    planBtnText: { fontSize: FontSize.base, fontWeight: '700', color: C.onPrimary },
     catLabel:   { fontSize: FontSize.sm, fontWeight: '600', color: C.ink, width: 80 },
     catBar:     { flex: 1, height: 6, backgroundColor: C.hairline, borderRadius: 3, overflow: 'hidden' },
     catBarFill: { height: 6, borderRadius: 3 },

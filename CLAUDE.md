@@ -541,6 +541,7 @@ npx expo run:android
 - [x] Stats multi-semaines — graphe de tendance 4 semaines dans le bilan (`computeRecentWeeks`, barres avec % par semaine) ; semaines passées figées depuis l'archive `weekly_reports` quand dispo, sinon calcul live
 - [x] Glisser-déposer sur la timeline — maintien 450ms puis glisser (RNGH `Pan().activateAfterLongPress`, snap 5 min, crée un override startTime/endTime du jour) ; relâcher sans bouger = sheet fait/sauté (comportement préservé)
 - [x] Objectifs quantifiables — `weeklyGoal` sur l'activité (sélecteur Aucun/1-7 à l'étape Planning), barre de progression `fait/objectif` sur la carte d'activité (`weeklyGoalProgress`), migration `20260611b_weekly_goal.sql`
+- [x] Planification IA interactive — `lib/planner.ts` (`generateWeekPlan` : objectifs sport répartis sur les jours à haute énergie hormonale, alternatives douces en phase menstruelle, ancres selon le goal d'onboarding routine/organisé/activité) ; carte de plan interactive dans le chat (chip "🪄 Planifie ma semaine", toggles par proposition, Appliquer) + bouton "Adapter ma semaine" dans le bilan ; le calcul est 100% local — les données de cycle ne sont jamais envoyées à Mistral ni persistées dans l'historique chat cloud
 - [ ] Widget iOS/Android — afficher les 3 prochains blocs du jour sur l'écran d'accueil
 - [ ] Export PDF/image — partager son planning de la semaine en capture propre
 - [ ] Templates de semaine — modèles pré-remplis pour un 2e utilisateur (sans onboarding from scratch)

@@ -4,7 +4,7 @@ import {
   Animated, TextInput, Keyboard, Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Icon } from '@/components/ui/Icon';
 import { Logo } from '@/components/ui/Logo';
 import { useColors } from '@/hooks/useColors';
@@ -12,9 +12,14 @@ import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { sendChatMessage, HistoryMessage, PlanningAction, AddActivityAction, UpdateSleepAction } from '@/lib/ai';
 import { pushChatMessage, fetchChatHistory } from '@/lib/chatSync';
+import { generateWeekPlan, getPlanningWeekStart, type PlanProposal } from '@/lib/planner';
+import { upsertActivity } from '@/lib/activitiesSync';
+import { genId } from '@/lib/id';
 import { useScheduleStore } from '@/store/useScheduleStore';
+import { useBehaviorStore } from '@/store/useBehaviorStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import type { WeekDay } from '@/types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -24,6 +29,9 @@ interface Message {
   id:   string;
   role: Role;
   text: string;
+  // Interactive week plan — rendered as a card with per-item toggles.
+  // Never persisted to the cloud: reasons may mention cycle phases.
+  plan?: PlanProposal[];
 }
 
 // ── Bubble ────────────────────────────────────────────────────────────────────
@@ -228,8 +236,74 @@ let msgId = 0;
 const uid = () => String(++msgId);
 
 const WELCOME_TEXT  = "Bonjour ! Je suis Dona 👋\nComment puis-je t'aider avec ton planning aujourd'hui ?";
-const WELCOME_CHIPS = ["Mon planning ne me correspond pas", "Je veux ajouter une activité", "Comment fonctionne Dona ?"];
+const PLAN_CHIP     = '🪄 Planifie ma semaine';
+const WELCOME_CHIPS = [PLAN_CHIP, "Mon planning ne me correspond pas", "Je veux ajouter une activité"];
 const ERROR_TEXT    = "Oups, je n'arrive pas à te répondre pour l'instant. Réessaie dans quelques secondes.";
+
+const FR_DAY: Record<WeekDay, string> = {
+  Mon: 'Lun', Tue: 'Mar', Wed: 'Mer', Thu: 'Jeu', Fri: 'Ven', Sat: 'Sam', Sun: 'Dim',
+};
+
+// ── PlanCard — interactive week plan inside the conversation ─────────────────
+
+function PlanCard({ items, onApply }: {
+  items: PlanProposal[];
+  onApply: (accepted: PlanProposal[]) => void;
+}) {
+  const C = useColors();
+  const s = makeStyles(C);
+  const [rejected, setRejected] = useState<Set<string>>(new Set());
+
+  const toggle = (id: string) =>
+    setRejected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const acceptedCount = items.length - rejected.size;
+
+  return (
+    <View style={s.planCard}>
+      {items.map((p) => {
+        const off = rejected.has(p.id);
+        const d = `${FR_DAY[p.weekDay]} ${p.date.slice(8, 10)}/${p.date.slice(5, 7)}`;
+        return (
+          <TouchableOpacity
+            key={p.id}
+            style={[s.planRow, off && s.planRowOff]}
+            onPress={() => toggle(p.id)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: !off }}
+            accessibilityLabel={`${p.title}, ${d} ${p.startTime}`}
+          >
+            <View style={[s.planCheck, !off && s.planCheckOn]}>
+              {!off && <Icon name="check" size={12} stroke={C.onPrimary} sw={2.5} />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.planTitle, off && s.planTextOff]}>{p.title}</Text>
+              <Text style={[s.planTime, off && s.planTextOff]}>
+                {d} · {p.startTime} – {p.endTime}{p.recurring ? ' · chaque semaine' : ''}
+              </Text>
+              <Text style={[s.planReason, off && s.planTextOff]}>{p.reason}</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+      <TouchableOpacity
+        style={[s.planApply, acceptedCount === 0 && s.planApplyOff]}
+        disabled={acceptedCount === 0}
+        onPress={() => onApply(items.filter((p) => !rejected.has(p.id)))}
+        accessibilityRole="button"
+        accessibilityLabel={`Appliquer ${acceptedCount} propositions`}
+      >
+        <Text style={s.planApplyText}>
+          Appliquer ({acceptedCount})
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function ChatScreen() {
   const C = useColors();
@@ -252,15 +326,14 @@ export default function ChatScreen() {
   const setSleep     = useUserStore((st) => st.setSleep);
   const userId       = useAuthStore((st) => st.session?.user?.id);
 
-  // Restore conversation history (cloud) — welcome message stays if empty
+  // Restore conversation history (cloud) — welcome message stays if empty.
+  // Inserted between the welcome and any messages already produced this
+  // session (e.g. an auto-triggered plan card).
   useEffect(() => {
     if (!userId) return;
     fetchChatHistory(userId).then((history) => {
       if (history.length === 0) return;
-      setMessages([
-        { id: uid(), role: 'bot', text: WELCOME_TEXT },
-        ...history,
-      ]);
+      setMessages((prev) => [prev[0], ...history.map((m) => ({ ...m, id: uid() })), ...prev.slice(1)]);
       // Rebuild the Mistral context from the last exchanges
       historyRef.current = history.slice(-12).map((m) => ({
         role:    m.role === 'bot' ? 'assistant' as const : 'user' as const,
@@ -269,6 +342,13 @@ export default function ChatScreen() {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  // Opened with ?plan=1 (weekly report button) → start the planning session
+  const { plan: planParam } = useLocalSearchParams<{ plan?: string }>();
+  useEffect(() => {
+    if (planParam === '1') runPlanner();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function executeAction(action: PlanningAction) {
     if (action.type === 'add_activity') {
@@ -305,9 +385,67 @@ export default function ChatScreen() {
     return msg;
   }
 
+  // ── Interactive week planning (local planner — cycle data never leaves) ─────
+  function runPlanner() {
+    setChips([]);
+    pushMessage('user', PLAN_CHIP);
+
+    const { profile, sleep, meals, cycle } = useUserStore.getState();
+    const { activities: acts } = useScheduleStore.getState();
+    const { completions } = useBehaviorStore.getState();
+
+    const plan = generateWeekPlan({
+      goal:        profile.goal,
+      activities:  acts,
+      completions,
+      sleep,
+      meals,
+      cycle,
+      weekStart:   getPlanningWeekStart(),
+    });
+
+    if (plan.length === 0) {
+      pushMessage('bot', 'Ta semaine est déjà bien remplie, je n\'ai rien à te proposer de plus ! 🎉 Reviens me voir si tu libères des créneaux.');
+      return;
+    }
+
+    pushMessage('bot', 'Voici ce que je te propose pour ta semaine ✨ Décoche ce qui ne te convient pas, puis applique :');
+    // Plan card added WITHOUT pushChatMessage: the reasons can mention
+    // cycle phases — health data that must not reach the cloud history
+    setMessages((prev) => [...prev, { id: uid(), role: 'bot', text: '', plan }]);
+  }
+
+  function applyPlan(messageId: string, accepted: PlanProposal[]) {
+    for (const p of accepted) {
+      const activity = {
+        id:         genId(),
+        title:      p.title,
+        cat:        p.cat,
+        startTime:  p.startTime,
+        endTime:    p.endTime,
+        days:       [p.weekDay],
+        recurrence: (p.recurring ? 'weekly' : 'none') as 'weekly' | 'none',
+        anchorDate: p.date,
+      };
+      addActivity(activity);
+      if (userId) upsertActivity(userId, activity);
+    }
+    useBehaviorStore.getState().clearReport();
+    // Freeze the card (remove it) and confirm
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, plan: undefined, text: '✓ Plan appliqué' } : m)));
+    pushMessage('bot', `C'est dans ton planning ! ${accepted.length} ${accepted.length > 1 ? 'créneaux ajoutés' : 'créneau ajouté'} 🎉 Tu peux les déplacer directement sur la timeline si besoin.`);
+  }
+
   async function send(text: string) {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
+
+    // The planning session is fully local — no Mistral round-trip
+    if (trimmed === PLAN_CHIP) {
+      setInput('');
+      runPlanner();
+      return;
+    }
 
     setInput('');
     setChips([]);
@@ -388,7 +526,10 @@ export default function ChatScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
-          {messages.map((m) => <Bubble key={m.id} message={m} />)}
+          {messages.map((m) => m.plan
+            ? <PlanCard key={m.id} items={m.plan} onApply={(accepted) => applyPlan(m.id, accepted)} />
+            : <Bubble key={m.id} message={m} />,
+          )}
           {loading && <TypingIndicator />}
         </ScrollView>
 
@@ -555,6 +696,43 @@ function makeStyles(C: ReturnType<typeof useColors>) {
       fontWeight: '600',
       color: C.ink3,
     },
+
+    // Interactive week plan card
+    planCard: {
+      backgroundColor: C.surface,
+      borderRadius: Radius.block,
+      padding: Spacing.md,
+      marginBottom: Spacing.md,
+      marginRight: Spacing.xl,
+      gap: Spacing.sm,
+      ...Shadow.sm,
+    },
+    planRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Spacing.sm,
+      paddingVertical: 4,
+    },
+    planRowOff: { opacity: 0.45 },
+    planCheck: {
+      width: 22, height: 22, borderRadius: 11, marginTop: 2,
+      borderWidth: 2, borderColor: C.hairline,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    planCheckOn: { backgroundColor: C.primary, borderColor: C.primary },
+    planTitle:   { fontSize: FontSize.base, fontWeight: '700', color: C.ink, letterSpacing: -0.2 },
+    planTime:    { fontSize: FontSize.sm, fontWeight: '600', color: C.primaryStrong, marginTop: 1 },
+    planReason:  { fontSize: FontSize.xs, color: C.ink3, marginTop: 2, lineHeight: 16 },
+    planTextOff: { textDecorationLine: 'line-through' },
+    planApply: {
+      backgroundColor: C.primary,
+      borderRadius: Radius.pill,
+      paddingVertical: Spacing.sm + 2,
+      alignItems: 'center',
+      marginTop: Spacing.xs,
+    },
+    planApplyOff:  { opacity: 0.45 },
+    planApplyText: { fontSize: FontSize.base, fontWeight: '700', color: C.onPrimary },
 
     chipsRow: {
       flexDirection: 'row',

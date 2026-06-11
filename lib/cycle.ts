@@ -82,6 +82,26 @@ export const PHASES: Record<CyclePhase, PhaseInfo> = {
 
 export function getCyclePhase(lastPeriodDate: string, cycleDays: number): CyclePhase {
   const elapsed = daysSince(lastPeriodDate) % cycleDays;
+  return phaseFromElapsed(elapsed);
+}
+
+// Phase on an arbitrary future/past local date ("YYYY-MM-DD") — used by the
+// planner to adapt next week's schedule to each day's hormonal phase.
+export function getCyclePhaseForDate(
+  lastPeriodDate: string,
+  cycleDays: number,
+  dateStr: string,
+): CyclePhase {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const target = new Date(y, m - 1, d);
+  const past   = new Date(lastPeriodDate);
+  past.setHours(0, 0, 0, 0);
+  const elapsedRaw = Math.floor((target.getTime() - past.getTime()) / 86_400_000);
+  const elapsed = ((elapsedRaw % cycleDays) + cycleDays) % cycleDays; // safe modulo
+  return phaseFromElapsed(elapsed);
+}
+
+function phaseFromElapsed(elapsed: number): CyclePhase {
   if (elapsed <= 5)  return 'menstrual';
   if (elapsed <= 13) return 'follicular';
   if (elapsed <= 16) return 'ovulation';
