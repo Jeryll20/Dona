@@ -13,6 +13,7 @@ import {
   HankenGrotesk_800ExtraBold,
 } from '@expo-google-fonts/hanken-grotesk';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Linking from 'expo-linking';
 import * as Notif from 'expo-notifications';
 import { useUserStore } from '@/store/useUserStore';
@@ -187,7 +188,7 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
@@ -196,6 +197,6 @@ export default function RootLayout() {
         <Stack.Screen name="chat" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="weekly-report" options={{ animation: 'slide_from_right' }} />
       </Stack>
-    </>
+    </GestureHandlerRootView>
   );
 }

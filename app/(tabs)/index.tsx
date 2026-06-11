@@ -97,6 +97,8 @@ interface DayPanelProps {
   overrides: ActivityOverride[];
   onActivityPress: (activityId: string, date: string, isRecurring: boolean) => void;
   onActivityLongPress: (activityId: string, date: string) => void;
+  onActivityMove: (activityId: string, date: string, deltaMinutes: number) => void;
+  onDragActive: (active: boolean) => void;
   visibleSuggestions: Suggestion[];
   onAccept: (id: string) => void;
   onDismiss: (id: string) => void;
@@ -107,12 +109,19 @@ interface DayPanelProps {
 function DayPanel({
   absOffset, sleep, meals,
   activities, overrides, onActivityPress, onActivityLongPress,
+  onActivityMove, onDragActive,
   visibleSuggestions, onAccept, onDismiss, nowHour, panelWidth,
 }: DayPanelProps) {
   const C = useColors();
   const s = makeStyles(C);
   const completions      = useBehaviorStore((st) => st.completions);
   const customCategories = useScheduleStore((st) => st.customCategories);
+  // Lock the vertical scroll while a block is being dragged
+  const [dragActive, setDragActive] = useState(false);
+  const handleDragActive = useCallback((active: boolean) => {
+    setDragActive(active);
+    onDragActive(active);
+  }, [onDragActive]);
   const d = new Date();
   d.setDate(d.getDate() + absOffset);
   const weekDay = DAY_MAP[d.getDay()];
@@ -190,6 +199,7 @@ function DayPanel({
       contentContainerStyle={s.scrollContent}
       showsVerticalScrollIndicator={false}
       contentOffset={{ x: 0, y: 6 * HH }}
+      scrollEnabled={!dragActive}
     >
       {isToday && visibleSuggestions.length > 0 && (
         <View style={s.suggestionsSection}>
@@ -223,6 +233,8 @@ function DayPanel({
               key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
               onPress={getPressHandler(aev)}
               onLongPress={aev.activityId ? () => onActivityLongPress(aev.activityId!, dateStr) : undefined}
+              onMoveCommit={aev.activityId ? (delta) => onActivityMove(aev.activityId!, dateStr, delta) : undefined}
+              onDragActive={handleDragActive}
               completion={comp ? (comp.completed ? 'done' : 'skipped') : null}
             />
           );
@@ -304,6 +316,33 @@ export default function TodayScreen() {
   const handleActivityLongPress = useCallback((activityId: string, date: string) => {
     setCompletionTarget({ activityId, date });
   }, []);
+
+  // ── Drag-to-move: commit the snapped delta as a one-day override ─────────────
+  const dragActiveRef = useRef(false);
+  const handleDragActive = useCallback((active: boolean) => {
+    dragActiveRef.current = active;
+  }, []);
+
+  const handleActivityMove = useCallback((activityId: string, date: string, deltaMinutes: number) => {
+    const activity = activities.find((a) => a.id === activityId);
+    if (!activity) return;
+    const ov = overrides.find((o) => o.activityId === activityId && o.date === date);
+    const startMin = Math.round(parseTime(ov?.startTime ?? activity.startTime) * 60) + deltaMinutes;
+    const endMin   = Math.round(parseTime(ov?.endTime   ?? activity.endTime)   * 60) + deltaMinutes;
+    if (startMin < 0 || endMin > 24 * 60) return; // keep the block within the day
+
+    const toHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    const newOv = {
+      ...(ov ?? {}),
+      activityId,
+      date,
+      startTime: toHHMM(startMin),
+      endTime:   toHHMM(endMin),
+    };
+    setOverride(newOv);
+    clearReport();
+    if (userId) upsertOverride(userId, newOv);
+  }, [activities, overrides, setOverride, clearReport, userId]);
 
   function markCompletion(completed: boolean) {
     if (!completionTarget) return;
@@ -465,7 +504,7 @@ export default function TodayScreen() {
   const swipe = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 20,
+        !dragActiveRef.current && Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 20,
       onPanResponderGrant: () => {
         cancelAnimation(slideX);
         slideStartX.current = slideX.value;
@@ -655,6 +694,8 @@ export default function TodayScreen() {
                 overrides={overrides}
                 onActivityPress={handleActivityPress}
                 onActivityLongPress={handleActivityLongPress}
+                onActivityMove={handleActivityMove}
+                onDragActive={handleDragActive}
                 visibleSuggestions={visibleSuggestions}
                 onAccept={openSuggestionAccept}
                 onDismiss={dismissSuggestion}

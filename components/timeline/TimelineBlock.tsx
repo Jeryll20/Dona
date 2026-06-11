@@ -1,5 +1,9 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withTiming, runOnJS,
+} from 'react-native-reanimated';
 import { Spacing } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { useColors } from '@/hooks/useColors';
@@ -13,8 +17,15 @@ interface TimelineBlockProps {
   leftOffset:  number;
   onPress?:    () => void;
   onLongPress?: () => void;
+  // When provided, the block can be dragged vertically after a long press —
+  // releasing commits the snapped delta (in minutes) as a one-day override
+  onMoveCommit?: (deltaMinutes: number) => void;
+  onDragActive?: (active: boolean) => void; // lets the parent lock its scroll
   completion?: 'done' | 'skipped' | null;
 }
+
+const SNAP_MINUTES      = 5;
+const DRAG_THRESHOLD_PX = 6; // under this, a hold-and-release is a long press
 
 function fmtHour(h: number) {
   const hh = Math.floor(h) % 24;
@@ -33,7 +44,7 @@ function lighten(hex: string, factor: number): string {
 }
 
 export function TimelineBlock({
-  event, hourHeight, leftOffset, onPress, onLongPress, completion,
+  event, hourHeight, leftOffset, onPress, onLongPress, onMoveCommit, onDragActive, completion,
 }: TimelineBlockProps) {
   const C = useColors();
   const s = makeStyles(C);
@@ -49,52 +60,112 @@ export function TimelineBlock({
 
   const isSkipped = completion === 'skipped';
 
-  return (
-    <TouchableOpacity
-      activeOpacity={onPress ? 0.75 : 1}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={400}
-      style={[
-        s.block,
-        { top, height, left: leftOffset },
-        isSmall && s.blockSmall,
-        isSkipped && s.blockSkipped,
-      ]}
-      accessibilityLabel={`${event.title}, ${fmtHour(event.start)} à ${fmtHour(event.end)}`}
-      accessibilityRole={onPress ? 'button' : 'none'}
-    >
-      <LinearGradient
-        colors={gradColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <Text
-        style={[s.title, { color: c.ink }, isSmall && s.titleSmall, isSkipped && s.textSkipped]}
-        numberOfLines={1}
-        ellipsizeMode="tail"
-      >
-        {event.title}
-      </Text>
-      {!isMedium && (
-        <Text style={[s.time, { color: c.ink }, isSkipped && s.textSkipped]}>
-          {fmtHour(event.start)} – {fmtHour(event.end)}
-        </Text>
-      )}
+  // ── Drag state ────────────────────────────────────────────────────────────
+  const translateY = useSharedValue(0);
+  const dragging   = useSharedValue(false);
 
-      {/* Completion badge */}
-      {completion != null && !isSmall && (
-        <View style={[s.badge, completion === 'done' ? s.badgeDone : s.badgeSkipped]}>
-          <Icon
-            name={completion === 'done' ? 'check' : 'x'}
-            size={10}
-            stroke={completion === 'done' ? C.mealInk : C.ink2}
-            sw={2.5}
-          />
-        </View>
-      )}
-    </TouchableOpacity>
+  function commitMove(deltaMinutes: number) {
+    onMoveCommit?.(deltaMinutes);
+    // The committed override re-renders the block at its new `top` —
+    // drop the gesture translation in the same JS batch
+    translateY.value = 0;
+  }
+
+  function notifyDrag(active: boolean) {
+    onDragActive?.(active);
+  }
+
+  const pan = Gesture.Pan()
+    .enabled(!!onMoveCommit)
+    .activateAfterLongPress(450)
+    .onStart(() => {
+      dragging.value = true;
+      runOnJS(notifyDrag)(true);
+    })
+    .onUpdate((e) => {
+      translateY.value = e.translationY;
+    })
+    .onEnd((e) => {
+      const pxPerMin = hourHeight / 60;
+      const deltaMin = Math.round(e.translationY / pxPerMin / SNAP_MINUTES) * SNAP_MINUTES;
+      if (Math.abs(e.translationY) < DRAG_THRESHOLD_PX || deltaMin === 0) {
+        // Held in place → existing long-press behavior (completion sheet)
+        translateY.value = withTiming(0, { duration: 120 });
+        if (onLongPress) runOnJS(onLongPress)();
+      } else {
+        translateY.value = deltaMin * pxPerMin; // snap to the 5-min grid
+        runOnJS(commitMove)(deltaMin);
+      }
+    })
+    .onFinalize(() => {
+      dragging.value = false;
+      runOnJS(notifyDrag)(false);
+    });
+
+  const tap = Gesture.Tap()
+    .enabled(!!onPress)
+    .maxDuration(300)
+    .onEnd(() => {
+      if (onPress) runOnJS(onPress)();
+    });
+
+  const gesture = Gesture.Race(pan, tap);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: translateY.value },
+      { scale: withTiming(dragging.value ? 1.03 : 1, { duration: 120 }) },
+    ],
+    zIndex:  dragging.value ? 20 : 0,
+    opacity: dragging.value ? 0.92 : isSkipped ? 0.55 : 1,
+  }));
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <Animated.View
+        style={[
+          s.block,
+          { top, height, left: leftOffset },
+          isSmall && s.blockSmall,
+          animStyle,
+        ]}
+        accessible
+        accessibilityLabel={`${event.title}, ${fmtHour(event.start)} à ${fmtHour(event.end)}`}
+        accessibilityRole={onPress ? 'button' : 'none'}
+        accessibilityHint={onMoveCommit ? 'Maintiens puis glisse pour déplacer' : undefined}
+      >
+        <LinearGradient
+          colors={gradColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <Text
+          style={[s.title, { color: c.ink }, isSmall && s.titleSmall, isSkipped && s.textSkipped]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {event.title}
+        </Text>
+        {!isMedium && (
+          <Text style={[s.time, { color: c.ink }, isSkipped && s.textSkipped]}>
+            {fmtHour(event.start)} – {fmtHour(event.end)}
+          </Text>
+        )}
+
+        {/* Completion badge */}
+        {completion != null && !isSmall && (
+          <View style={[s.badge, completion === 'done' ? s.badgeDone : s.badgeSkipped]}>
+            <Icon
+              name={completion === 'done' ? 'check' : 'x'}
+              size={10}
+              stroke={completion === 'done' ? C.mealInk : C.ink2}
+              sw={2.5}
+            />
+          </View>
+        )}
+      </Animated.View>
+    </GestureDetector>
   );
 }
 
@@ -112,9 +183,6 @@ function makeStyles(C: ReturnType<typeof useColors>) {
     blockSmall: {
       paddingVertical: 3,
       borderRadius:    10,
-    },
-    blockSkipped: {
-      opacity: 0.55,
     },
     title:      { fontSize: FontSize.base, fontWeight: '700', letterSpacing: -0.2 },
     titleSmall: { fontSize: FontSize.sm },

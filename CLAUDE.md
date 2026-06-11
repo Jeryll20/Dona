@@ -539,8 +539,8 @@ npx expo run:android
 - [x] Rappels d'activité — notification 15 min avant, par jour et par récurrence (WEEKLY pour hebdo, DATE one-shot renouvelé pour ponctuel/N-semaines) — `scheduleUserActivityReminders` dans `lib/notifications.ts`
 - [x] Streak hebdo — "🔥 N semaines consécutives à +80 %" dans le bilan (`computeWeekStreak` dans `lib/behaviorAnalysis.ts`, semaines complètes uniquement, seuil 80 %) ; `computeWeekStats` rendu recurrence-aware au passage
 - [x] Stats multi-semaines — graphe de tendance 4 semaines dans le bilan (`computeRecentWeeks`, barres avec % par semaine) ; semaines passées figées depuis l'archive `weekly_reports` quand dispo, sinon calcul live
-- [ ] Glisser-déposer sur la timeline — déplacer un bloc directement en le faisant glisser (crée un override startTime/endTime)
-- [ ] Objectifs quantifiables — "3 sessions de sport/semaine" avec barre de progression dans les activités
+- [x] Glisser-déposer sur la timeline — maintien 450ms puis glisser (RNGH `Pan().activateAfterLongPress`, snap 5 min, crée un override startTime/endTime du jour) ; relâcher sans bouger = sheet fait/sauté (comportement préservé)
+- [x] Objectifs quantifiables — `weeklyGoal` sur l'activité (sélecteur Aucun/1-7 à l'étape Planning), barre de progression `fait/objectif` sur la carte d'activité (`weeklyGoalProgress`), migration `20260611b_weekly_goal.sql`
 - [ ] Widget iOS/Android — afficher les 3 prochains blocs du jour sur l'écran d'accueil
 - [ ] Export PDF/image — partager son planning de la semaine en capture propre
 - [ ] Templates de semaine — modèles pré-remplis pour un 2e utilisateur (sans onboarding from scratch)
