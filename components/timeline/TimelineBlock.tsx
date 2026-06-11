@@ -227,7 +227,7 @@ function makeStyles(C: ReturnType<typeof useColors>) {
     dragChip: {
       position:     'absolute',
       top:          -26,
-      alignSelf:    'center',
+      left:         0,
       paddingHorizontal: 10,
       paddingVertical:   2,
       borderRadius: 999,
@@ -241,7 +241,9 @@ function makeStyles(C: ReturnType<typeof useColors>) {
     dragChipText: {
       fontSize:   FontSize.sm,
       fontWeight: '700',
-      padding:    0, // TextInput default padding off
+      padding:    0,        // TextInput default padding off
+      width:      96,       // fixed: animated text updates don't re-measure
+      textAlign:  'center', // the input — without this, minutes get clipped
     },
     title:      { fontSize: FontSize.base, fontWeight: '700', letterSpacing: -0.2 },
     titleSmall: { fontSize: FontSize.sm },
