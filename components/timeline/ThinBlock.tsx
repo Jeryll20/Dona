@@ -1,6 +1,8 @@
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useColors } from '@/hooks/useColors';
 import { CAT } from '@/constants/categories';
+import { Icon } from '@/components/ui/Icon';
+import { Shadow } from '@/constants/spacing';
 import type { TimelineEvent } from '@/types';
 
 interface ThinBlockProps {
@@ -8,67 +10,87 @@ interface ThinBlockProps {
   hourHeight: number;
   leftOffset: number;
   onPress?: () => void;
-  targetBg?: string; // bg color of the activity block below
 }
 
-const OVERLAP = 10;
-const PILL_H  = OVERLAP + 22;
+const MIN_HEIGHT = 18;
+const LINE_INDENT = 16; // dashed line offset from the blocks' left edge
 
-function lighten(hex: string, factor: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const lr = Math.round(r + (255 - r) * factor).toString(16).padStart(2, '0');
-  const lg = Math.round(g + (255 - g) * factor).toString(16).padStart(2, '0');
-  const lb = Math.round(b + (255 - b) * factor).toString(16).padStart(2, '0');
-  return `#${lr}${lg}${lb}`;
-}
-
-export function ThinBlock({ event, hourHeight, leftOffset, onPress, targetBg }: ThinBlockProps) {
+/**
+ * Commute rendered as a map-style itinerary: a vertical dotted line spanning
+ * the travel time, with a small car + duration chip beside it. Detached from
+ * the activity block — no color blending needed.
+ */
+export function ThinBlock({ event, hourHeight, leftOffset, onPress }: ThinBlockProps) {
+  const C = useColors();
   const c = CAT[event.cat];
-  const top = event.end * hourHeight - PILL_H + OVERLAP;
-
-  // Bottom color matches exactly the top-left of TimelineBlock (lighten(targetBg, 0.5))
-  // so the two pills create a seamless gradient at the junction.
-  const bgColors: [string, string] = [
-    lighten(c.bg, 0.3),
-    lighten(targetBg ?? c.bg, 0.5),
-  ];
+  const top    = event.start * hourHeight;
+  const height = Math.max((event.end - event.start) * hourHeight, MIN_HEIGHT);
+  const dotCount = Math.max(3, Math.round(height / 8));
 
   return (
     <TouchableOpacity
-      activeOpacity={onPress ? 0.75 : 1}
+      activeOpacity={onPress ? 0.7 : 1}
       onPress={onPress}
-      style={[styles.block, { top, left: leftOffset }]}
+      disabled={!onPress}
+      style={[styles.wrap, { top, height }]}
       accessibilityLabel={`${event.title}${event.dur ? ' · ' + event.dur : ''}`}
       accessibilityRole={onPress ? 'button' : 'none'}
     >
-      <LinearGradient
-        colors={bgColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <Text style={[styles.label, { color: c.ink }]} numberOfLines={1}>
-        {event.title}{event.dur ? `  ·  ${event.dur}` : ''}
-      </Text>
+      {/* Chip lives in the left gutter so its vertical overflow on very short
+          commutes never covers the surrounding activity blocks */}
+      <View style={[styles.gutter, { width: leftOffset + LINE_INDENT - 6 }]}>
+        <View style={[styles.chip, { backgroundColor: C.surface }]}>
+          <Icon name="car" size={12} stroke={c.ink} sw={2} />
+          {event.dur ? (
+            <Text style={[styles.label, { color: c.ink }]} numberOfLines={1}>
+              {event.dur}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+      <View style={styles.dots}>
+        {Array.from({ length: dotCount }, (_, i) => (
+          <View key={i} style={[styles.dot, { backgroundColor: c.ink }]} />
+        ))}
+      </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  block: {
+  wrap: {
     position: 'absolute',
-    right: 4,
-    height: PILL_H,
+    left: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    overflow: 'hidden',
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    paddingHorizontal: 8,
+    gap: 6,
+    zIndex: 10,      // above activity blocks (rendered later in the tree)
+    elevation: 10,   // Android equivalent
   },
-  label: { fontSize: 11, fontWeight: '600', opacity: 0.85, flexShrink: 1 },
+  gutter: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  dots: {
+    height: '100%',
+    width: 4,
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+  },
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    opacity: 0.65,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    ...Shadow.sm,
+  },
+  label: { fontSize: 11, fontWeight: '600' },
 });

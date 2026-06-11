@@ -207,16 +207,12 @@ function DayPanel({
       <View style={[s.grid, { minHeight: 24 * HH }]}>
         <HourGrid hourHeight={HH} />
         {isToday && <NowIndicator nowHour={nowHour} hourHeight={HH} />}
-        {events.filter((ev) => ev.thin).map((ev, i) => {
-          const following = events.find(e => !e.thin && Math.abs(e.start - ev.end) < 0.05);
-          const targetBg = following ? (following.color?.bg ?? CAT[following.cat].bg) : undefined;
-          return (
-            <ThinBlock
-              key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
-              onPress={getPressHandler(ev as any)} targetBg={targetBg}
-            />
-          );
-        })}
+        {events.filter((ev) => ev.thin).map((ev, i) => (
+          <ThinBlock
+            key={i} event={ev} hourHeight={HH} leftOffset={LEFT_OFFSET}
+            onPress={getPressHandler(ev as any)}
+          />
+        ))}
         {events.filter((ev) => !ev.thin).map((ev, i) => {
           const aev = ev as TimelineEvent & { activityId?: string };
           const comp = aev.activityId
