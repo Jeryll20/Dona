@@ -257,6 +257,38 @@ export function computeWeekStreak(
   return streak;
 }
 
+// ── Multi-week trend ──────────────────────────────────────────────────────────
+
+export interface WeekTrendPoint {
+  weekStart:      string; // "YYYY-MM-DD" (Monday)
+  completionRate: number; // 0–1
+}
+
+/**
+ * Completion rate for the last `weeks` weeks, oldest first, ending with the
+ * current (in-progress) week. Computed live from activities + completions;
+ * the caller may overwrite past weeks with archived reports (frozen truth
+ * even if activities were deleted since).
+ */
+export function computeRecentWeeks(
+  activities:  UserActivity[],
+  completions: ActivityCompletion[],
+  weeks = 4,
+): WeekTrendPoint[] {
+  const points: WeekTrendPoint[] = [];
+  const monday = parseLocalDate(getLastMondayISO());
+  monday.setDate(monday.getDate() - 7 * (weeks - 1));
+
+  for (let i = 0; i < weeks; i++) {
+    const weekStart = toLocalISODate(monday);
+    const { completionRate } = computeWeekStats(activities, completions, weekStart);
+    points.push({ weekStart, completionRate });
+    monday.setDate(monday.getDate() + 7);
+  }
+
+  return points;
+}
+
 // ── Week start helper ─────────────────────────────────────────────────────────
 
 export function getLastMondayISO(): string {

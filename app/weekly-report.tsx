@@ -14,8 +14,8 @@ import { useScheduleStore } from '@/store/useScheduleStore';
 import { useBehaviorStore } from '@/store/useBehaviorStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { upsertWeeklyReport } from '@/lib/reportsSync';
-import { analyzePatterns, computeWeekStats, computeWeekStreak, getLastMondayISO } from '@/lib/behaviorAnalysis';
+import { upsertWeeklyReport, fetchWeeklyReports } from '@/lib/reportsSync';
+import { analyzePatterns, computeWeekStats, computeWeekStreak, computeRecentWeeks, getLastMondayISO, type WeekTrendPoint } from '@/lib/behaviorAnalysis';
 import { generateWeeklyInsights } from '@/lib/ai';
 import type { PatternInsight, CatKey, WeeklyReport } from '@/types';
 
@@ -88,6 +88,23 @@ export default function WeeklyReportScreen() {
 
   const [loading, setLoading] = useState(false);
   const [report, setReport]   = useState<WeeklyReport | null>(weeklyReport);
+  const [trend,  setTrend]    = useState<WeekTrendPoint[]>([]);
+
+  // 4-week trend: live local computation, then past weeks overridden by
+  // archived reports when available (frozen historical truth)
+  useEffect(() => {
+    setTrend(computeRecentWeeks(activities, completions, 4));
+    if (!userId) return;
+    fetchWeeklyReports(userId, 8).then((archived) => {
+      if (archived.length === 0) return;
+      const byWeek = new Map(archived.map((r) => [r.weekStart, r.completionRate]));
+      setTrend((cur) => cur.map((pt, i) =>
+        i < cur.length - 1 && byWeek.has(pt.weekStart)
+          ? { ...pt, completionRate: byWeek.get(pt.weekStart)! }
+          : pt,
+      ));
+    });
+  }, [activities, completions, userId]);
 
   // Regenerate whenever the store cache is cleared (e.g. after marking a completion)
   useEffect(() => {
@@ -206,6 +223,39 @@ export default function WeeklyReportScreen() {
                     ? 'Continue comme ça pour prolonger ta série !'
                     : 'Termine cette semaine à +80 % pour la prolonger !'}
                 </Text>
+              </View>
+            </View>
+          )}
+
+          {/* 4-week trend */}
+          {trend.length > 0 && (
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>Tendance sur 4 semaines</Text>
+              <View style={s.trendCard}>
+                {trend.map((pt, i) => {
+                  const isCurrent = i === trend.length - 1;
+                  const pct = Math.round(pt.completionRate * 100);
+                  const d = pt.weekStart.slice(8, 10) + '/' + pt.weekStart.slice(5, 7);
+                  return (
+                    <View key={pt.weekStart} style={s.trendCol}>
+                      <Text style={[s.trendPct, isCurrent && s.trendPctOn]}>{pct}%</Text>
+                      <View style={s.trendTrack}>
+                        <View
+                          style={[
+                            s.trendFill,
+                            {
+                              height: `${Math.max(pct, 4)}%` as never,
+                              backgroundColor: isCurrent ? C.primary : C.primaryTint2,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text style={[s.trendLabel, isCurrent && s.trendLabelOn]}>
+                        {isCurrent ? 'Cette sem.' : d}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
             </View>
           )}
@@ -356,6 +406,31 @@ function makeStyles(C: ReturnType<typeof useColors>) {
     streakEmoji: { fontSize: 28 },
     streakTitle: { fontSize: FontSize.base, fontWeight: '800', color: C.ink, letterSpacing: -0.2 },
     streakSub:   { fontSize: FontSize.sm, color: C.ink3, marginTop: 2 },
+
+    // 4-week trend chart
+    trendCard: {
+      backgroundColor: C.surface,
+      borderRadius:    Radius.block,
+      padding:         Spacing.md,
+      flexDirection:   'row',
+      alignItems:      'flex-end',
+      gap:             Spacing.md,
+      ...Shadow.sm,
+    },
+    trendCol:   { flex: 1, alignItems: 'center', gap: 6 },
+    trendPct:   { fontSize: FontSize.xs, fontWeight: '700', color: C.ink3 },
+    trendPctOn: { color: C.primaryStrong },
+    trendTrack: {
+      width: 26,
+      height: 90,
+      borderRadius: 8,
+      backgroundColor: C.surfaceSunk,
+      justifyContent: 'flex-end',
+      overflow: 'hidden',
+    },
+    trendFill:    { width: '100%', borderRadius: 8 },
+    trendLabel:   { fontSize: FontSize.xs, fontWeight: '600', color: C.ink3 },
+    trendLabelOn: { color: C.primaryStrong, fontWeight: '700' },
 
     // AI insights card
     insightsCard: {

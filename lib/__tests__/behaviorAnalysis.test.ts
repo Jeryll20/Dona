@@ -1,4 +1,4 @@
-import { analyzePatterns, computeWeekStats, computeWeekStreak, getLastMondayISO } from '../behaviorAnalysis';
+import { analyzePatterns, computeWeekStats, computeWeekStreak, computeRecentWeeks, getLastMondayISO } from '../behaviorAnalysis';
 import type { UserActivity, ActivityCompletion, ActivityOverride, CustomCategory } from '@/types';
 
 function makeActivity(partial: Partial<UserActivity>): UserActivity {
@@ -136,6 +136,33 @@ describe('computeWeekStreak', () => {
       { activityId: 'a1', date: '2026-06-08', completed: true },
     ];
     expect(computeWeekStreak([weeklyMonday], completions)).toBe(0);
+  });
+});
+
+describe('computeRecentWeeks', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 5, 10, 12)); // Wednesday June 10
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('returns the requested number of weeks, oldest first, ending with the current week', () => {
+    const trend = computeRecentWeeks([], [], 4);
+    expect(trend).toHaveLength(4);
+    expect(trend.map((p) => p.weekStart)).toEqual([
+      '2026-05-18', '2026-05-25', '2026-06-01', '2026-06-08',
+    ]);
+  });
+
+  it('computes each week independently', () => {
+    const activity = makeActivity({ days: ['Mon'] });
+    const completions: ActivityCompletion[] = [
+      { activityId: 'a1', date: '2026-06-01', completed: true },  // week -1: 100%
+      { activityId: 'a1', date: '2026-05-25', completed: false }, // week -2: 0%
+    ];
+    const trend = computeRecentWeeks([activity], completions, 4);
+    expect(trend[1].completionRate).toBe(0); // 2026-05-25
+    expect(trend[2].completionRate).toBe(1); // 2026-06-01
   });
 });
 
