@@ -7,6 +7,7 @@ import type { ThemePreference } from '@/hooks/useColors';
 const INITIAL_STATE = {
   isOnboarded:     false,
   userId:          null as string | null,
+  isPremium:       false, // server-managed via profiles.is_premium — read-only here
   themePreference: 'system' as ThemePreference,
   profile:       {} as Partial<UserProfile>,
   sleep:         { bedtime: '23:00', waketime: '07:00', prepMinutes: 40 } as Partial<SleepSchedule>,
@@ -20,6 +21,7 @@ const INITIAL_STATE = {
 interface UserState {
   isOnboarded:     boolean;
   userId:          string | null;
+  isPremium:       boolean;
   themePreference: ThemePreference;
   profile:       Partial<UserProfile>;
   sleep:         Partial<SleepSchedule>;

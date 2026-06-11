@@ -11,8 +11,10 @@ import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
 import { FontSize } from '@/constants/typography';
 import { sendChatMessage, HistoryMessage, PlanningAction, AddActivityAction, UpdateSleepAction } from '@/lib/ai';
+import { pushChatMessage, fetchChatHistory } from '@/lib/chatSync';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useAuthStore } from '@/store/useAuthStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -248,6 +250,25 @@ export default function ChatScreen() {
 
   const addActivity  = useScheduleStore((st) => st.addActivity);
   const setSleep     = useUserStore((st) => st.setSleep);
+  const userId       = useAuthStore((st) => st.session?.user?.id);
+
+  // Restore conversation history (cloud) — welcome message stays if empty
+  useEffect(() => {
+    if (!userId) return;
+    fetchChatHistory(userId).then((history) => {
+      if (history.length === 0) return;
+      setMessages([
+        { id: uid(), role: 'bot', text: WELCOME_TEXT },
+        ...history,
+      ]);
+      // Rebuild the Mistral context from the last exchanges
+      historyRef.current = history.slice(-12).map((m) => ({
+        role:    m.role === 'bot' ? 'assistant' as const : 'user' as const,
+        content: m.text,
+      }));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   function executeAction(action: PlanningAction) {
     if (action.type === 'add_activity') {
@@ -280,6 +301,7 @@ export default function ChatScreen() {
   function pushMessage(role: Role, text: string): Message {
     const msg: Message = { id: uid(), role, text };
     setMessages((prev) => [...prev, msg]);
+    if (userId) pushChatMessage(userId, msg); // cloud history, best-effort
     return msg;
   }
 

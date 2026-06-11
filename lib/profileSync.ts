@@ -17,6 +17,8 @@ interface ProfileRow {
   work:           Record<string, unknown>;
   other_activity: Record<string, unknown> | null;
   cycle:          Record<string, unknown> | null;
+  theme_preference: string | null;
+  is_premium:     boolean | null;
 }
 
 export async function fetchAndHydrateProfile(userId: string): Promise<boolean> {
@@ -47,12 +49,14 @@ export async function fetchAndHydrateProfile(userId: string): Promise<boolean> {
     // cycle is null remotely when the user hasn't opted into cloud sync —
     // keep the local (device-only) cycle data in that case
     ...(row.cycle ? { cycle: row.cycle as never } : {}),
+    ...(row.theme_preference ? { themePreference: row.theme_preference as never } : {}),
+    isPremium: row.is_premium ?? false,
   });
   return true;
 }
 
 export async function pushProfile(userId: string): Promise<boolean> {
-  const { isOnboarded, profile, sleep, meals, sport, work, otherActivity, cycle } =
+  const { isOnboarded, profile, sleep, meals, sport, work, otherActivity, cycle, themePreference } =
     useUserStore.getState();
 
   try {
@@ -74,6 +78,8 @@ export async function pushProfile(userId: string): Promise<boolean> {
       // Pushing null also ERASES previously synced cycle data when the
       // user turns the consent off.
       cycle:          cycle.syncConsent ? cycle : null,
+      theme_preference: themePreference ?? null,
+      // is_premium is intentionally NOT pushed — server-managed flag
       updated_at:     new Date().toISOString(),
     });
     if (error) { await markSyncDirty(); return false; }

@@ -13,6 +13,8 @@ import { TopSafe } from '@/components/ui/TopSafe';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useBehaviorStore } from '@/store/useBehaviorStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { upsertWeeklyReport } from '@/lib/reportsSync';
 import { analyzePatterns, computeWeekStats, computeWeekStreak, getLastMondayISO } from '@/lib/behaviorAnalysis';
 import { generateWeeklyInsights } from '@/lib/ai';
 import type { PatternInsight, CatKey, WeeklyReport } from '@/types';
@@ -82,6 +84,7 @@ export default function WeeklyReportScreen() {
   const { activities, overrides, customCategories } = useScheduleStore();
   const { completions, weeklyReport, setWeeklyReport } = useBehaviorStore();
   const { profile } = useUserStore();
+  const userId = useAuthStore((s) => s.session?.user?.id);
 
   const [loading, setLoading] = useState(false);
   const [report, setReport]   = useState<WeeklyReport | null>(weeklyReport);
@@ -126,6 +129,8 @@ export default function WeeklyReportScreen() {
       };
       setWeeklyReport(newReport);
       setReport(newReport);
+      // Archive for multi-week trend stats (fire-and-forget)
+      if (userId) upsertWeeklyReport(userId, newReport);
     } catch {
       Alert.alert('Erreur', 'Impossible de générer le rapport. Vérifie ta connexion.');
     } finally {

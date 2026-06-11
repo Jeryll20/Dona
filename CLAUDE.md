@@ -546,6 +546,8 @@ npx expo run:android
 - [ ] Templates de semaine — modèles pré-remplis pour un 2e utilisateur (sans onboarding from scratch)
 - [ ] Onboarding post-inscription — vérifier que le flux first-login → hydration → timeline est fluide end-to-end sur device réel (pas de données stale AsyncStorage, profil Supabase bien restauré)
 - [x] Tests automatisés — Jest + ts-jest (`npm test`), 47 tests sur `lib/recurrence.ts` (dates locales + visibilité), `lib/cycle.ts` (bornes de phases), `lib/behaviorAnalysis.ts` (stats semaine + patterns), `lib/optimizer.ts` (créneaux libres + suggestions) — `lib/__tests__/`
+- [x] Consentement RGPD cycle — données de cycle local-only par défaut, toggle "Synchronisation cloud" explicite dans Profil → Cycle (`cycle.syncConsent`, push `cycle: null` sans consentement = effacement cloud)
+- [x] Sync cloud étendue — `theme_preference` (multi-device), `is_premium` (flag server-managed, lecture seule), archive des bilans hebdo (`weekly_reports`, `lib/reportsSync.ts` — base des futures stats multi-semaines), historique chat Mistral (`chat_messages`, `lib/chatSync.ts`) — migration `20260611_cloud_extras.sql`
 - [ ] Community features
 - [ ] PWA web version
 - [ ] Multilingual support
