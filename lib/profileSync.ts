@@ -16,7 +16,7 @@ interface ProfileRow {
   sport:          Record<string, unknown>;
   work:           Record<string, unknown>;
   other_activity: Record<string, unknown> | null;
-  cycle:          Record<string, unknown>;
+  cycle:          Record<string, unknown> | null;
 }
 
 export async function fetchAndHydrateProfile(userId: string): Promise<boolean> {
@@ -44,7 +44,9 @@ export async function fetchAndHydrateProfile(userId: string): Promise<boolean> {
     sport:         row.sport          as never,
     work:          row.work           as never,
     otherActivity: row.other_activity ? (row.other_activity as never) : {},
-    cycle:         row.cycle          as never,
+    // cycle is null remotely when the user hasn't opted into cloud sync —
+    // keep the local (device-only) cycle data in that case
+    ...(row.cycle ? { cycle: row.cycle as never } : {}),
   });
   return true;
 }
@@ -68,7 +70,10 @@ export async function pushProfile(userId: string): Promise<boolean> {
       sport,
       work,
       other_activity: otherActivity,
-      cycle,
+      // Health data (RGPD art. 9): only synced with explicit consent.
+      // Pushing null also ERASES previously synced cycle data when the
+      // user turns the consent off.
+      cycle:          cycle.syncConsent ? cycle : null,
       updated_at:     new Date().toISOString(),
     });
     if (error) { await markSyncDirty(); return false; }

@@ -26,6 +26,7 @@ export default function CycleScreen() {
   const [lastPeriodDate,  setLastPeriodDate]  = useState<Date | null>(
     cycle.lastPeriodDate ? new Date(cycle.lastPeriodDate) : null,
   );
+  const [syncConsent, setSyncConsent] = useState(cycle.syncConsent ?? false);
   const [showPicker, setShowPicker] = useState(false);
 
   const cycleStatus =
@@ -43,6 +44,7 @@ export default function CycleScreen() {
       tracking,
       cycleDays,
       lastPeriodDate: lastPeriodDate ? toISODate(lastPeriodDate) : undefined,
+      syncConsent,
     });
     if (tracking) {
       scheduleAllNotifications({
@@ -97,6 +99,27 @@ export default function CycleScreen() {
 
         {tracking && (
           <>
+            {/* Consentement sync cloud — données de santé (RGPD) */}
+            <View style={s.card}>
+              <View style={s.trackingRow}>
+                <View style={s.trackingText}>
+                  <Text style={s.trackingLabel}>Synchronisation cloud</Text>
+                  <Text style={s.trackingDesc}>
+                    Tes données de cycle restent sur cet appareil par défaut.
+                    Active pour les retrouver sur tes autres appareils — tu peux
+                    désactiver à tout moment, elles seront alors effacées du cloud.
+                  </Text>
+                </View>
+                <Switch
+                  value={syncConsent}
+                  onValueChange={setSyncConsent}
+                  trackColor={{ false: C.hairline, true: C.primary }}
+                  thumbColor={C.surface}
+                  accessibilityLabel="Synchroniser mes données de cycle dans le cloud"
+                />
+              </View>
+            </View>
+
             {/* Durée du cycle */}
             <View style={s.section}>
               <Text style={s.sectionLabel}>Durée de ton cycle</Text>

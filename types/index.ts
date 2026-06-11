@@ -141,6 +141,10 @@ export interface CycleInfo {
   tracking: boolean;
   lastPeriodDate?: string; // ISO date
   cycleDays: number;
+  // RGPD: cycle data is health data — cloud sync requires explicit opt-in.
+  // false/undefined = local-only (pushProfile sends cycle: null, erasing any
+  // previously synced cycle data from Supabase).
+  syncConsent?: boolean;
 }
 
 // ── Cycle phase ───────────────────────────────────────────────────────────────
