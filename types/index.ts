@@ -37,6 +37,7 @@ export interface UserActivity {
   days: WeekDay[];
   recurrence: Recurrence;
   anchorDate?: string; // local "YYYY-MM-DD" of creation — anchors 'none' and N-weekly recurrences
+  weeklyGoal?: number; // target completed sessions per week (e.g. 3 = "3 sessions/semaine")
   color?: { bg: string; ink: string };
   notifyWeekEnd?: boolean;
   location?: ActivityLocation;

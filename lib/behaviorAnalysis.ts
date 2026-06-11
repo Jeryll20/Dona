@@ -257,6 +257,31 @@ export function computeWeekStreak(
   return streak;
 }
 
+// ── Weekly goal progress ──────────────────────────────────────────────────────
+
+/**
+ * Sessions completed this week vs the activity's weekly goal.
+ * Returns null when the activity has no goal set.
+ */
+export function weeklyGoalProgress(
+  activity:    UserActivity,
+  completions: ActivityCompletion[],
+): { done: number; goal: number } | null {
+  if (!activity.weeklyGoal || activity.weeklyGoal <= 0) return null;
+
+  const monday = parseLocalDate(getLastMondayISO());
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const from = toLocalISODate(monday);
+  const to   = toLocalISODate(sunday);
+
+  const done = completions.filter(
+    (c) => c.activityId === activity.id && c.completed && c.date >= from && c.date <= to,
+  ).length;
+
+  return { done, goal: activity.weeklyGoal };
+}
+
 // ── Multi-week trend ──────────────────────────────────────────────────────────
 
 export interface WeekTrendPoint {

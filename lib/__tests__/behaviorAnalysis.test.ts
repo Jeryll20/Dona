@@ -1,4 +1,4 @@
-import { analyzePatterns, computeWeekStats, computeWeekStreak, computeRecentWeeks, getLastMondayISO } from '../behaviorAnalysis';
+import { analyzePatterns, computeWeekStats, computeWeekStreak, computeRecentWeeks, weeklyGoalProgress, getLastMondayISO } from '../behaviorAnalysis';
 import type { UserActivity, ActivityCompletion, ActivityOverride, CustomCategory } from '@/types';
 
 function makeActivity(partial: Partial<UserActivity>): UserActivity {
@@ -136,6 +136,38 @@ describe('computeWeekStreak', () => {
       { activityId: 'a1', date: '2026-06-08', completed: true },
     ];
     expect(computeWeekStreak([weeklyMonday], completions)).toBe(0);
+  });
+});
+
+describe('weeklyGoalProgress', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 5, 10, 12)); // Wednesday June 10 → week of 06-08
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('returns null without a goal', () => {
+    expect(weeklyGoalProgress(makeActivity({}), [])).toBeNull();
+  });
+
+  it('counts only completed sessions of the current week', () => {
+    const activity = makeActivity({ weeklyGoal: 3 });
+    const completions: ActivityCompletion[] = [
+      { activityId: 'a1', date: '2026-06-08', completed: true },  // this week ✓
+      { activityId: 'a1', date: '2026-06-09', completed: false }, // skipped — doesn't count
+      { activityId: 'a1', date: '2026-06-01', completed: true },  // last week — doesn't count
+      { activityId: 'other', date: '2026-06-09', completed: true }, // other activity
+    ];
+    expect(weeklyGoalProgress(activity, completions)).toEqual({ done: 1, goal: 3 });
+  });
+
+  it('can exceed the goal', () => {
+    const activity = makeActivity({ weeklyGoal: 1 });
+    const completions: ActivityCompletion[] = [
+      { activityId: 'a1', date: '2026-06-08', completed: true },
+      { activityId: 'a1', date: '2026-06-10', completed: true },
+    ];
+    expect(weeklyGoalProgress(activity, completions)).toEqual({ done: 2, goal: 1 });
   });
 });
 

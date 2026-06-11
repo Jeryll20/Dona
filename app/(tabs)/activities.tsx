@@ -30,6 +30,7 @@ import { upsertActivity, deleteActivityRemote } from '@/lib/activitiesSync';
 import { upsertCustomCat, deleteCustomCatRemote } from '@/lib/customCatsSync';
 import { toLocalISODate } from '@/lib/recurrence';
 import { genId } from '@/lib/id';
+import { weeklyGoalProgress } from '@/lib/behaviorAnalysis';
 import { Colors, COLOR_PALETTE } from '@/constants/Colors';
 import { useColors } from '@/hooks/useColors';
 import { Spacing, Radius, Shadow } from '@/constants/spacing';
@@ -108,7 +109,7 @@ function makeTpStyles(C: ReturnType<typeof useColors>) {
 
 // ── ActivityCard ──────────────────────────────────────────────────
 
-type ActivityCardData = Pick<UserActivity, 'id' | 'title' | 'cat' | 'startTime' | 'endTime' | 'days' | 'color'>;
+type ActivityCardData = Pick<UserActivity, 'id' | 'title' | 'cat' | 'startTime' | 'endTime' | 'days' | 'color' | 'weeklyGoal'>;
 
 function ActivityCard({ activity, onEdit, onDelete }: {
   activity: ActivityCardData & { customCatId?: string };
@@ -118,6 +119,7 @@ function ActivityCard({ activity, onEdit, onDelete }: {
   const C = useColors();
   const s = makeCardStyles(C);
   const customCategories = useScheduleStore((st) => st.customCategories);
+  const completions      = useBehaviorStore((st) => st.completions);
   const customCat = activity.customCatId
     ? customCategories.find((c) => c.id === activity.customCatId)
     : undefined;
@@ -125,6 +127,7 @@ function ActivityCard({ activity, onEdit, onDelete }: {
   const bg     = activity.color?.bg  ?? customCat?.color.bg  ?? cat.bg;
   const ink    = activity.color?.ink ?? customCat?.color.ink ?? cat.ink;
   const label  = customCat?.label ?? cat.label;
+  const goal   = weeklyGoalProgress(activity as UserActivity, completions);
   return (
     <TouchableOpacity
       style={s.wrap}
@@ -139,6 +142,24 @@ function ActivityCard({ activity, onEdit, onDelete }: {
       <View style={s.content}>
         <Text style={s.title}>{activity.title}</Text>
         <Text style={s.sub}>{activity.startTime} – {activity.endTime} · {formatDays(activity.days)}</Text>
+        {goal && (
+          <View style={s.goalRow}>
+            <View style={s.goalTrack}>
+              <View
+                style={[
+                  s.goalFill,
+                  {
+                    width: `${Math.min(100, Math.round((goal.done / goal.goal) * 100))}%` as never,
+                    backgroundColor: goal.done >= goal.goal ? C.success : ink,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={[s.goalText, goal.done >= goal.goal && { color: C.success }]}>
+              {goal.done}/{goal.goal}{goal.done >= goal.goal ? ' ✓' : ''}
+            </Text>
+          </View>
+        )}
       </View>
       <View style={[s.pill, { backgroundColor: bg }]}>
         <Text style={[s.pillText, { color: ink }]}>{label}</Text>
@@ -173,6 +194,12 @@ function makeCardStyles(C: ReturnType<typeof useColors>) {
     pill:     { borderRadius: Radius.pill, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
     pillText: { fontSize: FontSize.xs, fontWeight: '700' },
     action:   { padding: 6 },
+
+    // Weekly goal progress
+    goalRow:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: 6 },
+    goalTrack: { flex: 1, height: 5, borderRadius: 3, backgroundColor: C.surfaceSunk, overflow: 'hidden' },
+    goalFill:  { height: '100%', borderRadius: 3 },
+    goalText:  { fontSize: FontSize.xs, fontWeight: '700', color: C.ink3 },
   });
 }
 
@@ -205,6 +232,7 @@ export default function ActivitiesScreen() {
   const [endTime,     setEndTime]     = useState('10:00');
   const [days,        setDays]        = useState<Set<WeekDay>>(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
   const [recurrence,  setRecurrence]  = useState<Recurrence>('weekly');
+  const [weeklyGoal,  setWeeklyGoal]  = useState<number | undefined>(undefined);
   const [color,          setColor]          = useState<{ bg: string; ink: string } | undefined>(undefined);
   const [notifyWeekEnd,  setNotifyWeekEnd]  = useState(false);
   const [location,       setLocation]       = useState<ActivityLocation | undefined>(undefined);
@@ -248,6 +276,7 @@ export default function ActivitiesScreen() {
       setEndTime(activity.endTime);
       setDays(new Set(activity.days));
       setRecurrence(activity.recurrence);
+      setWeeklyGoal(activity.weeklyGoal);
       setColor(activity.color);
       setNotifyWeekEnd(activity.notifyWeekEnd ?? false);
       setLocation(activity.location);
@@ -263,6 +292,7 @@ export default function ActivitiesScreen() {
       setStartTime('09:00'); setEndTime('10:00');
       setDays(new Set(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as WeekDay[]));
       setRecurrence('weekly');
+      setWeeklyGoal(undefined);
       setColor(undefined);
       setNotifyWeekEnd(false);
       setLocation(undefined);
@@ -307,6 +337,7 @@ export default function ActivitiesScreen() {
       days: [...days] as WeekDay[],
       recurrence,
       anchorDate: existingAnchor ?? toLocalISODate(new Date()),
+      weeklyGoal,
       color,
       notifyWeekEnd: recurrence === 'none' ? notifyWeekEnd : undefined,
       location,
@@ -804,6 +835,40 @@ export default function ActivitiesScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
+                  {recurrence !== 'none' && (
+                    <View style={s.fg}>
+                      <Text style={s.fieldLabel}>Objectif hebdo (optionnel)</Text>
+                      <Text style={s.goalHint}>
+                        Nombre de séances à réaliser par semaine — suivi avec une barre de progression.
+                      </Text>
+                      <View style={s.goalRow}>
+                        <TouchableOpacity
+                          style={[s.goalChip, weeklyGoal === undefined && s.goalChipOn]}
+                          onPress={() => setWeeklyGoal(undefined)}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: weeklyGoal === undefined }}
+                          accessibilityLabel="Aucun objectif"
+                        >
+                          <Text style={[s.goalChipText, weeklyGoal === undefined && s.goalChipTextOn]}>Aucun</Text>
+                        </TouchableOpacity>
+                        {[1, 2, 3, 4, 5, 6, 7].map((n) => {
+                          const on = weeklyGoal === n;
+                          return (
+                            <TouchableOpacity
+                              key={n}
+                              style={[s.goalChip, on && s.goalChipOn]}
+                              onPress={() => setWeeklyGoal(n)}
+                              accessibilityRole="radio"
+                              accessibilityState={{ selected: on }}
+                              accessibilityLabel={`${n} séances par semaine`}
+                            >
+                              <Text style={[s.goalChipText, on && s.goalChipTextOn]}>{n}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
                   {recurrence === 'none' && (
                     <TouchableOpacity
                       style={s.notifyRow}
@@ -1017,6 +1082,19 @@ function makeStyles(C: ReturnType<typeof useColors>) {
     nWeekChipOn: { backgroundColor: C.primaryTint, borderColor: C.primary },
     nWeekText:   { fontSize: FontSize.sm, fontWeight: '600', color: C.ink3 },
     nWeekTextOn: { color: C.primaryStrong },
+
+    // Weekly goal selector
+    goalHint: { fontSize: FontSize.xs, color: C.ink3, marginBottom: 2 },
+    goalRow:  { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+    goalChip: {
+      minWidth: 40, paddingHorizontal: 10, paddingVertical: 8,
+      borderRadius: Radius.input, alignItems: 'center',
+      backgroundColor: C.surfaceSunk,
+      borderWidth: 1.5, borderColor: 'transparent',
+    },
+    goalChipOn:     { backgroundColor: C.primaryTint, borderColor: C.primary },
+    goalChipText:   { fontSize: FontSize.sm, fontWeight: '600', color: C.ink3 },
+    goalChipTextOn: { color: C.primaryStrong, fontWeight: '700' },
 
     // Notify week-end toggle
     notifyRow: {
