@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
-  Animated, TextInput, Keyboard, Platform,
+  Animated, TextInput, Keyboard, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -394,7 +394,7 @@ export default function ChatScreen() {
     const { activities: acts } = useScheduleStore.getState();
     const { completions } = useBehaviorStore.getState();
 
-    const plan = generateWeekPlan({
+    const { proposals, adjustments } = generateWeekPlan({
       goal:        profile.goal,
       activities:  acts,
       completions,
@@ -404,36 +404,67 @@ export default function ChatScreen() {
       weekStart:   getPlanningWeekStart(),
     });
 
-    if (plan.length === 0) {
+    if (proposals.length === 0 && adjustments.length === 0) {
       pushMessage('bot', 'Ta semaine est déjà bien remplie, je n\'ai rien à te proposer de plus ! 🎉 Reviens me voir si tu libères des créneaux.');
       return;
     }
 
     pushMessage('bot', 'Voici ce que je te propose pour ta semaine ✨ Décoche ce qui ne te convient pas, puis applique :');
-    // Plan card added WITHOUT pushChatMessage: the reasons can mention
-    // cycle phases — health data that must not reach the cloud history
-    setMessages((prev) => [...prev, { id: uid(), role: 'bot', text: '', plan }]);
+    // Adjustment notes + plan card added WITHOUT pushChatMessage: they can
+    // mention cycle phases — health data that must not reach the cloud history
+    setMessages((prev) => [
+      ...prev,
+      ...adjustments.map((a) => ({ id: uid(), role: 'bot' as Role, text: a.reason })),
+      ...(proposals.length > 0 ? [{ id: uid(), role: 'bot' as Role, text: '', plan: proposals }] : []),
+    ]);
   }
 
   function applyPlan(messageId: string, accepted: PlanProposal[]) {
-    for (const p of accepted) {
-      const activity = {
-        id:         genId(),
-        title:      p.title,
-        cat:        p.cat,
-        startTime:  p.startTime,
-        endTime:    p.endTime,
-        days:       [p.weekDay],
-        recurrence: (p.recurring ? 'weekly' : 'none') as 'weekly' | 'none',
-        anchorDate: p.date,
-      };
-      addActivity(activity);
-      if (userId) upsertActivity(userId, activity);
-    }
-    useBehaviorStore.getState().clearReport();
-    // Freeze the card (remove it) and confirm
-    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, plan: undefined, text: '✓ Plan appliqué' } : m)));
-    pushMessage('bot', `C'est dans ton planning ! ${accepted.length} ${accepted.length > 1 ? 'créneaux ajoutés' : 'créneau ajouté'} 🎉 Tu peux les déplacer directement sur la timeline si besoin.`);
+    // Recap + explicit validation before touching the schedule —
+    // recurring items change the user's durable routine
+    const recurring = accepted.filter((p) => p.recurring);
+    const oneOffs   = accepted.filter((p) => !p.recurring);
+    const lines = [
+      ...(recurring.length > 0
+        ? ['Ta routine évolue (chaque semaine) :',
+           ...recurring.map((p) => `  ↻ ${p.title} — ${FR_DAY[p.weekDay]} ${p.startTime}`)]
+        : []),
+      ...(oneOffs.length > 0
+        ? [`${recurring.length > 0 ? '\n' : ''}Cette semaine uniquement :`,
+           ...oneOffs.map((p) => `  • ${p.title} — ${FR_DAY[p.weekDay]} ${p.date.slice(8, 10)}/${p.date.slice(5, 7)} à ${p.startTime}`)]
+        : []),
+    ].join('\n');
+
+    Alert.alert(
+      'Valider ces changements ?',
+      lines,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Confirmer',
+          onPress: () => {
+            for (const p of accepted) {
+              const activity = {
+                id:         genId(),
+                title:      p.title,
+                cat:        p.cat,
+                startTime:  p.startTime,
+                endTime:    p.endTime,
+                days:       [p.weekDay],
+                recurrence: (p.recurring ? 'weekly' : 'none') as 'weekly' | 'none',
+                anchorDate: p.date,
+              };
+              addActivity(activity);
+              if (userId) upsertActivity(userId, activity);
+            }
+            useBehaviorStore.getState().clearReport();
+            // Freeze the card (remove it) and confirm
+            setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, plan: undefined, text: '✓ Plan appliqué' } : m)));
+            pushMessage('bot', `C'est dans ton planning ! ${accepted.length} ${accepted.length > 1 ? 'créneaux ajoutés' : 'créneau ajouté'} 🎉 Tu peux les déplacer directement sur la timeline si besoin.`);
+          },
+        },
+      ],
+    );
   }
 
   async function send(text: string) {

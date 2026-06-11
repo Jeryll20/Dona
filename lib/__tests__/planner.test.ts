@@ -36,7 +36,7 @@ function toMinutes(hhmm: string): number {
 
 describe('generateWeekPlan — structure', () => {
   it('caps the number of proposals', () => {
-    const plan = generateWeekPlan(baseInput({
+    const { proposals: plan } = generateWeekPlan(baseInput({
       goal: 'routine',
       activities: [makeSport({ weeklyGoal: 7 })],
     }));
@@ -44,7 +44,7 @@ describe('generateWeekPlan — structure', () => {
   });
 
   it('keeps proposals within waking hours and inside the target week', () => {
-    const plan = generateWeekPlan(baseInput({ goal: 'routine', activities: [makeSport()] }));
+    const { proposals: plan } = generateWeekPlan(baseInput({ goal: 'routine', activities: [makeSport()] }));
     for (const p of plan) {
       expect(p.date >= '2026-06-08' && p.date <= '2026-06-14').toBe(true);
       expect(toMinutes(p.startTime)).toBeGreaterThanOrEqual(7 * 60);
@@ -54,7 +54,7 @@ describe('generateWeekPlan — structure', () => {
   });
 
   it('proposals never overlap each other on the same day', () => {
-    const plan = generateWeekPlan(baseInput({
+    const { proposals: plan } = generateWeekPlan(baseInput({
       goal: 'routine',
       activities: [makeSport({ weeklyGoal: 5 })],
     }));
@@ -72,7 +72,7 @@ describe('generateWeekPlan — structure', () => {
 describe('generateWeekPlan — sport weekly goal', () => {
   it('proposes the missing sessions to reach the goal', () => {
     // Goal 3, already scheduled Tuesday → 2 extra sessions proposed
-    const plan = generateWeekPlan(baseInput({ activities: [makeSport({ weeklyGoal: 3 })] }));
+    const { proposals: plan } = generateWeekPlan(baseInput({ activities: [makeSport({ weeklyGoal: 3 })] }));
     const sportProps = plan.filter((p) => p.cat === 'sport');
     expect(sportProps).toHaveLength(2);
     // Never on the day the sport already happens
@@ -81,7 +81,7 @@ describe('generateWeekPlan — sport weekly goal', () => {
 
   it('proposes nothing when the goal is already covered', () => {
     const sport = makeSport({ days: ['Mon', 'Wed', 'Fri'], weeklyGoal: 3 });
-    const plan = generateWeekPlan(baseInput({ activities: [sport] }));
+    const { proposals: plan } = generateWeekPlan(baseInput({ activities: [sport] }));
     expect(plan.filter((p) => p.cat === 'sport')).toHaveLength(0);
   });
 });
@@ -93,7 +93,7 @@ describe('generateWeekPlan — cycle adaptation', () => {
   const cycle = { tracking: true, lastPeriodDate: '2026-06-10', cycleDays: 28 };
 
   it('schedules hard sessions on high-energy days and gentle ones during menstruation', () => {
-    const plan = generateWeekPlan(baseInput({
+    const { proposals: plan } = generateWeekPlan(baseInput({
       activities: [makeSport({ weeklyGoal: 3 })],
       cycle,
     }));
@@ -110,33 +110,64 @@ describe('generateWeekPlan — cycle adaptation', () => {
   });
 
   it('adds a wellness break during the menstrual phase', () => {
-    const plan = generateWeekPlan(baseInput({ cycle }));
+    const { proposals: plan } = generateWeekPlan(baseInput({ cycle }));
     expect(plan.some((p) => p.title === 'Pause bien-être')).toBe(true);
   });
 
   it('mentions the phase in the reasons', () => {
-    const plan = generateWeekPlan(baseInput({
+    const { proposals: plan } = generateWeekPlan(baseInput({
       activities: [makeSport({ weeklyGoal: 2 })],
       cycle,
     }));
     expect(plan.some((p) => p.reason.includes('phase'))).toBe(true);
   });
+
+  it('proposes a lowered sport goal on menstrual-heavy weeks (with explanation)', () => {
+    // Period starts Wednesday 06-10 → 5 menstrual days in the target week
+    const { adjustments } = generateWeekPlan(baseInput({
+      activities: [makeSport({ weeklyGoal: 3 })],
+      cycle,
+    }));
+    expect(adjustments).toHaveLength(1);
+    expect(adjustments[0]).toMatchObject({ activityTitle: 'Course à pied', originalGoal: 3, adjustedGoal: 2 });
+    expect(adjustments[0].reason).toContain('menstruelle');
+  });
+
+  it('never adjusts below 1 session, and never without cycle tracking', () => {
+    const lowGoal = generateWeekPlan(baseInput({
+      activities: [makeSport({ weeklyGoal: 1 })],
+      cycle,
+    }));
+    expect(lowGoal.adjustments).toHaveLength(0);
+
+    const noCycle = generateWeekPlan(baseInput({ activities: [makeSport({ weeklyGoal: 3 })] }));
+    expect(noCycle.adjustments).toHaveLength(0);
+  });
+
+  it('does not adjust when the week has no menstrual days', () => {
+    // lastPeriod 2026-06-01 → the target week spans days 7–13 = follicular only
+    const { adjustments } = generateWeekPlan(baseInput({
+      activities: [makeSport({ weeklyGoal: 3 })],
+      cycle: { tracking: true, lastPeriodDate: '2026-06-01', cycleDays: 28 },
+    }));
+    expect(adjustments).toHaveLength(0);
+  });
 });
 
 describe('generateWeekPlan — onboarding goal', () => {
   it("'routine' proposes recurring anchors", () => {
-    const plan = generateWeekPlan(baseInput({ goal: 'routine' }));
+    const { proposals: plan } = generateWeekPlan(baseInput({ goal: 'routine' }));
     const recurring = plan.filter((p) => p.recurring);
     expect(recurring.length).toBeGreaterThanOrEqual(1);
   });
 
   it("'organise' proposes a weekly prep slot", () => {
-    const plan = generateWeekPlan(baseInput({ goal: 'organise' }));
+    const { proposals: plan } = generateWeekPlan(baseInput({ goal: 'organise' }));
     expect(plan.some((p) => p.title === 'Préparer ma semaine')).toBe(true);
   });
 
   it("'activite' proposes a discovery session", () => {
-    const plan = generateWeekPlan(baseInput({ goal: 'activite' }));
+    const { proposals: plan } = generateWeekPlan(baseInput({ goal: 'activite' }));
     expect(plan.some((p) => p.title === 'Nouvelle activité à essayer')).toBe(true);
   });
 });

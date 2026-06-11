@@ -31,6 +31,20 @@ export interface PlannerInput {
   weekStart:   string; // Monday "YYYY-MM-DD" of the target week
 }
 
+// Weekly sport goal temporarily lowered because of the hormonal week ahead —
+// surfaced to the user for validation, never applied silently.
+export interface GoalAdjustment {
+  activityTitle: string;
+  originalGoal:  number;
+  adjustedGoal:  number;
+  reason:        string;
+}
+
+export interface WeekPlan {
+  proposals:   PlanProposal[];
+  adjustments: GoalAdjustment[];
+}
+
 interface DayContext {
   date:    string;
   weekDay: WeekDay;
@@ -97,9 +111,10 @@ function takeSlot(ctx: DayContext, startH: number, durH: number) {
 
 // ── Main entry point ──────────────────────────────────────────────────────────
 
-export function generateWeekPlan(input: PlannerInput): PlanProposal[] {
+export function generateWeekPlan(input: PlannerInput): WeekPlan {
   const { goal, activities, sleep, meals, cycle, weekStart } = input;
   const proposals: PlanProposal[] = [];
+  const adjustments: GoalAdjustment[] = [];
 
   const cycleActive = !!(cycle?.tracking && cycle.lastPeriodDate);
   const wake = sleep.waketime ? toH(sleep.waketime) : 7;
@@ -148,9 +163,24 @@ export function generateWeekPlan(input: PlannerInput): PlanProposal[] {
   };
 
   // ── 1. Fill sport weekly goals on high-energy days ──────────────────────────
+  // Menstrual-heavy week → propose a temporarily lowered goal (the user
+  // validates it through the plan card, nothing is changed silently)
+  const menstrualDays = days.filter((d) => d.phase === 'menstrual').length;
+
   for (const sport of activities.filter((a) => a.cat === 'sport' && a.weeklyGoal)) {
+    let effectiveGoal = sport.weeklyGoal ?? 0;
+    if (cycleActive && menstrualDays >= 3 && effectiveGoal >= 2) {
+      effectiveGoal -= 1;
+      adjustments.push({
+        activityTitle: sport.title,
+        originalGoal:  sport.weeklyGoal!,
+        adjustedGoal:  effectiveGoal,
+        reason: `${menstrualDays} jours en phase menstruelle cette semaine — je te propose de viser ${effectiveGoal} séance${effectiveGoal > 1 ? 's' : ''} au lieu de ${sport.weeklyGoal}. La régularité compte plus que l'intensité 🌸`,
+      });
+    }
+
     const scheduled = days.filter((d) => isActivityVisibleOn(sport, d.date)).length;
-    let missing = Math.max(0, (sport.weeklyGoal ?? 0) - scheduled);
+    let missing = Math.max(0, effectiveGoal - scheduled);
     if (missing === 0) continue;
 
     const durH  = Math.min(durationH(sport), 1.5);
@@ -186,8 +216,8 @@ export function generateWeekPlan(input: PlannerInput): PlanProposal[] {
           cat: 'sport',
           startTime: toHHMM(start), endTime: toHHMM(start + durH),
           reason: day.phase
-            ? `Pour atteindre ton objectif de ${sport.weeklyGoal}/semaine — ${PHASE_LABEL[day.phase]}.`
-            : `Pour atteindre ton objectif de ${sport.weeklyGoal} séances/semaine.`,
+            ? `Pour atteindre ton objectif de ${effectiveGoal}/semaine — ${PHASE_LABEL[day.phase]}.`
+            : `Pour atteindre ton objectif de ${effectiveGoal} séances/semaine.`,
           recurring: false,
         }, durH, start, day);
       }
@@ -267,8 +297,10 @@ export function generateWeekPlan(input: PlannerInput): PlanProposal[] {
   }
 
   // Chronological order reads better in the plan card
-  return proposals.sort((a, b) =>
+  proposals.sort((a, b) =>
     a.date === b.date ? toH(a.startTime) - toH(b.startTime) : a.date.localeCompare(b.date));
+
+  return { proposals, adjustments };
 }
 
 // ── Target week helper ────────────────────────────────────────────────────────
