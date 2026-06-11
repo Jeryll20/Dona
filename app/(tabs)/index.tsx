@@ -548,19 +548,11 @@ export default function TodayScreen() {
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={{ flex: 1 }} {...(viewMode === 'day' ? swipe.panHandlers : {})}>
       <View style={s.header}>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => setViewMode(VIEW_MODE_ORDER[(VIEW_MODE_ORDER.indexOf(viewMode) + 1) % 3])}
-          accessibilityRole="button"
-          accessibilityLabel="Changer la vue"
-        >
+        <View>
           <View style={s.dateLabelRow}>
             <Text style={s.dateLabel} accessibilityLabel="Date du jour">
               {selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', month: 'long', day: 'numeric' })}
             </Text>
-            <View style={s.viewChip}>
-              <Text style={s.viewChipText}>{VIEW_MODE_LABELS[viewMode]}</Text>
-            </View>
           </View>
           <View style={s.titleRow}>
             {viewMode === 'day' && (
@@ -585,7 +577,7 @@ export default function TodayScreen() {
               </TouchableOpacity>
             )}
           </View>
-        </TouchableOpacity>
+        </View>
         <View style={s.headerRight}>
           <View style={s.badge}>
             <Icon name="clock" size={14} stroke={C.ink2} />
@@ -602,6 +594,25 @@ export default function TodayScreen() {
             <Icon name="spark" size={20} stroke={C.primary} />
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Segmented view switcher — Jour / Semaine / Mois */}
+      <View style={s.segmentRow}>
+        {VIEW_MODE_ORDER.map((m) => {
+          const on = viewMode === m;
+          return (
+            <TouchableOpacity
+              key={m}
+              style={[s.segment, on && s.segmentOn]}
+              onPress={() => setViewMode(m)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`Vue ${VIEW_MODE_LABELS[m]}`}
+            >
+              <Text style={[s.segmentText, on && s.segmentTextOn]}>{VIEW_MODE_LABELS[m]}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Cycle phase mini-badge */}
@@ -923,18 +934,29 @@ function makeStyles(C: ReturnType<typeof useColors>) {
     badgeText: { fontSize: 13.5, fontWeight: '600', color: C.ink2 },
 
     dateLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-    viewChip: {
-      backgroundColor: C.primaryTint,
+
+    // Segmented view switcher
+    segmentRow: {
+      flexDirection: 'row',
+      marginHorizontal: 22,
+      marginBottom: Spacing.sm,
+      backgroundColor: C.surfaceSunk,
       borderRadius: Radius.pill,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
+      padding: 3,
+      gap: 3,
     },
-    viewChipText: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: C.primary,
-      letterSpacing: 0.3,
+    segment: {
+      flex: 1,
+      paddingVertical: 7,
+      borderRadius: Radius.pill,
+      alignItems: 'center',
     },
+    segmentOn: {
+      backgroundColor: C.surface,
+      ...Shadow.sm,
+    },
+    segmentText:   { fontSize: FontSize.sm, fontWeight: '600', color: C.ink3 },
+    segmentTextOn: { color: C.primaryStrong, fontWeight: '700' },
 
     phaseBadge: {
       flexDirection: 'row',
