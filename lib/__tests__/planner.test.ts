@@ -79,10 +79,28 @@ describe('generateWeekPlan — sport weekly goal', () => {
     expect(sportProps.some((p) => p.weekDay === 'Tue')).toBe(false);
   });
 
-  it('proposes nothing when the goal is already covered', () => {
+  it('does not duplicate sport sessions when the goal is already covered', () => {
     const sport = makeSport({ days: ['Mon', 'Wed', 'Fri'], weeklyGoal: 3 });
     const { proposals: plan } = generateWeekPlan(baseInput({ activities: [sport] }));
-    expect(plan.filter((p) => p.cat === 'sport')).toHaveLength(0);
+    expect(plan.filter((p) => p.title === 'Course à pied')).toHaveLength(0);
+  });
+});
+
+describe('generateWeekPlan — fallback', () => {
+  it('never returns empty when free slots exist', () => {
+    // No sport goal, no cycle, no onboarding goal — the three rules produce
+    // nothing, the fallback must still propose something
+    const { proposals } = generateWeekPlan(baseInput({}));
+    expect(proposals.length).toBeGreaterThan(0);
+    expect(proposals.length).toBeLessThanOrEqual(3);
+    // Spread over distinct days
+    const dates = proposals.map((p) => p.date);
+    expect(new Set(dates).size).toBe(dates.length);
+  });
+
+  it('does not kick in when real rules already produced proposals', () => {
+    const { proposals } = generateWeekPlan(baseInput({ activities: [makeSport({ weeklyGoal: 3 })] }));
+    expect(proposals.some((p) => p.title === 'Temps pour toi')).toBe(false);
   });
 });
 

@@ -296,6 +296,44 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
     }
   }
 
+  // ── 4. Fallback: never leave the user empty-handed ─────────────────────────
+  // All three rules can legitimately produce nothing at once (sport goal
+  // already covered, no menstrual day that week, no onboarding goal) —
+  // propose gentle generic slots instead of "nothing to suggest".
+  if (proposals.length === 0) {
+    const fallbacks: { title: string; cat: CatKey; durH: number; nearH: number; reason: (p?: CyclePhase) => string }[] = [
+      {
+        title: 'Marche 30 min', cat: 'sport', durH: 0.5, nearH: 17.5,
+        reason: (p) => p ? `Un bol d'air — ${PHASE_LABEL[p]}.` : 'Un bol d\'air dans un créneau libre de ta semaine.',
+      },
+      {
+        title: 'Temps pour toi', cat: 'activite', durH: 0.5, nearH: 20,
+        reason: () => 'Lecture, détente, ce que tu veux — ce créneau est à toi.',
+      },
+      {
+        title: 'Préparer ma semaine', cat: 'activite', durH: 0.25, nearH: 18.5,
+        reason: () => '15 minutes pour clarifier les prochains jours.',
+      },
+    ];
+    const usedDays = new Set<string>();
+    for (const fb of fallbacks) {
+      const day = [...days]
+        .filter((d) => !usedDays.has(d.date) && findSlot(d, fb.durH, fb.nearH))
+        .sort((a, b) => b.energy - a.energy)[0];
+      if (!day || proposals.length >= MAX_PROPOSALS) break;
+      const slot = findSlot(day, fb.durH, fb.nearH)!;
+      const start = Math.max(slot.start, Math.min(fb.nearH, slot.end - fb.durH));
+      usedDays.add(day.date);
+      push({
+        date: day.date, weekDay: day.weekDay,
+        title: fb.title, cat: fb.cat,
+        startTime: toHHMM(start), endTime: toHHMM(start + fb.durH),
+        reason: fb.reason(day.phase),
+        recurring: false,
+      }, fb.durH, start, day);
+    }
+  }
+
   // Chronological order reads better in the plan card
   proposals.sort((a, b) =>
     a.date === b.date ? toH(a.startTime) - toH(b.startTime) : a.date.localeCompare(b.date));
