@@ -145,6 +145,9 @@ function Wheel({ items, initial, onChange }: WheelProps) {
       onMomentumScrollBegin={onMomentumScrollBegin}
       onMomentumScrollEnd={onMomentumScrollEnd}
       onScrollEndDrag={onScrollEndDrag}
+      // Android: a nested same-direction ScrollView never receives scroll
+      // gestures without this — the parent sheet captures them all
+      nestedScrollEnabled
     >
       {items.map((item, i) => (
         <Animated.View key={item} style={[s.item, { opacity: opacities[i] }]}>
