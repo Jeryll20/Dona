@@ -86,6 +86,17 @@ describe('generateWeekPlan — sport weekly goal', () => {
   });
 });
 
+describe('generateWeekPlan — midnight bedtime', () => {
+  it('treats a 00:00 bedtime as end-of-day, not hour zero', () => {
+    // Real-world regression: bed=0 clamped every slot away → empty plan
+    const { proposals } = generateWeekPlan(baseInput({
+      goal: 'routine',
+      sleep: { bedtime: '00:00', waketime: '08:00', prepMinutes: 40 },
+    }));
+    expect(proposals.length).toBeGreaterThan(0);
+  });
+});
+
 describe('generateWeekPlan — fallback', () => {
   it('never returns empty when free slots exist', () => {
     // No sport goal, no cycle, no onboarding goal — the three rules produce

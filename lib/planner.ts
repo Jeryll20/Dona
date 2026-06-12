@@ -118,7 +118,10 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
 
   const cycleActive = !!(cycle?.tracking && cycle.lastPeriodDate);
   const wake = sleep.waketime ? toH(sleep.waketime) : 7;
-  const bed  = sleep.bedtime  ? toH(sleep.bedtime)  : 23;
+  // Midnight (or later) bedtime means end-of-day on the 24-h scale — without
+  // this, bed=0 clamps every free slot to nothing and the plan comes out empty
+  let bed = sleep.bedtime ? toH(sleep.bedtime) : 23;
+  if (bed <= wake) bed = 24;
 
   // ── Build the 7 day contexts ────────────────────────────────────────────────
   const days: DayContext[] = [];
