@@ -19,6 +19,7 @@ export interface PlanProposal {
   endTime:   string;   // "HH:MM"
   reason:    string;   // human-readable justification (FR)
   recurring: boolean;  // true = create as weekly activity, false = one-off
+  dislikable: boolean; // pool-based ideas can be banned forever; the user's own sport can't
 }
 
 export interface PlannerInput {
@@ -29,6 +30,10 @@ export interface PlannerInput {
   meals?:      Partial<MealSchedule>;
   cycle?:      { tracking?: boolean; lastPeriodDate?: string; cycleDays?: number };
   weekStart:   string; // Monday "YYYY-MM-DD" of the target week
+  // Pool titles the user marked as "je n'aime pas" — never proposed again
+  excludeTitles?: string[];
+  // Bump to get a different draw from the idea pools (same week, new ideas)
+  variant?:    number;
 }
 
 // Weekly sport goal temporarily lowered because of the hormonal week ahead —
@@ -67,6 +72,65 @@ const PHASE_LABEL: Record<CyclePhase, string> = {
   ovulation:  'ovulation — énergie et sociabilité au top',
   luteal:     'phase lutéale — on lève un peu le pied',
 };
+
+// ── Idea pools (variety across runs, "je n'aime pas" filters by title) ───────
+
+interface PoolIdea { title: string; durH: number; nearH: number; reason: string }
+
+const MORNING_ANCHORS: PoolIdea[] = [
+  { title: 'Écriture / journaling',  durH: 1 / 3, nearH: 0,  reason: 'Une ancre matinale régulière, la base d\'une routine qui tient.' },
+  { title: 'Méditation matinale',    durH: 0.25,  nearH: 0,  reason: 'Dix minutes de calme avant que la journée démarre.' },
+  { title: 'Étirements au réveil',   durH: 0.25,  nearH: 0,  reason: 'Réveiller le corps en douceur, chaque jour à la même heure.' },
+];
+
+const EVENING_ANCHORS: PoolIdea[] = [
+  { title: 'Lecture / déconnexion',  durH: 1 / 3, nearH: 0,  reason: 'Un rituel du soir à heure fixe pour ancrer ta routine.' },
+  { title: 'Préparer demain',        durH: 0.25,  nearH: 0,  reason: 'Dix minutes le soir pour aborder demain l\'esprit léger.' },
+  { title: 'Étirements doux',        durH: 0.25,  nearH: 0,  reason: 'Relâcher la journée avant de dormir, en douceur.' },
+];
+
+const GENTLE_SPORT: string[] = ['Yoga doux ou marche', 'Marche tranquille', 'Étirements doux'];
+
+const DISCOVERY: PoolIdea[] = [
+  { title: 'Nouvelle activité à essayer', durH: 0.5, nearH: 17.5, reason: 'Un créneau libre parfait pour découvrir une nouvelle activité.' },
+  { title: 'Atelier créatif',             durH: 0.5, nearH: 17.5, reason: 'Dessin, musique, cuisine… un moment pour créer.' },
+  { title: 'Sortie découverte',           durH: 0.75, nearH: 15,  reason: 'Explorer un endroit où tu n\'es jamais allé·e.' },
+];
+
+const FALLBACKS: PoolIdea[] = [
+  { title: 'Marche 30 min',       durH: 0.5,  nearH: 17.5, reason: 'Un bol d\'air dans un créneau libre de ta semaine.' },
+  { title: 'Temps pour toi',      durH: 0.5,  nearH: 20,   reason: 'Lecture, détente, ce que tu veux — ce créneau est à toi.' },
+  { title: 'Préparer ma semaine', durH: 0.25, nearH: 18.5, reason: '15 minutes pour clarifier les prochains jours.' },
+  { title: 'Appeler un proche',   durH: 1 / 3, nearH: 18,  reason: 'Un moment pour prendre des nouvelles de quelqu\'un.' },
+  { title: 'Pause sans écran',    durH: 0.25, nearH: 16,   reason: 'Un quart d\'heure de vraie déconnexion.' },
+];
+
+// Deterministic PRNG: same week + same variant → same draw (stable when the
+// user re-opens the card), new variant → fresh ideas
+function seededRng(seedStr: string, variant: number) {
+  let s = (seedStr.split('').reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) + variant * 9973) >>> 0;
+  return () => {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pickIdea(pool: PoolIdea[], rng: () => number, exclude: Set<string>): PoolIdea | undefined {
+  const ok = pool.filter((x) => !exclude.has(x.title));
+  if (ok.length === 0) return undefined;
+  return ok[Math.floor(rng() * ok.length)];
+}
+
+function shuffled<T>(arr: T[], rng: () => number): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -115,6 +179,8 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
   const { goal, activities, sleep, meals, cycle, weekStart } = input;
   const proposals: PlanProposal[] = [];
   const adjustments: GoalAdjustment[] = [];
+  const rng = seededRng(weekStart, input.variant ?? 0);
+  const exclude = new Set(input.excludeTitles ?? []);
 
   const cycleActive = !!(cycle?.tracking && cycle.lastPeriodDate);
   const wake = sleep.waketime ? toH(sleep.waketime) : 7;
@@ -199,15 +265,19 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
 
       if (day.phase === 'menstrual') {
         // Gentle alternative instead of the usual session
+        const gentleTitle = GENTLE_SPORT.filter((t) => !exclude.has(t))[
+          Math.floor(rng() * Math.max(1, GENTLE_SPORT.filter((t) => !exclude.has(t)).length))
+        ];
         const slot = findSlot(day, 0.5, nearH);
-        if (!slot) continue;
+        if (!slot || !gentleTitle) continue;
         push({
           date: day.date, weekDay: day.weekDay,
-          title: 'Yoga doux ou marche',
+          title: gentleTitle,
           cat: 'sport',
           startTime: toHHMM(slot.start), endTime: toHHMM(slot.start + 0.5),
           reason: `À la place d'une grosse séance : ${PHASE_LABEL.menstrual}, ton corps te dira merci.`,
           recurring: false,
+          dislikable: true,
         }, 0.5, slot.start, day);
       } else {
         const slot = findSlot(day, durH, nearH);
@@ -222,6 +292,7 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
             ? `Pour atteindre ton objectif de ${effectiveGoal}/semaine — ${PHASE_LABEL[day.phase]}.`
             : `Pour atteindre ton objectif de ${effectiveGoal} séances/semaine.`,
           recurring: false,
+          dislikable: false, // the user's own sport — declining is enough
         }, durH, start, day);
       }
       missing--;
@@ -229,7 +300,7 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
   }
 
   // ── 2. Rest proposal on menstrual days ──────────────────────────────────────
-  if (cycleActive) {
+  if (cycleActive && !exclude.has('Pause bien-être')) {
     const menstrualDay = days.find((d) => d.phase === 'menstrual' && d.slots.length > 0);
     if (menstrualDay && proposals.length < MAX_PROPOSALS) {
       const slot = findSlot(menstrualDay, 0.25, 18);
@@ -241,6 +312,7 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
           startTime: toHHMM(slot.start), endTime: toHHMM(slot.start + 0.25),
           reason: `Un moment pour toi — ${PHASE_LABEL.menstrual}.`,
           recurring: false,
+          dislikable: true,
         }, 0.25, slot.start, menstrualDay);
       }
     }
@@ -248,54 +320,61 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
 
   // ── 3. Goal-driven structure ────────────────────────────────────────────────
   if (goal === 'routine') {
-    // Habit anchors at consistent times, created as weekly activities
+    // Habit anchors at consistent times, created as weekly activities —
+    // one morning + one evening idea drawn from the pools
     const anchors = [
-      { title: 'Écriture / journaling', durH: 1 / 3, nearH: wake + 0.75, reason: 'Une ancre matinale régulière, la base d\'une routine qui tient.' },
-      { title: 'Lecture / déconnexion', durH: 1 / 3, nearH: bed - 1,     reason: 'Un rituel du soir à heure fixe pour ancrer ta routine.' },
+      { idea: pickIdea(MORNING_ANCHORS, rng, exclude), nearH: wake + 0.75 },
+      { idea: pickIdea(EVENING_ANCHORS, rng, exclude), nearH: bed - 1 },
     ];
     for (const anchor of anchors) {
+      if (!anchor.idea) continue;
       // Pick the weekday with the most room, propose it as recurring
       const day = [...days]
-        .filter((d) => findSlot(d, anchor.durH, anchor.nearH))
+        .filter((d) => findSlot(d, anchor.idea!.durH, anchor.nearH))
         .sort((a, b) => b.slots.length - a.slots.length)[0];
       if (!day || proposals.length >= MAX_PROPOSALS) break;
-      const slot = findSlot(day, anchor.durH, anchor.nearH)!;
-      const start = Math.max(slot.start, Math.min(anchor.nearH, slot.end - anchor.durH));
+      const slot = findSlot(day, anchor.idea.durH, anchor.nearH)!;
+      const start = Math.max(slot.start, Math.min(anchor.nearH, slot.end - anchor.idea.durH));
       push({
         date: day.date, weekDay: day.weekDay,
-        title: anchor.title, cat: 'activite',
-        startTime: toHHMM(start), endTime: toHHMM(start + anchor.durH),
-        reason: anchor.reason,
+        title: anchor.idea.title, cat: 'activite',
+        startTime: toHHMM(start), endTime: toHHMM(start + anchor.idea.durH),
+        reason: anchor.idea.reason,
         recurring: true,
-      }, anchor.durH, start, day);
+        dislikable: true,
+      }, anchor.idea.durH, start, day);
     }
   } else if (goal === 'organise') {
     const day = days.find((d) => d.weekDay === 'Sun' && findSlot(d, 0.25, 18)) ?? days[0];
     const slot = findSlot(day, 0.25, 18);
-    if (slot && proposals.length < MAX_PROPOSALS) {
+    if (slot && proposals.length < MAX_PROPOSALS && !exclude.has('Préparer ma semaine')) {
       push({
         date: day.date, weekDay: day.weekDay,
         title: 'Préparer ma semaine', cat: 'activite',
         startTime: toHHMM(slot.start), endTime: toHHMM(slot.start + 0.25),
         reason: '15 minutes le dimanche pour aborder la semaine l\'esprit clair.',
         recurring: true,
+        dislikable: true,
       }, 0.25, slot.start, day);
     }
   } else if (goal === 'activite') {
     // Add gentle discovery sessions on energetic days
-    const day = [...days].sort((a, b) => b.energy - a.energy)
-      .find((d) => findSlot(d, 0.5, 17.5));
-    if (day && proposals.length < MAX_PROPOSALS) {
-      const slot = findSlot(day, 0.5, 17.5)!;
+    const idea = pickIdea(DISCOVERY, rng, exclude);
+    const day = idea
+      ? [...days].sort((a, b) => b.energy - a.energy).find((d) => findSlot(d, idea.durH, idea.nearH))
+      : undefined;
+    if (idea && day && proposals.length < MAX_PROPOSALS) {
+      const slot = findSlot(day, idea.durH, idea.nearH)!;
       push({
         date: day.date, weekDay: day.weekDay,
-        title: 'Nouvelle activité à essayer', cat: 'activite',
-        startTime: toHHMM(slot.start), endTime: toHHMM(slot.start + 0.5),
+        title: idea.title, cat: 'activite',
+        startTime: toHHMM(slot.start), endTime: toHHMM(slot.start + idea.durH),
         reason: day.phase
-          ? `Un créneau idéal pour tester quelque chose de nouveau — ${PHASE_LABEL[day.phase]}.`
-          : 'Un créneau libre parfait pour découvrir une nouvelle activité.',
+          ? `${idea.reason} — ${PHASE_LABEL[day.phase]}.`
+          : idea.reason,
         recurring: false,
-      }, 0.5, slot.start, day);
+        dislikable: true,
+      }, idea.durH, slot.start, day);
     }
   }
 
@@ -304,22 +383,9 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
   // already covered, no menstrual day that week, no onboarding goal) —
   // propose gentle generic slots instead of "nothing to suggest".
   if (proposals.length === 0) {
-    const fallbacks: { title: string; cat: CatKey; durH: number; nearH: number; reason: (p?: CyclePhase) => string }[] = [
-      {
-        title: 'Marche 30 min', cat: 'sport', durH: 0.5, nearH: 17.5,
-        reason: (p) => p ? `Un bol d'air — ${PHASE_LABEL[p]}.` : 'Un bol d\'air dans un créneau libre de ta semaine.',
-      },
-      {
-        title: 'Temps pour toi', cat: 'activite', durH: 0.5, nearH: 20,
-        reason: () => 'Lecture, détente, ce que tu veux — ce créneau est à toi.',
-      },
-      {
-        title: 'Préparer ma semaine', cat: 'activite', durH: 0.25, nearH: 18.5,
-        reason: () => '15 minutes pour clarifier les prochains jours.',
-      },
-    ];
+    const pool = shuffled(FALLBACKS.filter((f) => !exclude.has(f.title)), rng).slice(0, 3);
     const usedDays = new Set<string>();
-    for (const fb of fallbacks) {
+    for (const fb of pool) {
       const day = [...days]
         .filter((d) => !usedDays.has(d.date) && findSlot(d, fb.durH, fb.nearH))
         .sort((a, b) => b.energy - a.energy)[0];
@@ -329,10 +395,11 @@ export function generateWeekPlan(input: PlannerInput): WeekPlan {
       usedDays.add(day.date);
       push({
         date: day.date, weekDay: day.weekDay,
-        title: fb.title, cat: fb.cat,
+        title: fb.title, cat: fb.title === 'Marche 30 min' ? 'sport' : 'activite',
         startTime: toHHMM(start), endTime: toHHMM(start + fb.durH),
-        reason: fb.reason(day.phase),
+        reason: day.phase ? `${fb.reason.replace(/\.$/, '')} — ${PHASE_LABEL[day.phase]}.` : fb.reason,
         recurring: false,
+        dislikable: true,
       }, fb.durH, start, day);
     }
   }

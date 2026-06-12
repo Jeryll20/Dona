@@ -195,9 +195,51 @@ describe('generateWeekPlan — onboarding goal', () => {
     expect(plan.some((p) => p.title === 'Préparer ma semaine')).toBe(true);
   });
 
-  it("'activite' proposes a discovery session", () => {
+  it("'activite' proposes a discovery session (drawn from the pool)", () => {
+    const DISCOVERY_TITLES = ['Nouvelle activité à essayer', 'Atelier créatif', 'Sortie découverte'];
     const { proposals: plan } = generateWeekPlan(baseInput({ goal: 'activite' }));
-    expect(plan.some((p) => p.title === 'Nouvelle activité à essayer')).toBe(true);
+    expect(plan.some((p) => DISCOVERY_TITLES.includes(p.title))).toBe(true);
+  });
+});
+
+describe('generateWeekPlan — variety & dislikes', () => {
+  it('different variants can draw different pool ideas', () => {
+    // Across several variants, the routine anchors should not always be identical
+    const titles = new Set<string>();
+    for (let v = 0; v < 8; v++) {
+      const { proposals } = generateWeekPlan(baseInput({ goal: 'routine', variant: v }));
+      proposals.forEach((p) => titles.add(p.title));
+    }
+    expect(titles.size).toBeGreaterThan(2); // more than one fixed morning+evening pair
+  });
+
+  it('same week + same variant → same draw (stable)', () => {
+    const a = generateWeekPlan(baseInput({ goal: 'routine', variant: 3 }));
+    const b = generateWeekPlan(baseInput({ goal: 'routine', variant: 3 }));
+    expect(a.proposals.map((p) => p.title)).toEqual(b.proposals.map((p) => p.title));
+  });
+
+  it('excluded titles are never proposed', () => {
+    const exclude = ['Écriture / journaling', 'Méditation matinale', 'Étirements au réveil'];
+    for (let v = 0; v < 5; v++) {
+      const { proposals } = generateWeekPlan(baseInput({
+        goal: 'routine', variant: v, excludeTitles: exclude,
+      }));
+      for (const p of proposals) {
+        expect(exclude).not.toContain(p.title);
+      }
+    }
+  });
+
+  it('marks pool ideas dislikable but not the user\'s own sport sessions', () => {
+    const { proposals } = generateWeekPlan(baseInput({
+      goal: 'routine',
+      activities: [makeSport({ weeklyGoal: 3 })],
+    }));
+    const sportSessions = proposals.filter((p) => p.title === 'Course à pied');
+    const poolIdeas     = proposals.filter((p) => p.title !== 'Course à pied');
+    expect(sportSessions.every((p) => !p.dislikable)).toBe(true);
+    expect(poolIdeas.every((p) => p.dislikable)).toBe(true);
   });
 });
 

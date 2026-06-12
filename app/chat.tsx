@@ -17,6 +17,7 @@ import { upsertActivity } from '@/lib/activitiesSync';
 import { genId } from '@/lib/id';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useBehaviorStore } from '@/store/useBehaviorStore';
+import { useSuggestionsStore } from '@/store/useSuggestionsStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { WeekDay } from '@/types';
@@ -237,6 +238,7 @@ const uid = () => String(++msgId);
 
 const WELCOME_TEXT  = "Bonjour ! Je suis Dona 👋\nComment puis-je t'aider avec ton planning aujourd'hui ?";
 const PLAN_CHIP     = '🪄 Planifie ma semaine';
+const REROLL_CHIP   = '🪄 Propose autre chose';
 const WELCOME_CHIPS = [PLAN_CHIP, "Mon planning ne me correspond pas", "Je veux ajouter une activité"];
 const ERROR_TEXT    = "Oups, je n'arrive pas à te répondre pour l'instant. Réessaie dans quelques secondes.";
 
@@ -246,13 +248,15 @@ const FR_DAY: Record<WeekDay, string> = {
 
 // ── PlanCard — interactive week plan inside the conversation ─────────────────
 
-function PlanCard({ items, onApply }: {
+function PlanCard({ items, onApply, onDislike }: {
   items: PlanProposal[];
   onApply: (accepted: PlanProposal[]) => void;
+  onDislike: (proposal: PlanProposal) => void;
 }) {
   const C = useColors();
   const s = makeStyles(C);
   const [rejected, setRejected] = useState<Set<string>>(new Set());
+  const [hidden,   setHidden]   = useState<Set<string>>(new Set());
 
   const toggle = (id: string) =>
     setRejected((prev) => {
@@ -261,11 +265,27 @@ function PlanCard({ items, onApply }: {
       return next;
     });
 
-  const acceptedCount = items.length - rejected.size;
+  const dislike = (p: PlanProposal) => {
+    setHidden((prev) => new Set(prev).add(p.id));
+    onDislike(p);
+  };
+
+  const visible = items.filter((p) => !hidden.has(p.id));
+  const acceptedCount = visible.filter((p) => !rejected.has(p.id)).length;
+
+  if (visible.length === 0) {
+    return (
+      <View style={s.planCard}>
+        <Text style={s.planReason}>
+          C'est noté, je ne te proposerai plus ces idées. Relance « 🪄 » pour en découvrir d'autres !
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={s.planCard}>
-      {items.map((p) => {
+      {visible.map((p) => {
         const off = rejected.has(p.id);
         const d = `${FR_DAY[p.weekDay]} ${p.date.slice(8, 10)}/${p.date.slice(5, 7)}`;
         return (
@@ -287,13 +307,24 @@ function PlanCard({ items, onApply }: {
               </Text>
               <Text style={[s.planReason, off && s.planTextOff]}>{p.reason}</Text>
             </View>
+            {p.dislikable && (
+              <TouchableOpacity
+                onPress={(e) => { e.stopPropagation(); dislike(p); }}
+                style={s.planDislike}
+                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Ne plus me proposer ${p.title}`}
+              >
+                <Text style={s.planDislikeText}>👎</Text>
+              </TouchableOpacity>
+            )}
           </TouchableOpacity>
         );
       })}
       <TouchableOpacity
         style={[s.planApply, acceptedCount === 0 && s.planApplyOff]}
         disabled={acceptedCount === 0}
-        onPress={() => onApply(items.filter((p) => !rejected.has(p.id)))}
+        onPress={() => onApply(visible.filter((p) => !rejected.has(p.id)))}
         accessibilityRole="button"
         accessibilityLabel={`Appliquer ${acceptedCount} propositions`}
       >
@@ -321,6 +352,7 @@ export default function ChatScreen() {
   const [loading,       setLoading]       = useState(false);
   const [pendingAction, setPendingAction] = useState<PlanningAction | null>(null);
   const historyRef = useRef<HistoryMessage[]>([]);
+  const planVariant = useRef(0);
 
   const addActivity  = useScheduleStore((st) => st.addActivity);
   const setSleep     = useUserStore((st) => st.setSleep);
@@ -386,13 +418,14 @@ export default function ChatScreen() {
   }
 
   // ── Interactive week planning (local planner — cycle data never leaves) ─────
-  function runPlanner() {
+  function runPlanner(label: string = PLAN_CHIP) {
     setChips([]);
-    pushMessage('user', PLAN_CHIP);
+    pushMessage('user', label);
 
     const { profile, sleep, meals, cycle } = useUserStore.getState();
     const { activities: acts } = useScheduleStore.getState();
     const { completions } = useBehaviorStore.getState();
+    const { dislikedTitles } = useSuggestionsStore.getState();
 
     const { proposals, adjustments } = generateWeekPlan({
       goal:        profile.goal,
@@ -402,6 +435,8 @@ export default function ChatScreen() {
       meals,
       cycle,
       weekStart:   getPlanningWeekStart(),
+      excludeTitles: dislikedTitles,
+      variant:     planVariant.current++, // new draw from the idea pools each run
     });
 
     if (proposals.length === 0 && adjustments.length === 0) {
@@ -417,6 +452,7 @@ export default function ChatScreen() {
       ...adjustments.map((a) => ({ id: uid(), role: 'bot' as Role, text: a.reason })),
       ...(proposals.length > 0 ? [{ id: uid(), role: 'bot' as Role, text: '', plan: proposals }] : []),
     ]);
+    setChips([REROLL_CHIP]); // one tap to get a different draw
   }
 
   function applyPlan(messageId: string, accepted: PlanProposal[]) {
@@ -472,9 +508,9 @@ export default function ChatScreen() {
     if (!trimmed || loading) return;
 
     // The planning session is fully local — no Mistral round-trip
-    if (trimmed === PLAN_CHIP) {
+    if (trimmed === PLAN_CHIP || trimmed === REROLL_CHIP) {
       setInput('');
-      runPlanner();
+      runPlanner(trimmed);
       return;
     }
 
@@ -558,7 +594,14 @@ export default function ChatScreen() {
           keyboardDismissMode="interactive"
         >
           {messages.map((m) => m.plan
-            ? <PlanCard key={m.id} items={m.plan} onApply={(accepted) => applyPlan(m.id, accepted)} />
+            ? (
+              <PlanCard
+                key={m.id}
+                items={m.plan}
+                onApply={(accepted) => applyPlan(m.id, accepted)}
+                onDislike={(p) => useSuggestionsStore.getState().dislikeTitle(p.title)}
+              />
+            )
             : <Bubble key={m.id} message={m} />,
           )}
           {loading && <TypingIndicator />}
@@ -764,6 +807,12 @@ function makeStyles(C: ReturnType<typeof useColors>) {
     },
     planApplyOff:  { opacity: 0.45 },
     planApplyText: { fontSize: FontSize.base, fontWeight: '700', color: C.onPrimary },
+    planDislike: {
+      width: 30, height: 30, borderRadius: 15, marginTop: 2,
+      backgroundColor: C.surfaceSunk,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    planDislikeText: { fontSize: 13 },
 
     chipsRow: {
       flexDirection: 'row',

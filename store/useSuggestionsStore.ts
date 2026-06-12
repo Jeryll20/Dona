@@ -14,10 +14,13 @@ interface SuggestionsState {
   // don't reappear when the schedule changes. Resets each day.
   consumedTitles: string[];
   consumedDate: string;
+  // "Je n'aime pas" — plan/suggestion titles banned forever (device-local)
+  dislikedTitles: string[];
 
   setSuggestions: (suggestions: Suggestion[]) => void;
   acceptSuggestion: (id: string) => void;
   dismissSuggestion: (id: string) => void;
+  dislikeTitle: (title: string) => void;
   reset: () => void;
 }
 
@@ -42,6 +45,7 @@ export const useSuggestionsStore = create<SuggestionsState>()(
       suggestions: [],
       consumedTitles: [],
       consumedDate: '',
+      dislikedTitles: [],
 
       setSuggestions: (suggestions) =>
         set({ suggestions }),
@@ -52,8 +56,15 @@ export const useSuggestionsStore = create<SuggestionsState>()(
       dismissSuggestion: (id) =>
         set((s) => consume(s, id, 'dismissed')),
 
+      dislikeTitle: (title) =>
+        set((s) => ({
+          dislikedTitles: s.dislikedTitles.includes(title)
+            ? s.dislikedTitles
+            : [...s.dislikedTitles, title],
+        })),
+
       reset: () =>
-        set({ suggestions: [], consumedTitles: [], consumedDate: '' }),
+        set({ suggestions: [], consumedTitles: [], consumedDate: '', dislikedTitles: [] }),
     }),
     {
       name:    'dona-suggestions',
